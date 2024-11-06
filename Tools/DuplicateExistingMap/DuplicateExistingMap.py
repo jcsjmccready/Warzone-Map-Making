@@ -1,3 +1,22 @@
+###
+#   DuplicateExistingMap Tool
+#
+#   This script is used to duplicate a warzone's maps data.
+#
+#   It takes the game id from a multiplayer game made using an old map 
+#   & downloads what it can about the map from the query game api.
+#   Tip: create a multiplayer game with code invites. This lets you do it with one person.
+#
+#   It subsequently parses that data, creates commands and posts those commands
+#   to the mapmaking api using the id of the new map.
+#
+#   It is important that the svg uploaded for the duplicate map is the same as the old
+#
+#   To do these things it requires the authorization parameters. The users email and apiToken
+#
+###
+
+
 import requests
 from typing import List
 from json import dumps
