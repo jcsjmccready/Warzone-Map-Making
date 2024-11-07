@@ -1,6 +1,7 @@
 # convenience files for local development
 *.lnk
 *.bat
+settings.json
 
 
 # Byte-compiled / optimized / DLL files
