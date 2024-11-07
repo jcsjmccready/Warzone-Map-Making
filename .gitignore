@@ -1,6 +1,6 @@
 # convenience files for local development
-.lnk
-.bat
+*.lnk
+*.bat
 
 
 # Byte-compiled / optimized / DLL files
