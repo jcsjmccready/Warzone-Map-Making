@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<inkscape-extension xmlns="http://www.inkscape.org/namespace/inkscape/extension">
+  <name>Cut Selected Polygons out of Each Other</name>
+  <id>mgreedy.warzone.polygons.cut_selected_polygons_out_of_each_other</id>
+ 
+  <effect>
+    <effects-menu>
+      <submenu name="Warzone">
+        <submenu name="Path"/>
+      </submenu
+    </effects-menu>
+  </effect>
+  <script>
+    <command location="inx" interpreter="python">cut_selected_polygons_out_of_each_other.py</command>
+  </script>
+</inkscape-extension>
