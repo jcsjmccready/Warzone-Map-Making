@@ -9,10 +9,11 @@
 #
 ###
 
-import inkex, os, sys, tempfile
-from inkex import command
+import inkex, os, sys
+from typing import List
 
 def get_inkscape_version() -> float:
+    """ Retrieves the inkscape version that this script is being run against """
     ink = inkex.command.INKSCAPE_EXECUTABLE_NAME
     os.environ["SELF_CALL"] = "true"  # needed for version 1.3 and 1.3.1
     try: # needed prior to 1.1
@@ -28,8 +29,8 @@ def get_inkscape_version() -> float:
     v_num = ink_version[pos:pos+3]
     return(float(v_num))
 
-
-def haltingMessage(message: str) -> None:
+def halting_message(message: str) -> None:
+    """ Displays an error message to inkscape and exits the program """
     inkex.errormsg(message)
     sys.exit()
 
@@ -43,10 +44,15 @@ class ElementsIdAssigner(inkex.EffectExtension):
         inkex.Effect.__init__(self)
     
     def get_elements(self):
-        polygons_selection: inkex.ElementList = self.svg.selection.filter(inkex.BaseElement)
+        """ 
+        Gets the elements required for this script and returns an error if insufficient elements are found\n
+        Can function with a selection or with a group/layer of elements
+        """
+        polygons_selection: List[inkex.BaseElement] = self.svg.selection.filter(inkex.BaseElement)
 
-        if(type(self.svg.selection[0]) is inkex.Layer or type(self.svg.selection[0]) is inkex.Group):
-            polygons_selection = self.svg.selection[0].getchildren()
+         # if first element in selection is group (layers are groups), set selection to children
+        if (len(self.svg.selection) > 0 and isinstance(self.svg.selection[0], inkex.Group)):
+            polygons_selection = [element for element in self.svg.selection[0].getchildren() if isinstance(element, inkex.PathElement)]
 
         return polygons_selection
 
@@ -54,7 +60,7 @@ class ElementsIdAssigner(inkex.EffectExtension):
 
         inkscape_version = get_inkscape_version()
         if(inkscape_version < 1.2):
-            haltingMessage('This extension only supports inkscape versions >=1.2')
+            halting_message('This extension only supports inkscape versions >=1.2')
     
         elements = self.get_elements()
 

@@ -1,13 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <inkscape-extension xmlns="http://www.inkscape.org/namespace/inkscape/extension">
-  <name>Prefix+Counter Id Assigner</name>
-  <id>mgreedy.warzone.elements_id_assigner</id>
+  <name>Prefix Id Assigner</name>
+  <id>mgreedy.warzone.meta.elements_id_assigner</id>
   <param name="prefix" type="string" gui-text="Prefix" min-length="1" max-length="40"></param>
   <label>Applies to selection or first level of selection (i.e. group/layer)</label>
 
   <effect>
     <effects-menu>
-      <submenu name="Warzone"/>
+      <submenu name="Warzone">
+        <submenu name="Meta"/>
+      </submenu
     </effects-menu>
   </effect>
   <script>
