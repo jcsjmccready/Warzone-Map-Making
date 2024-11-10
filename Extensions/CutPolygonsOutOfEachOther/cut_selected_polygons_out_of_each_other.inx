@@ -1,13 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <inkscape-extension xmlns="http://www.inkscape.org/namespace/inkscape/extension">
   <name>Cut Selected Polygons out of Each Other</name>
-  <id>mgreedy.warzone.polygons.cut_selected_polygons_out_of_each_other</id>
- 
+  <id>mgreedy.warzone.paths.cut_selected_polygons_out_of_each_other</id>
+
+  <param name="tab" type="notebook">
+    <page name="help" gui-text="Help">
+    <param name="help_text" type="description">Takes either a selection of paths or the children of a selected group/layer</param>
+    <param name="help_text1" type="description">Cuts every path out from the other</param>
+    <param name="help_text2" type="description">Recommended to clean up points on output objects</param>
+    </page>
+  </param>
+
   <effect>
     <effects-menu>
       <submenu name="Warzone">
         <submenu name="Path"/>
-      </submenu
+      </submenu>
     </effects-menu>
   </effect>
   <script>
