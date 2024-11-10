@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<inkscape-extension xmlns="http://www.inkscape.org/namespace/inkscape/extension">
+  <name>Cut Line Out of Closed Polygon</name>
+  <id>mgreedy.warzone.paths.cut_line_out_of_closed_polygon_with_respect_to_borders</id>
+
+  <param name="tab" type="notebook">
+    <page name="controls" gui-text="Controls">
+      <param name="margin" type="int" gui-text="margin (px)" min="0"></param>
+    </page>
+    <page name="help" gui-text="Help">
+    <param name="help_text" type="description">Takes two elements, one a line, the other a closed polygon.</param>
+    <param name="help_text1" type="description">Cuts the line out using path-difference while respecting the size of the lines border and keeping the original line object.</param>
+    <param name="help_text2" type="description">Provides the option to add a margin to the cut adding a gap between the line and the cut polygon.</param>
+    </page>
+  </param>
+
+  <effect>
+    <effects-menu>
+      <submenu name="Warzone">
+        <submenu name="Path"/>
+      </submenu>
+    </effects-menu>
+  </effect>
+  <script>
+    <command location="inx" interpreter="python">cut_line_out_of_closed_polygon_with_respect_to_borders.py</command>
+  </script>
+</inkscape-extension>
