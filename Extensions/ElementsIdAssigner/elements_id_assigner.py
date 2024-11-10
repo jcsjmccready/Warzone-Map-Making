@@ -39,6 +39,7 @@ class ElementsIdAssigner(inkex.EffectExtension):
     def add_arguments(self, pars):
         pars.add_argument("--prefix", type=str, default="CHANGEME",\
                           help="Please specify the prefix")
+        pars.add_argument("--tab", type=str, default='Controls')
 
     def __init__(self):
         inkex.Effect.__init__(self)
