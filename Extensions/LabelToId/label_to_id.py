@@ -54,13 +54,6 @@ class LabelToIdExtension(inkex.EffectExtension):
         
         return polygons_selection
 
-    def cleanup(self, temp_file: str) -> None:
-        """ Deletes the temporary file used for modifying the svg without causing permanent damage if it fails poorly """
-        try:
-            os.remove(temp_file)
-        except Exception:  # pylint: disable=broad-except
-            inkex.errormsg(f'Error removing temporary file: {tempfile}\n\n')
-
     def modify_elements(self, elements: List[inkex.BaseElement]):
         """
         Sets the ids of the given elements
