@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<inkscape-extension xmlns="http://www.inkscape.org/namespace/inkscape/extension">
+  <name>Bonus Label To Id</name>
+  <id>mgreedy.warzone.meta.label_to_id</id>
+
+  <param name="tab" type="notebook">
+    <page name="help" gui-text="Help">
+      <param name="help_text" type="description">Takes a selection of elements or group/layer of elements</param>
+      <param name="help_text1" type="description">Sets the Id for each element appropriately for a given label</param>
+      <param name="help_text2" type="description">Prefixes the Id appropriately for a bonus</param>
+      <param name="help_text3" type="description">e.g. "Mgreedy's Home" = "BonusLink_MgreedysHome"</param>
+    </page>
+  </param>
+
+  <effect>
+    <effects-menu>
+      <submenu name="Warzone">
+        <submenu name="Meta"/>
+      </submenu>
+    </effects-menu>
+  </effect>
+  <script>
+    <command location="inx" interpreter="python">label_to_id.py</command>
+  </script>
+</inkscape-extension>
