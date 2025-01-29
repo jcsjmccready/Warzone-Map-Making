@@ -28,7 +28,7 @@ def halting_message(message: str) -> None:
 
 BONUS_PREFIX = 'BonusLink_'
 
-class ActionIteratorExtension(inkex.EffectExtension):
+class LabelToIdExtension(inkex.EffectExtension):
     """Main code for the extension"""
     
     def __init__(self):
@@ -85,4 +85,4 @@ class ActionIteratorExtension(inkex.EffectExtension):
         self.modify_elements(elements)
 
 if __name__ == '__main__':
-    ActionIteratorExtension().run()
+    LabelToIdExtension().run()
