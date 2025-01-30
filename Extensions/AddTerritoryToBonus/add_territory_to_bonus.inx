@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<inkscape-extension xmlns="http://www.inkscape.org/namespace/inkscape/extension">
+  <name>Add Elements To Bonus</name>
+  <id>mgreedy.warzone.meta.add_territory_to_bonus</id>
+ 
+  <label>Adds Selected Elements to a Selected Bonus</label>
+
+  <param name="tab" type="notebook">
+    <page name="controls" gui-text="Controls">
+        <param name="recolour_elements" type="bool" gui-text="Recolour Affected Elements Borders">true</param>
+        <param name="colour" type="color" gui-text="Element Recolour">#0x00000000</param>
+        <param name="set_bonus_value" type="bool" gui-text="Set Bonus Value">true</param>
+        <param name="bonus_value_formula" type="optiongroup" appearance="radio" gui-text="Bonus Value Formula">
+            <option value="n">n</option>
+            <option value="n_1">n-1</option>
+        </param>
+    </page>
+    <page name="help" gui-text="Help">
+        <param name="help_text" type="description">Takes a selection of elements and a bonus</param>
+        <param name="help_text1" type="description">Loops through the elements and adds them to the bonus for later api upload</param>
+        <param name="help_text2" type="description">Uses elements Description field to track what bonuses a territory belongs to</param>
+    </page>
+  </param>
+
+    <effect>
+        <effects-menu>
+            <submenu name="Warzone">
+                <submenu name="Meta"/>
+            </submenu>
+        </effects-menu>
+    </effect>
+    <script>
+        <command location="inx" interpreter="python">add_territory_to_bonus.py</command>
+    </script>
+</inkscape-extension>
