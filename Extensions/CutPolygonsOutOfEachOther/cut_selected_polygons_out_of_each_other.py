@@ -44,6 +44,9 @@ class CutSelectedPolygonsOutOfEachOther(inkex.EffectExtension):
     def __init__(self):
         inkex.Effect.__init__(self)
     
+    def add_arguments(self, pars):
+        pars.add_argument("--tab", type=str, default='Controls')
+        
     def get_elements(self):
         """ 
         Gets the elements required for this script and returns an error if insufficient elements are found\n

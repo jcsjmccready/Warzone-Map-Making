@@ -44,6 +44,7 @@ class CutLineOutOfClosedPolygonWithRespectToBordersExtension(inkex.EffectExtensi
         
     def add_arguments(self, pars):
         pars.add_argument("--margin", type=int, default=1)
+        pars.add_argument("--tab", type=str, default='Controls')
         
     def create_cutting_path(self, closed_polygon: inkex.PathElement, original_line: inkex.PathElement) -> inkex.Path:
         """
