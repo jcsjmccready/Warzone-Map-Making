@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<inkscape-extension xmlns="http://www.inkscape.org/namespace/inkscape/extension">
+  <name>Copy Label To Title</name>
+  <id>mgreedy.warzone.meta.label_to_title</id>
+ 
+  <label>Copies the Label to the Title</label>
+
+  <param name="tab" type="notebook">
+    <page name="help" gui-text="Help">
+    <param name="help_text" type="description">Takes either a selection of paths or the children of a selected group/layer</param>
+    <param name="help_text1" type="description">Loops through the elements setting the title equal to the label</param>
+    </page>
+  </param>
+
+  <effect>
+    <effects-menu>
+      <submenu name="Warzone">
+        <submenu name="Meta"/>
+      </submenu>
+    </effects-menu>
+  </effect>
+  <script>
+    <command location="inx" interpreter="python">label_to_title.py</command>
+  </script>
+</inkscape-extension>
