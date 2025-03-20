@@ -61,8 +61,10 @@ class LabelToIdExtension(inkex.EffectExtension):
                 
         for element in elements:
             label = element.label
+            #todo: achieve this with regex, only allowing alphanumerics through
             # remove characters warzone will ignore in the id but allow in the name
             label = label.replace("'", "") # apostrophes
+            label = label.replace("&", "") # &
             label = label.replace(" ", "") # white space
             
             element.set_id(f'{BONUS_PREFIX}{label}')
