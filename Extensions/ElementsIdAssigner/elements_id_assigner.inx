@@ -8,6 +8,7 @@
   <param name="tab" type="notebook">
     <page name="controls" gui-text="Controls">
       <param name="prefix" type="string" gui-text="Prefix" min-length="1" max-length="40"></param>
+      <param name="start_from" type="int" gui-text="Start from" min="0" max="99999">0</param>
     </page>
     <page name="help" gui-text="Help">
     <param name="help_text" type="description">Takes either a selection of paths or the children of a selected group/layer</param>

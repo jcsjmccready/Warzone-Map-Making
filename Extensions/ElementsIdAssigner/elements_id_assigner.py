@@ -39,6 +39,7 @@ class ElementsIdAssigner(inkex.EffectExtension):
     def add_arguments(self, pars):
         pars.add_argument("--prefix", type=str, default="CHANGEME",\
                           help="Please specify the prefix")
+        pars.add_argument("--start_from", type=int, default=0)
         pars.add_argument("--tab", type=str, default='Controls')
 
     def __init__(self):
@@ -65,7 +66,7 @@ class ElementsIdAssigner(inkex.EffectExtension):
     
         elements = self.get_elements()
 
-        counter = 0
+        counter = self.options.start_from
         for element in elements:
             element.set_id(f'{self.options.prefix}{counter}')
             counter = counter + 1
