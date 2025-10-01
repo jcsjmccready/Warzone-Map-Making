@@ -290,13 +290,11 @@ def DuplicateMap(oldMapGameId: int, newMapId: int, email: str, apiKey: str):
 
         error = jsonData['error'] if 'error' in jsonData else None
         if error != None:
-            messagebox.showerror("Error from warzone query game API", error)
-            exit()
+            show_terminating_popup("Error from warzone query game API", error)
 
         mapJson = jsonData['map']
     except Exception:
-        messagebox.showerror("An exception occurred while retrieving the old map", format_exc())
-        exit()
+        show_terminating_popup("An exception occurred while retrieving the old map", format_exc())
 
     #parse map
     commands = []
@@ -305,7 +303,6 @@ def DuplicateMap(oldMapGameId: int, newMapId: int, email: str, apiKey: str):
         commands = ConvertClassesToCommands(territories, bonuses)
     except Exception:
         show_terminating_popup("An exception occurred while parsing the old map", format_exc())
-        exit()
 
     # validate commands
     errors = []
