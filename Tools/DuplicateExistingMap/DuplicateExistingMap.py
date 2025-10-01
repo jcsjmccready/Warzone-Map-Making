@@ -31,12 +31,14 @@ from webbrowser import open_new_tab
 class QueryGameTerritory:
     connectedTo: List[int]
     name: str
+    coords: str
     id: str
 
-    def __init__(self, name, id, connectedTo):
+    def __init__(self, name, id, connectedTo, coords):
         self.name = name
         self.id = id
         self.connectedTo = connectedTo
+        self.coords = coords
 
 class QueryGameBonus:
     territoryIDs: List[int]
@@ -231,6 +233,7 @@ def ConvertClassesToCommands(territories: List[QueryGameTerritory], bonuses: Lis
 
     # idempotent commands
     setTerritoryNameCommands: List[SetTerritoryNameCommand] = []
+    setTerritoryCenterpointCommands: List[SetTerritoryCenterpointCommand] = []
 
     connectionHashes: List[int] = []
 
@@ -245,6 +248,10 @@ def ConvertClassesToCommands(territories: List[QueryGameTerritory], bonuses: Lis
     for territory in territories:
         setTerritoryNameCommand = SetTerritoryNameCommand(territory.id, territory.name)
         setTerritoryNameCommands.append(setTerritoryNameCommand)
+        
+        x,y = territory.coords.split(",")
+        setTerritoryCenterpointCommand = SetTerritoryCenterpointCommand(territory.id, x, y)
+        setTerritoryCenterpointCommands.append(setTerritoryCenterpointCommand)
 
         for connectionId in territory.connectedTo:
             hash = CantorPairingFunction(territory.id, connectionId)
@@ -257,7 +264,7 @@ def ConvertClassesToCommands(territories: List[QueryGameTerritory], bonuses: Lis
             connectionHashes.append(hash)
 
     # addBonusCommands first as can't add territories to non-existant bonuses
-    commands = addBonusCommands + addTerritoryToBonusCommands + addTerritoryConnectionCommands + setTerritoryNameCommands
+    commands = addBonusCommands + addTerritoryToBonusCommands + addTerritoryConnectionCommands + setTerritoryNameCommands + setTerritoryCenterpointCommands
     return commands
 
 def UploadMap(email: str, token: str, mapId: int, commands: List[Command]) -> str:
@@ -272,6 +279,7 @@ def UploadMap(email: str, token: str, mapId: int, commands: List[Command]) -> st
     responseJson = response.json()
     error = responseJson.get('error', None)
 
+    # return json_string
     return error
 
 def DuplicateMap(oldMapGameId: int, newMapId: int, email: str, apiKey: str):
@@ -296,7 +304,7 @@ def DuplicateMap(oldMapGameId: int, newMapId: int, email: str, apiKey: str):
         territories, bonuses = ParseResponseForUploadables(mapJson)
         commands = ConvertClassesToCommands(territories, bonuses)
     except Exception:
-        messagebox.showerror("An exception occurred while parsing the old map", format_exc())
+        show_terminating_popup("An exception occurred while parsing the old map", format_exc())
         exit()
 
     # validate commands
@@ -306,21 +314,19 @@ def DuplicateMap(oldMapGameId: int, newMapId: int, email: str, apiKey: str):
         if(error is not None):
             errors.append(command.validate(error))
     if(len(errors)):
-        messagebox.showerror("Errors detected while validating commands", errors)
-        exit()
+        show_terminating_popup("Errors detected while validating commands", errors)
 
     # upload map
     try:
         error = UploadMap(email, apiKey, newMapId, commands)
         if error != None:
-            messagebox.showerror("Error from warzone upload map details API", error)
-            exit()
+            show_terminating_popup("Error from warzone upload map details API", error)
     except Exception:
-        messagebox.showerror("An exception occurred while uploading the new map details", format_exc())
-        exit()
+        show_terminating_popup("An exception occurred while uploading the new map details", format_exc())
 
 
 def DuplicateMapWrapper(oldMapGameId: int, newMapId: int, email: str, apiKey: str) -> None:
+
     if oldMapGameId == '':
         messagebox.showerror('Error', 'Missing old map game id')
         return
@@ -338,7 +344,7 @@ def DuplicateMapWrapper(oldMapGameId: int, newMapId: int, email: str, apiKey: st
         DuplicateMap(oldMapGameId, newMapId, email, apiKey)
         SuccessWindow(newMapId)
     except Exception:
-        messagebox.showerror("An exception occurred", format_exc())
+        show_terminating_popup("An exception occurred", format_exc())
 
 def callback(url):
    open_new_tab(url)
@@ -349,13 +355,36 @@ def SuccessWindow(newMapId: str):
     toplevel.title("Success")
     toplevel.geometry("230x80")
 
-
     l1=Label(toplevel, image="::tk::icons::information")
     l1.grid(row=0, column=0)
 
     left_label = Label(toplevel, text=f'Check out your map', cursor="hand2", relief='raised', foreground='blue')#text= "Left-bottom")
     left_label.grid(row=0, column=1)
     left_label.bind("<Button-1>", lambda e:callback(f'https://www.warzone.com/SinglePlayer?PreviewMap={newMapId}'))
+
+def show_terminating_popup(title: str, message: str):
+    popup = Toplevel(root)
+    popup.title("Message")
+
+    # Make the window not resizable
+    popup.resizable(False, False)
+
+    # Add a label
+    label = ttk.Label(popup, text=title)
+    label.pack(pady=5)
+
+    # Add a Text widget so the user can copy from it
+    text_box = Text(popup, wrap="word", height=40, width=50)
+    text_box.insert("1.0", message)
+    text_box.configure(state="normal")  # keep it editable if you want copy/paste
+    text_box.pack(padx=10, pady=5)
+
+    # Optional: select all text for easy copying
+    text_box.focus()
+    text_box.tag_add("sel", "1.0", "end")
+
+    # Add a close button
+    ttk.Button(popup, text="Close", command=root.destroy).pack(pady=5)
 
 ## construct gui
 root.title("Warzone Map Duplicator")
