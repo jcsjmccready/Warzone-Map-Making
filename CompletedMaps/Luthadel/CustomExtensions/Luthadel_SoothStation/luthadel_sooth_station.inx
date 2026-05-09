@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<inkscape-extension xmlns="http://www.inkscape.org/namespace/inkscape/extension">
+  <name>Luthadel Sooth Station</name>
+  <id>mgreedy.warzone.luthadel_sooth_station</id>
+
+  <param name="tab" type="notebook">
+    <page name="controls" gui-text="Controls">
+      <param name="contractId" type="string" gui-text="Contract Id (no prefix)" min-length="1" max-length="40"></param>
+    </page>
+    <page name="help" gui-text="Help">
+      <param name="help_text" type="description">Creates the commands for the soother stations</param>
+      <param name="help_text2" type="description">First selected territory should be the station itself, following ones are the affected territories</param>
+    </page>
+  </param>
+
+  <effect>
+    <effects-menu>
+      <submenu name="Warzone">
+      </submenu>
+    </effects-menu>
+  </effect>
+  <script>
+    <command location="inx" interpreter="python">luthadel_sooth_station.py</command>
+  </script>
+</inkscape-extension>
