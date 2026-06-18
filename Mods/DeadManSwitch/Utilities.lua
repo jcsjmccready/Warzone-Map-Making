@@ -139,3 +139,11 @@ function ParseCommaDelimitedString(str)
     end
     return result
 end
+
+function getColourCode (itemName)
+    if (itemName=="card play heading") then return "#0099FF"; --medium blue
+    elseif (itemName=="error")  then return "#FF0000"; --red
+	elseif (itemName=="subheading") then return "#FFFF00"; --yellow
+    else return "#AAAAAA"; --return light grey for everything else
+    end
+end
