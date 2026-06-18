@@ -8,14 +8,14 @@ require("Utilities");
 -- consider if actual armies includes special units
 -- art
 -- commerce support
+-- remove request a dms annotation, add an annotation if the dms is not built because the player lost control of the territory
 
 
 function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrder)
 
-    if (order.proxyType == 'GameOrderPlayCardCustom' and startsWith(order.ModData, "CreateTank_")) then
-        local cardGame = game.Settings.Cards[order.CardID]; -- do we need this? Does this do anything?
-        
-        local targetTerritoryID = tonumber(string.sub(order.ModData, 12))
+    if (order.proxyType == 'GameOrderPlayCardCustom' and startsWith(order.ModData, "CreateDMS_")) then
+
+        local targetTerritoryID = tonumber(string.sub(order.ModData, 11))
 		if (game.ServerGame.LatestTurnStanding.Territories[targetTerritoryID].OwnerPlayerID ~= order.PlayerID) then
 			return; --not our territory
 		end
@@ -33,12 +33,12 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
 		Mod.PrivateGameData = privateGameData;
     end
 
-    
+
 	-- --Check if this is an attack against a territory with a fort.
 	if (order.proxyType == 'GameOrderAttackTransfer' and result.IsAttack and result.IsSuccessful) then
         local structureID = WL.StructureType.Custom("DmsStructure");
         local structures = game.ServerGame.LatestTurnStanding.Territories[order.To].Structures;
-        
+
 		if (structures == nil) then return; end;
 
         local numberOfDMS = 0;

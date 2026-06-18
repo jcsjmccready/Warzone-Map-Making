@@ -17,8 +17,6 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
         setMaxSize(400, 200);
         local vert = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1); --set flexible width so things don't jump around while we change InstructionLabel
 
-
-        
         if game.Settings.Cards == nil or game.Settings.Cards[WL.CardID.Bomb] == nil then
             WarningLabel = UI.CreateLabel(vert).SetText("Bombs must be enabled for this mod to work.  Please enable bombs in the game settings.");
         else
@@ -35,7 +33,7 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
                 local annotations = { [TargetTerritoryID] = WL.TerritoryAnnotation.Create("Request Dead Man's Switch") };
                 local jumpToSpot = WL.RectangleVM.Create(td.MiddlePointX, td.MiddlePointY, td.MiddlePointX, td.MiddlePointY);
 
-                if (playCard("Build a Dead Man's Switch on " .. TargetTerritoryName, "CreateTank_" .. TargetTerritoryID, WL.TurnPhase.Attacks, annotations, jumpToSpot)) then
+                if (playCard("Build a Dead Man's Switch on " .. TargetTerritoryName, "CreateDMS_" .. TargetTerritoryID, WL.TurnPhase.Attacks, annotations, jumpToSpot)) then
                     close();
                 end
             end);
