@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<inkscape-extension xmlns="http://www.inkscape.org/namespace/inkscape/extension">
+  <name>Action Iterator</name>
+  <id>mgreedy.warzone.meta.action_iterator</id>
+
+  <label>!IMPORTANT - THIS DOES NOT WORK PROPERLY ATM. IS APPLYING CHANGES TO ALL ELEMENTS AT ONCE</label>
+  <param name="tab" type="notebook">
+    <page name="controls" gui-text="Controls">
+      <param name="iterations" type="int" gui-text="number of times" min="1">1</param>
+      <param name="action_name" type="string" gui-text="action name" min-length="1"></param>
+    </page>
+    <page name="help" gui-text="Help">
+    <label>Takes either a selection of paths or the children of a selected group/layer.</label>
+    <label>Applies the given action individually to each element.</label>
+    <label>Applies this the given number of times</label>
+    <separator/>
+    <param name="help_text3" type="description">The list of actions available to be executed can be found at:</param>
+    <label appearance="url">https://github.com/jcsjmccready/Warzone-Map-Making/blob/main/Extensions/InkscapeActions.txt</label>
+    
+    <label>User discretion is advised for the choice of your parameters. </label>
+    </page>
+  </param>
+
+  <effect>
+    <effects-menu>
+      <submenu name="Warzone">
+        <submenu name="Meta"/>
+      </submenu>
+    </effects-menu>
+  </effect>
+  <script>
+    <command location="inx" interpreter="python">action_iterator.py</command>
+  </script>
+</inkscape-extension>
