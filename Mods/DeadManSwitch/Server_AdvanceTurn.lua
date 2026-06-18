@@ -66,7 +66,7 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
             addNewOrder(WL.GameOrderReceiveCard.Create(defendingPlayer, {instance}));
             addNewOrder(WL.GameOrderPlayCardBomb.Create(instance.ID, defendingPlayer, order.To));
 		else
-			addNewOrder(WL.GameOrderEvent.Create(order.PlayerID, "Bomb card not available - DMS cancelled", {}, {territoryModification}), true);	
+			addNewOrder(WL.GameOrderEvent.Create(order.PlayerID, "Bomb card not available - DMS cancelled", {}, {territoryModification}), true); -- this should be impossible to reach but safety net
         end
     end
 end
@@ -113,9 +113,7 @@ function BuildStructures(game, addNewOrder)
 
 		local td = game.Map.Territories[territoryID];
 		event.JumpToActionSpotOpt = WL.RectangleVM.Create(td.MiddlePointX, td.MiddlePointY, td.MiddlePointX, td.MiddlePointY);
-		if (WL.IsVersionOrHigher("5.34.1")) then
-			event.TerritoryAnnotationsOpt = { [territoryID] = WL.TerritoryAnnotation.Create("Build Dead Man's Switch") };
-		end
+		event.TerritoryAnnotationsOpt = { [territoryID] = WL.TerritoryAnnotation.Create("Build Dead Man's Switch") };
 
 		addNewOrder(event);
 	end
