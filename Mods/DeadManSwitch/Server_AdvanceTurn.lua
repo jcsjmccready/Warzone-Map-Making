@@ -34,7 +34,7 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
     end
 
 
-	-- --Check if this is an attack against a territory with a fort.
+	-- --Check if this is an attack against a territory with a dms.
 	if (order.proxyType == 'GameOrderAttackTransfer' and result.IsAttack and result.IsSuccessful) then
         local structureID = WL.StructureType.Custom("DmsStructure");
         local structures = game.ServerGame.LatestTurnStanding.Territories[order.To].Structures;
@@ -56,19 +56,50 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
 
         local territoryModification = WL.TerritoryModification.Create(order.To);
 		territoryModification.SetStructuresOpt = structures;
-		addNewOrder(WL.GameOrderEvent.Create(order.PlayerID, "Triggered a Dead Man's Switch", {}, {territoryModification}), true);
 
-        local defendingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.To].OwnerPlayerID;
+		Trigger_Dms_Damage(territoryModification, game, order, result, addNewOrder);
+    end
+end
 
+function Trigger_Dms_Damage(territoryModification, game, order, result, addNewOrder)
+
+	if (Mod.Settings.isDamageTypeBomb) then
 		-- unable to programatically play cards without them being enabled
         if game.Settings.Cards ~= nil and game.Settings.Cards[WL.CardID.Bomb] ~= nil then
+        	local defendingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.To].OwnerPlayerID;
+
+			local event = WL.GameOrderEvent.Create(order.PlayerID, "Triggered a Dead Man's Switch", {}, {territoryModification});
+			event.TerritoryAnnotationsOpt = { [order.To] = WL.TerritoryAnnotation.Create("Triggered Dead Man's Switch") };
+			addNewOrder(event, true);
+
             local instance = WL.NoParameterCardInstance.Create(WL.CardID.Bomb);
             addNewOrder(WL.GameOrderReceiveCard.Create(defendingPlayer, {instance}));
             addNewOrder(WL.GameOrderPlayCardBomb.Create(instance.ID, defendingPlayer, order.To));
 		else
 			addNewOrder(WL.GameOrderEvent.Create(order.PlayerID, "Bomb card not available - DMS cancelled", {}, {territoryModification}), true); -- this should be impossible to reach but safety net
         end
-    end
+	elseif (Mod.Settings.isDamageTypeFlat) then
+		local damageAmount = Mod.Settings.FlatDamage;
+		local damageArmies = WL.Armies.Create(damageAmount + result.AttackingArmiesKilled.NumArmies);
+		territoryModification.SetArmiesTo = result.ActualArmies.Subtract(damageArmies).NumArmies;
+		
+		event = WL.GameOrderEvent.Create(order.PlayerID, "Triggered a Dead Man's Switch", {}, {territoryModification});
+		event.TerritoryAnnotationsOpt = { [order.To] = WL.TerritoryAnnotation.Create("Triggered Dead Man's Switch") };
+		addNewOrder(event, true);
+
+	elseif (Mod.Settings.isDamageTypePercent) then
+		local damageAmount = Mod.Settings.PercentageDamage;
+		local armiesRemaining = result.ActualArmies.NumArmies - result.AttackingArmiesKilled.NumArmies;
+		local damageAmount = math.max(math.floor(armiesRemaining * damageAmount + 0.5), Mod.Settings.PercentageMinDamage);
+		local damageArmies = WL.Armies.Create(damageAmount + result.AttackingArmiesKilled.NumArmies);
+		territoryModification.SetArmiesTo = result.ActualArmies.Subtract(damageArmies).NumArmies;
+		
+		event = WL.GameOrderEvent.Create(order.PlayerID, "Triggered a Dead Man's Switch", {}, {territoryModification});
+		event.TerritoryAnnotationsOpt = { [order.To] = WL.TerritoryAnnotation.Create("Triggered Dead Man's Switch") };
+		addNewOrder(event, true);
+	end
+
+	
 end
 
 function Server_AdvanceTurn_End(game, addNewOrder)

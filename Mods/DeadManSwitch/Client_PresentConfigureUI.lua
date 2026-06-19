@@ -14,11 +14,9 @@ function Create_UI_Controls(rootParent)
     UI.CreateLabel(acquiringTypeHeading).SetText('Acquiring type:').SetColor(getColourCode('subheading'));
 
     -- Card acquiring type
-    
     isAcquiringTypeCard = UI.CreateRadioButton(acquiringType).SetGroup(acquiringType).SetText('Card');
 
     -- Card acquiring type sub-options
-
     isAcquiringTypeCard.SetOnValueChanged(function() 
     
         if(isAcquiringTypeCard.GetIsChecked()) then
@@ -41,6 +39,54 @@ function Create_UI_Controls(rootParent)
     isDamageTypeFlat = UI.CreateRadioButton(damageTypeHeading).SetGroup(triggerDamageType).SetText('Flat Damage');
     isDamageTypePercent = UI.CreateRadioButton(damageTypeHeading).SetGroup(triggerDamageType).SetText('% Damage');
 
+    isDamageTypeFlat.SetOnValueChanged(function() 
+    
+        if(isDamageTypeFlat.GetIsChecked()) then
+            Create_FlatDamage_SubOptions_UI(damageTypeHeading);
+        else
+           UI.Destroy(flatDamageHeading);
+        end
+    end);
+
+    isDamageTypePercent.SetOnValueChanged(function() 
+    
+        if(isDamageTypePercent.GetIsChecked()) then
+            Create_PercentageDamage_SubOptions_UI(damageTypeHeading);
+        else
+           UI.Destroy(percentageDamageHeading);
+        end
+    end);
+
+end;
+
+function Create_PercentageDamage_SubOptions_UI(rootParent)
+    percentageDamageHeading = UI.CreateVerticalLayoutGroup(rootParent);
+
+    local horz = UI.CreateHorizontalLayoutGroup(percentageDamageHeading);
+    UI.CreateLabel(horz).SetText('Percentage Damage Amount').SetPreferredWidth(290);
+    percentageDamage = UI.CreateNumberInputField(horz)
+        .SetSliderMinValue(0.01)
+        .SetSliderMaxValue(1.0)
+        .SetWholeNumbers(false)
+        .SetValue(Mod.Settings.PercentageDamage or 0.3);
+
+    local horz = UI.CreateHorizontalLayoutGroup(percentageDamageHeading);
+    UI.CreateLabel(horz).SetText('Minimum Damage Amount').SetPreferredWidth(290);
+    percentageMinDamage = UI.CreateNumberInputField(horz)
+        .SetSliderMinValue(0)
+        .SetSliderMaxValue(30)
+        .SetValue(Mod.Settings.PercentageMinDamage or 1);
+end;
+
+function Create_FlatDamage_SubOptions_UI(rootParent)
+    flatDamageHeading = UI.CreateVerticalLayoutGroup(rootParent);
+
+    local horz = UI.CreateHorizontalLayoutGroup(flatDamageHeading);
+    UI.CreateLabel(horz).SetText('Flat Damage Amount').SetPreferredWidth(290);
+    flatDamage = UI.CreateNumberInputField(horz)
+        .SetSliderMinValue(1)
+        .SetSliderMaxValue(30)
+        .SetValue(Mod.Settings.FlatDamage or 15);
 end;
 
 function Create_Card_SubOptions_UI(rootParent)

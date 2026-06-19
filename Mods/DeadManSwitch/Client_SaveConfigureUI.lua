@@ -8,6 +8,9 @@ function Client_SaveConfigureUI(alert, addCard)
     Mod.Settings.isDamageTypeBomb = isDamageTypeBomb.GetIsChecked();
     Mod.Settings.isDamageTypeFlat = isDamageTypeFlat.GetIsChecked();
     Mod.Settings.isDamageTypePercent = isDamageTypePercent.GetIsChecked();
+    Mod.Settings.FlatDamage = flatDamage.GetValue();
+    Mod.Settings.PercentageDamage = percentageDamage.GetValue();
+    Mod.Settings.PercentageMinDamage = percentageMinDamage.GetValue();
 
     if (Mod.Settings.NumPieces < 1) then
         alert("Number of pieces cannot be less than 1");
