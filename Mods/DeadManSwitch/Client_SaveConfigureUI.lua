@@ -1,5 +1,28 @@
 function Client_SaveConfigureUI(alert, addCard)
 
+    local damageTypeMessage = "ERROR";
+    Mod.Settings.isAcquiringTypeCommerce = isAcquiringTypeCommerce.GetIsChecked();
+
+    Mod.Settings.isDamageTypeBomb = isDamageTypeBomb.GetIsChecked();
+    if(Mod.Settings.isDamageTypeBomb) then
+        damageTypeMessage = "a bomb is played on it.";
+    end
+
+    Mod.Settings.isDamageTypeFlat = isDamageTypeFlat.GetIsChecked();
+    if(Mod.Settings.isDamageTypeFlat) then
+        Mod.Settings.FlatDamage = flatDamage.GetValue();
+        damageTypeMessage = Mod.Settings.FlatDamage .. " armies are killed.";
+    end
+
+    Mod.Settings.isDamageTypePercent = isDamageTypePercent.GetIsChecked();
+    if(Mod.Settings.isDamageTypePercent) then
+        Mod.Settings.PercentageDamage = percentageDamage.GetValue();
+        Mod.Settings.PercentageMinDamage = percentageMinDamage.GetValue();
+        damageTypeMessage = "it takes " .. math.floor(Mod.Settings.PercentageDamage * 100) .. "% damage, with a minimum of " .. Mod.Settings.PercentageMinDamage .. " armies killed.";
+    end
+
+    Mod.Settings.AllyTriggers = allyTriggers.GetIsChecked();
+
     Mod.Settings.isAcquiringTypeCard = isAcquiringTypeCard.GetIsChecked();
     if(Mod.Settings.isAcquiringTypeCard) then
         Mod.Settings.NumPieces = numPieces.GetValue();
@@ -24,24 +47,7 @@ function Client_SaveConfigureUI(alert, addCard)
             return;
         end
 
-    addCard("Dead Man's Switch Card", "Play this card to create a Dead Man's Switch on any territory you control (at the end of the turn). If this territory is taken, a bomb is played on it.", "DmsCard.png", Mod.Settings.NumPieces, Mod.Settings.MinPieces, Mod.Settings.InitialPieces, Mod.Settings.CardWeight);
+    addCard("Dead Man's Switch Card", "Play this card to create a Dead Man's Switch on any territory you control (at the end of the turn). If this territory is taken, " .. damageTypeMessage, "DmsCard.png", Mod.Settings.NumPieces, Mod.Settings.MinPieces, Mod.Settings.InitialPieces, Mod.Settings.CardWeight);
     end
-
-    Mod.Settings.isAcquiringTypeCommerce = isAcquiringTypeCommerce.GetIsChecked();
-
-    Mod.Settings.isDamageTypeBomb = isDamageTypeBomb.GetIsChecked();
-
-    Mod.Settings.isDamageTypeFlat = isDamageTypeFlat.GetIsChecked();
-    if(Mod.Settings.isDamageTypeFlat) then
-        Mod.Settings.FlatDamage = flatDamage.GetValue();
-    end
-
-    Mod.Settings.isDamageTypePercent = isDamageTypePercent.GetIsChecked();
-    if(Mod.Settings.isDamageTypePercent) then
-        Mod.Settings.PercentageDamage = percentageDamage.GetValue();
-        Mod.Settings.PercentageMinDamage = percentageMinDamage.GetValue();
-    end
-
-    Mod.Settings.AllyTriggers = allyTriggers.GetIsChecked();
 end
 

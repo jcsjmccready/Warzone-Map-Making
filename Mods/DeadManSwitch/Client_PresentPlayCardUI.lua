@@ -16,16 +16,23 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
         Close = close;
         setMaxSize(400, 200);
         local vert = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1); --set flexible width so things don't jump around while we change InstructionLabel
+        local buttonsHGroup = UI.CreateHorizontalLayoutGroup(vert).SetFlexibleWidth(1);
+        TargetTerritoryBtn = UI.CreateButton(buttonsHGroup)
+            .SetText("Select Territory")
+            .SetOnClick(TargetTerritoryClicked)
+            .SetFlexibleWidth(0.3);
 
-        if game.Settings.Cards == nil or game.Settings.Cards[WL.CardID.Bomb] == nil then
-            WarningLabel = UI.CreateLabel(vert).SetText("Bombs must be enabled for this mod to work.  Please enable bombs in the game settings.");
-        else
-            TargetTerritoryBtn = UI.CreateButton(vert).SetText("Select Territory").SetOnClick(TargetTerritoryClicked);
-            TargetTerritoryInstructionLabel = UI.CreateLabel(vert).SetText("");
+        TargetTerritoryInstructionLabel = UI.CreateLabel(vert).SetText("");
 
-            UI.CreateButton(vert).SetText("Play Card").SetOnClick(function() 
+        PlayCardBtn = UI.CreateButton(buttonsHGroup)
+            .SetText("Play Card")
+            .SetInteractable(false)
+            .SetFlexibleWidth(0.7)
+            .SetOnClick(function() 
                 if (TargetTerritoryID == nil) then
-                    TargetTerritoryInstructionLabel.SetText("You must select a territory first");
+                    TargetTerritoryInstructionLabel.SetText("You must select a territory first").SetColor(getColourCode('error'));
+                    TargetTerritoryBtn.SetInteractable(true);
+
                     return;
                 end
                 local td = game.Map.Territories[TargetTerritoryID];
@@ -36,7 +43,6 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
                     close();
                 end
             end);
-        end
     end);
 end
 
@@ -44,8 +50,9 @@ end
 
 function TargetTerritoryClicked()
 	UI.InterceptNextTerritoryClick(TerritoryClicked);
-	TargetTerritoryInstructionLabel.SetText("Please click on the territory you wish to create the Dead Man's Switch on.  If needed, you can move this dialog out of the way.");
+	TargetTerritoryInstructionLabel.SetText("Please click on the territory you wish to create the Dead Man's Switch on.").SetColor(getColourCode(''));
 	TargetTerritoryBtn.SetInteractable(false);
+    PlayCardBtn.SetInteractable(false);
 end
 
 
@@ -62,19 +69,23 @@ function TerritoryClicked(terrDetails)
 		TargetTerritoryInstructionLabel.SetText("");
         TargetTerritoryID = nil;
         TargetTerritoryName = nil;
+        PlayCardBtn.SetInteractable(false);
         return;
     end
         
     local terr = Game.LatestStanding.Territories[terrDetails.ID];        
     if (terr.OwnerPlayerID ~= Game.Us.ID) then
-        TargetTerritoryInstructionLabel.SetText("You may only select territories you control");
+        TargetTerritoryInstructionLabel.SetText("You may only select territories you control").SetColor(getColourCode('error'));
+
         TargetTerritoryID = nil;
         TargetTerritoryName = nil;
+        PlayCardBtn.SetInteractable(false);
     else
 		--Territory was clicked, remember its ID
-		TargetTerritoryInstructionLabel.SetText("Selected territory: " .. terrDetails.Name);
+		TargetTerritoryInstructionLabel.SetText("Selected territory: " .. terrDetails.Name).SetColor(getColourCode(''));
 		TargetTerritoryID = terrDetails.ID;
         TargetTerritoryName = terrDetails.Name;
+        PlayCardBtn.SetInteractable(true);
 	end
 end
 
