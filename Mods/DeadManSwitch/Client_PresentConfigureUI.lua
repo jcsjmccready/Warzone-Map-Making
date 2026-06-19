@@ -31,17 +31,18 @@ function Create_UI_Controls(rootParent)
     end);
 
     -- Commerce acquiring type
-    acquiringTypeCommerceHeading = UI.CreateVerticalLayoutGroup(acquiringTypeHeading);
-    isAcquiringTypeCommerce = UI.CreateRadioButton(acquiringTypeCommerceHeading).SetGroup(acquiringType).SetText('Commerce');
+    isAcquiringTypeCommerce = false;
+    -- acquiringTypeCommerceHeading = UI.CreateVerticalLayoutGroup(acquiringTypeHeading);
+    -- isAcquiringTypeCommerce = UI.CreateRadioButton(acquiringTypeCommerceHeading).SetGroup(acquiringType).SetText('Commerce');
     
-    isAcquiringTypeCommerce.SetOnValueChanged(function() 
+    -- isAcquiringTypeCommerce.SetOnValueChanged(function() 
 
-        if(isAcquiringTypeCommerce.GetIsChecked()) then
-            isAcquiringTypeCommerce.SetInteractable(false);
-        else
-           isAcquiringTypeCommerce.SetInteractable(true);
-        end
-    end);
+    --     if(isAcquiringTypeCommerce.GetIsChecked()) then
+    --         isAcquiringTypeCommerce.SetInteractable(false);
+    --     else
+    --        isAcquiringTypeCommerce.SetInteractable(true);
+    --     end
+    -- end);
 
     ---- Damage type
     damageTypeHeading = UI.CreateVerticalLayoutGroup(mainModUI);
