@@ -76,9 +76,9 @@ function Create_UI_Controls(rootParent)
     end);
 
 
-    -- optionalsHeading = UI.CreateVerticalLayoutGroup(mainModUI);
-    -- UI.CreateLabel(optionalsHeading).SetText('Optionals:').SetColor(getColourCode('subheading'));
-    -- allyTriggers = UI.CreateCheckBox(optionalsHeading).SetText("Allies trigger DMS").SetIsChecked(Mod.Settings.AllyTriggers or false);
+    optionalsHeading = UI.CreateVerticalLayoutGroup(mainModUI);
+    UI.CreateLabel(optionalsHeading).SetText('Optionals:').SetColor(getColourCode('subheading'));
+    allyTriggers = UI.CreateCheckBox(optionalsHeading).SetText("Allies trigger DMS").SetIsChecked(Mod.Settings.AllyTriggers or false);
 end;
 
 function Create_PercentageDamage_SubOptions_UI(rootParent)

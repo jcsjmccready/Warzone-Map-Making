@@ -1,9 +1,10 @@
 require("Utilities");
 
 -- todo:
--- add team support with config option to disable team support
 -- determine if actual armies includes special units
 -- commerce support
+-- dynamic text on play card ui damage type
+-- test ally triggers
 
 
 function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrder)
@@ -45,6 +46,14 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
 
         --If an attack of 0, abort, so skipped orders don't destroy the DMS
 		if (result.ActualArmies.IsEmpty) then return; end;
+
+		-- abort if on same team and ally triggers is disabled
+        local territoryOwnerPlayerID = game.ServerGame.LatestTurnStanding.Territories[order.To].OwnerPlayerID;
+        local attackerTeam = game.ServerGame.Game.Players[order.PlayerID].Team;
+        local ownerTeam = game.ServerGame.Game.Players[territoryOwnerPlayerID].Team;
+		if(attackerTeam ~= nil and ownerTeam ~= nil and attackerTeam ~=-1 and ownerTeam ~=-1 and attackerTeam == ownerTeam and Mod.Settings.AllyTriggers == false) then
+			return;
+		end;
 
         structures[structureID] = structures[structureID] - 1;
 

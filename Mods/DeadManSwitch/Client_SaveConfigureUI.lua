@@ -42,6 +42,6 @@ function Client_SaveConfigureUI(alert, addCard)
         Mod.Settings.PercentageMinDamage = percentageMinDamage.GetValue();
     end
 
-    -- Mod.Settings.AllyTriggers = allyTriggers.GetIsChecked();
+    Mod.Settings.AllyTriggers = allyTriggers.GetIsChecked();
 end
 
