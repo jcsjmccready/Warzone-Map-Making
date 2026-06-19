@@ -1,12 +1,9 @@
 require("Utilities");
 
 -- todo:
--- add config option for neutralise
 -- add team support with config option to disable team support
--- consider if actual armies includes special units
--- art
+-- determine if actual armies includes special units
 -- commerce support
--- remove request a dms annotation, add an annotation if the dms is not built because the player lost control of the territory
 
 
 function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrder)
@@ -33,7 +30,7 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
 
 	-- --Check if this is an attack against a territory with a dms.
 	if (order.proxyType == 'GameOrderAttackTransfer' and result.IsAttack and result.IsSuccessful) then
-        local structureID = WL.StructureType.Custom("DmsStructure");
+        local structureID = WL.StructureType.Custom("Dead Man's Switch");
         local structures = game.ServerGame.LatestTurnStanding.Territories[order.To].Structures;
 
 		if (structures == nil) then return; end;
@@ -105,7 +102,7 @@ end
 
 function BuildStructures(game, addNewOrder)
 
-	local structureID = WL.StructureType.Custom("DmsStructure");
+	local structureID = WL.StructureType.Custom("Dead Man's Switch");
 
 	local privateGameData = Mod.PrivateGameData;
 	local pending = privateGameData.PendingDMS;
