@@ -27,10 +27,11 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
         PlayCardBtn = UI.CreateButton(buttonsHGroup)
             .SetText("Play Card")
             .SetInteractable(false)
+            .SetColor(BUTTON_COLOURS.DarkGreen)
             .SetFlexibleWidth(0.7)
             .SetOnClick(function() 
                 if (TargetTerritoryID == nil) then
-                    TargetTerritoryInstructionLabel.SetText("You must select a territory first").SetColor(getColourCode('error'));
+                    TargetTerritoryInstructionLabel.SetText("You must select a territory first").SetColor(ERROR_COLOUR);
                     TargetTerritoryBtn.SetInteractable(true);
 
                     return;
@@ -50,7 +51,7 @@ end
 
 function TargetTerritoryClicked()
 	UI.InterceptNextTerritoryClick(TerritoryClicked);
-	TargetTerritoryInstructionLabel.SetText("Please click on the territory you wish to create the Dead Man's Switch on.").SetColor(getColourCode(''));
+	TargetTerritoryInstructionLabel.SetText("Please click on the territory you wish to create the Dead Man's Switch on.").SetColor(TEXT_DEFAULT_COLOUR);
 	TargetTerritoryBtn.SetInteractable(false);
     PlayCardBtn.SetInteractable(false);
 end
@@ -75,14 +76,14 @@ function TerritoryClicked(terrDetails)
         
     local terr = Game.LatestStanding.Territories[terrDetails.ID];        
     if (terr.OwnerPlayerID ~= Game.Us.ID) then
-        TargetTerritoryInstructionLabel.SetText("You may only select territories you control").SetColor(getColourCode('error'));
+        TargetTerritoryInstructionLabel.SetText("You may only select territories you control").SetColor(ERROR_COLOUR);
 
         TargetTerritoryID = nil;
         TargetTerritoryName = nil;
         PlayCardBtn.SetInteractable(false);
     else
 		--Territory was clicked, remember its ID
-		TargetTerritoryInstructionLabel.SetText("Selected territory: " .. terrDetails.Name).SetColor(getColourCode(''));
+		TargetTerritoryInstructionLabel.SetText("Selected territory: " .. terrDetails.Name).SetColor(TEXT_DEFAULT_COLOUR);
 		TargetTerritoryID = terrDetails.ID;
         TargetTerritoryName = terrDetails.Name;
         PlayCardBtn.SetInteractable(true);

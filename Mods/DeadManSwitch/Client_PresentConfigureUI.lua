@@ -12,7 +12,7 @@ function Create_UI_Controls(rootParent)
     ---- Acquiring type
     acquiringTypeHeading = UI.CreateVerticalLayoutGroup(mainModUI);
     local acquiringType = UI.CreateRadioButtonGroup(acquiringTypeHeading);
-    UI.CreateLabel(acquiringTypeHeading).SetText('Acquiring type:').SetColor(getColourCode('subheading'));
+    UI.CreateLabel(acquiringTypeHeading).SetText('Acquiring type:').SetColor(SUBHEADING_COLOUR);
 
     -- Card acquiring type
     acquiringTypeCardHeading = UI.CreateVerticalLayoutGroup(acquiringTypeHeading);
@@ -33,17 +33,35 @@ function Create_UI_Controls(rootParent)
     -- Commerce acquiring type
     acquiringTypeCommerceHeading = UI.CreateVerticalLayoutGroup(acquiringTypeHeading);
     isAcquiringTypeCommerce = UI.CreateRadioButton(acquiringTypeCommerceHeading).SetGroup(acquiringType).SetText('Commerce');
+    
+    isAcquiringTypeCommerce.SetOnValueChanged(function() 
+
+        if(isAcquiringTypeCommerce.GetIsChecked()) then
+            isAcquiringTypeCommerce.SetInteractable(false);
+        else
+           isAcquiringTypeCommerce.SetInteractable(true);
+        end
+    end);
 
     ---- Damage type
     damageTypeHeading = UI.CreateVerticalLayoutGroup(mainModUI);
 
-    UI.CreateLabel(damageTypeHeading).SetText('Damage type when triggered:').SetColor(getColourCode('subheading'));
+    UI.CreateLabel(damageTypeHeading).SetText('Damage type when triggered:').SetColor(SUBHEADING_COLOUR);
 
     triggerDamageType = UI.CreateRadioButtonGroup(damageTypeHeading);
 
     -- bomb damage
     damageTypeBombHeading = UI.CreateVerticalLayoutGroup(damageTypeHeading);
     isDamageTypeBomb = UI.CreateRadioButton(damageTypeBombHeading).SetGroup(triggerDamageType).SetText('Play Bomb Card');
+
+    isDamageTypeBomb.SetOnValueChanged(function() 
+
+        if(isDamageTypeBomb.GetIsChecked()) then
+            isDamageTypeBomb.SetInteractable(false);
+        else
+           isDamageTypeBomb.SetInteractable(true);
+        end
+    end);
 
     -- flat damage
     damageTypeFlatHeading = UI.CreateVerticalLayoutGroup(damageTypeHeading);
@@ -77,7 +95,7 @@ function Create_UI_Controls(rootParent)
 
 
     optionalsHeading = UI.CreateVerticalLayoutGroup(mainModUI);
-    UI.CreateLabel(optionalsHeading).SetText('Optionals:').SetColor(getColourCode('subheading'));
+    UI.CreateLabel(optionalsHeading).SetText('Optionals:').SetColor(SUBHEADING_COLOUR);
     allyTriggers = UI.CreateCheckBox(optionalsHeading).SetText("Allies trigger DMS").SetIsChecked(Mod.Settings.AllyTriggers or false);
 end;
 
