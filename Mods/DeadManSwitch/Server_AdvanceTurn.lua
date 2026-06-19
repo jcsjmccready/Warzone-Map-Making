@@ -1,8 +1,6 @@
 require("Utilities");
 
 -- todo:
--- add config option for choice being bomb card is played
--- add config option for dealing damage
 -- add config option for neutralise
 -- add team support with config option to disable team support
 -- consider if actual armies includes special units
@@ -32,7 +30,6 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
 
 		Mod.PrivateGameData = privateGameData;
     end
-
 
 	-- --Check if this is an attack against a territory with a dms.
 	if (order.proxyType == 'GameOrderAttackTransfer' and result.IsAttack and result.IsSuccessful) then
@@ -69,7 +66,7 @@ function Trigger_Dms_Damage(territoryModification, game, order, result, addNewOr
         	local defendingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.To].OwnerPlayerID;
 
 			local event = WL.GameOrderEvent.Create(order.PlayerID, "Triggered a Dead Man's Switch", {}, {territoryModification});
-			event.TerritoryAnnotationsOpt = { [order.To] = WL.TerritoryAnnotation.Create("Triggered Dead Man's Switch") };
+			event.TerritoryAnnotationsOpt = { [order.To] = WL.TerritoryAnnotation.Create("Triggered DMS") };
 			addNewOrder(event, true);
 
             local instance = WL.NoParameterCardInstance.Create(WL.CardID.Bomb);
@@ -82,9 +79,9 @@ function Trigger_Dms_Damage(territoryModification, game, order, result, addNewOr
 		local damageAmount = Mod.Settings.FlatDamage;
 		local damageArmies = WL.Armies.Create(damageAmount + result.AttackingArmiesKilled.NumArmies);
 		territoryModification.SetArmiesTo = result.ActualArmies.Subtract(damageArmies).NumArmies;
-		
+
 		event = WL.GameOrderEvent.Create(order.PlayerID, "Triggered a Dead Man's Switch", {}, {territoryModification});
-		event.TerritoryAnnotationsOpt = { [order.To] = WL.TerritoryAnnotation.Create("Triggered Dead Man's Switch") };
+		event.TerritoryAnnotationsOpt = { [order.To] = WL.TerritoryAnnotation.Create("Triggered DMS") };
 		addNewOrder(event, true);
 
 	elseif (Mod.Settings.isDamageTypePercent) then
@@ -93,13 +90,12 @@ function Trigger_Dms_Damage(territoryModification, game, order, result, addNewOr
 		local damageAmount = math.max(math.floor(armiesRemaining * damageAmount + 0.5), Mod.Settings.PercentageMinDamage);
 		local damageArmies = WL.Armies.Create(damageAmount + result.AttackingArmiesKilled.NumArmies);
 		territoryModification.SetArmiesTo = result.ActualArmies.Subtract(damageArmies).NumArmies;
-		
+
 		event = WL.GameOrderEvent.Create(order.PlayerID, "Triggered a Dead Man's Switch", {}, {territoryModification});
-		event.TerritoryAnnotationsOpt = { [order.To] = WL.TerritoryAnnotation.Create("Triggered Dead Man's Switch") };
+		event.TerritoryAnnotationsOpt = { [order.To] = WL.TerritoryAnnotation.Create("Triggered DMS") };
 		addNewOrder(event, true);
 	end
 
-	
 end
 
 function Server_AdvanceTurn_End(game, addNewOrder)
@@ -116,8 +112,18 @@ function BuildStructures(game, addNewOrder)
 
 	if (pending == nil) then return; end;
 
-	-- Remove any pending builds where the player lost control of the territory, so we don't build a DMS for the new owner
-	removeWhere(pending, function(t) return t.PlayerID ~= game.ServerGame.LatestTurnStanding.Territories[t.TerritoryID].OwnerPlayerID; end);
+	-- Split pending builds into ones we can still build and ones we removed because ownership changed.
+	local removedPendingDMS = {};
+	local remainingPendingDMS = {};
+	for _,pendingDms in pairs(pending) do
+		if (pendingDms.PlayerID ~= game.ServerGame.LatestTurnStanding.Territories[pendingDms.TerritoryID].OwnerPlayerID) then
+			table.insert(removedPendingDMS, pendingDms);
+		else
+			table.insert(remainingPendingDMS, pendingDms);
+		end
+	end
+
+	pending = remainingPendingDMS;
 
 	-- We will now build a DMS for each pending DMS. However, we need to take care to ensure that if there are two build orders for the same territory that we build both of them,
 	--	so we first group by the territory ID so we get all build orders for the same territory together.
@@ -134,19 +140,33 @@ function BuildStructures(game, addNewOrder)
 			structures[structureID] = structures[structureID] + numDmsToBuild;
 		end
 
-
 		local territoryModification = WL.TerritoryModification.Create(territoryID);
 		territoryModification.SetStructuresOpt = structures;
 
 		local pendingDms = first(pendingDmsGroup);
+		if (pendingDms ~= nil) then
+			local event = WL.GameOrderEvent.Create(pendingDms.PlayerID, pendingDms.Message, {}, {territoryModification});
 
-		local event = WL.GameOrderEvent.Create(pendingDms.PlayerID, pendingDms.Message, {}, {territoryModification});
+			local td = game.Map.Territories[territoryID];
+			event.JumpToActionSpotOpt = WL.RectangleVM.Create(td.MiddlePointX, td.MiddlePointY, td.MiddlePointX, td.MiddlePointY);
+			event.TerritoryAnnotationsOpt = { [territoryID] = WL.TerritoryAnnotation.Create("Build DMS") };
 
-		local td = game.Map.Territories[territoryID];
-		event.JumpToActionSpotOpt = WL.RectangleVM.Create(td.MiddlePointX, td.MiddlePointY, td.MiddlePointX, td.MiddlePointY);
-		event.TerritoryAnnotationsOpt = { [territoryID] = WL.TerritoryAnnotation.Create("Build Dead Man's Switch") };
+			addNewOrder(event);
+		end
+	end
 
-		addNewOrder(event);
+	for territoryID,pendingDmsGroup in pairs(groupBy(removedPendingDMS, function(t) return t.TerritoryID; end)) do
+		print("Removed pending DMS for territory " .. territoryID .. " because ownership changed");
+		local pendingDms = first(pendingDmsGroup);
+		if (pendingDms ~= nil) then
+			local event = WL.GameOrderEvent.Create(pendingDms.PlayerID, "Unable to build Dead Man's Switch on " .. game.Map.Territories[territoryID].Name, {}, {});
+
+			local td = game.Map.Territories[territoryID];
+			event.JumpToActionSpotOpt = WL.RectangleVM.Create(td.MiddlePointX, td.MiddlePointY, td.MiddlePointX, td.MiddlePointY);
+			event.TerritoryAnnotationsOpt = { [territoryID] = WL.TerritoryAnnotation.Create("Unable to build DMS") };
+
+			addNewOrder(event);
+		end
 	end
 
 	privateGameData.PendingDMS = nil;

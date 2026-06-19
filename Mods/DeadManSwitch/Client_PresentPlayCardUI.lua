@@ -30,10 +30,9 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
                 end
                 local td = game.Map.Territories[TargetTerritoryID];
 
-                local annotations = { [TargetTerritoryID] = WL.TerritoryAnnotation.Create("Request Dead Man's Switch") };
                 local jumpToSpot = WL.RectangleVM.Create(td.MiddlePointX, td.MiddlePointY, td.MiddlePointX, td.MiddlePointY);
 
-                if (playCard("Build a Dead Man's Switch on " .. TargetTerritoryName, "CreateDMS_" .. TargetTerritoryID, WL.TurnPhase.Attacks, annotations, jumpToSpot)) then
+                if (playCard("Build a Dead Man's Switch on " .. TargetTerritoryName, "CreateDMS_" .. TargetTerritoryID, WL.TurnPhase.Attacks, {}, jumpToSpot)) then
                     close();
                 end
             end);
