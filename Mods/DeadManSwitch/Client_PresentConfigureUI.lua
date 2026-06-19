@@ -2,12 +2,12 @@ require("Utilities");
 
 function Client_PresentConfigureUI(rootParent)
 Create_UI_Controls(rootParent);
-    
+
 end;
 
 function Create_UI_Controls(rootParent)
     local mainModUI = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
-    UI.CreateLabel(mainModUI).SetText('Allows the creation of Dead Man Switch structure. After an attacker takes a territory containing one, it will trigger and deal damage to the attacker.');
+    UI.CreateLabel(mainModUI).SetText("Allows the creation of a Dead Man's Switch (DMS) structure. After an attacker takes a territory containing one, it will trigger and deal damage to the attacker.");
 
     ---- Acquiring type
     acquiringTypeHeading = UI.CreateVerticalLayoutGroup(mainModUI);
@@ -20,7 +20,7 @@ function Create_UI_Controls(rootParent)
 
     -- Card acquiring type sub-options
     isAcquiringTypeCard.SetOnValueChanged(function() 
-    
+
         if(isAcquiringTypeCard.GetIsChecked()) then
             Create_Card_SubOptions_UI(acquiringTypeHeading);
             isAcquiringTypeCard.SetInteractable(false);
@@ -49,12 +49,8 @@ function Create_UI_Controls(rootParent)
     damageTypeFlatHeading = UI.CreateVerticalLayoutGroup(damageTypeHeading);
     isDamageTypeFlat = UI.CreateRadioButton(damageTypeFlatHeading).SetGroup(triggerDamageType).SetText('Flat Damage');
 
-    -- percentage damage
-    damageTypePercentHeading = UI.CreateVerticalLayoutGroup(damageTypeHeading);
-    isDamageTypePercent = UI.CreateRadioButton(damageTypePercentHeading).SetGroup(triggerDamageType).SetText('% Damage');
-
     isDamageTypeFlat.SetOnValueChanged(function() 
-    
+
         if(isDamageTypeFlat.GetIsChecked()) then
             Create_FlatDamage_SubOptions_UI(damageTypeFlatHeading);
             isDamageTypeFlat.SetInteractable(false);
@@ -64,8 +60,12 @@ function Create_UI_Controls(rootParent)
         end
     end);
 
+    -- percentage damage
+    damageTypePercentHeading = UI.CreateVerticalLayoutGroup(damageTypeHeading);
+    isDamageTypePercent = UI.CreateRadioButton(damageTypePercentHeading).SetGroup(triggerDamageType).SetText('% Damage');
+
     isDamageTypePercent.SetOnValueChanged(function() 
-    
+
         if(isDamageTypePercent.GetIsChecked()) then
             Create_PercentageDamage_SubOptions_UI(damageTypePercentHeading);
             isDamageTypePercent.SetInteractable(false);
@@ -75,6 +75,10 @@ function Create_UI_Controls(rootParent)
         end
     end);
 
+
+    -- optionalsHeading = UI.CreateVerticalLayoutGroup(mainModUI);
+    -- UI.CreateLabel(optionalsHeading).SetText('Optionals:').SetColor(getColourCode('subheading'));
+    -- allyTriggers = UI.CreateCheckBox(optionalsHeading).SetText("Allies trigger DMS").SetIsChecked(Mod.Settings.AllyTriggers or false);
 end;
 
 function Create_PercentageDamage_SubOptions_UI(rootParent)

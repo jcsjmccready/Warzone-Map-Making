@@ -6,7 +6,7 @@ function Client_SaveConfigureUI(alert, addCard)
         Mod.Settings.CardWeight = cardWeight.GetValue();
         Mod.Settings.MinPieces = minPieces.GetValue();
         Mod.Settings.InitialPieces = initialPieces.GetValue();
-        
+
         if (Mod.Settings.NumPieces < 1) then
             alert("Number of pieces cannot be less than 1");
             return;
@@ -30,7 +30,7 @@ function Client_SaveConfigureUI(alert, addCard)
     Mod.Settings.isAcquiringTypeCommerce = isAcquiringTypeCommerce.GetIsChecked();
 
     Mod.Settings.isDamageTypeBomb = isDamageTypeBomb.GetIsChecked();
-    
+
     Mod.Settings.isDamageTypeFlat = isDamageTypeFlat.GetIsChecked();
     if(Mod.Settings.isDamageTypeFlat) then
         Mod.Settings.FlatDamage = flatDamage.GetValue();
@@ -42,5 +42,6 @@ function Client_SaveConfigureUI(alert, addCard)
         Mod.Settings.PercentageMinDamage = percentageMinDamage.GetValue();
     end
 
+    -- Mod.Settings.AllyTriggers = allyTriggers.GetIsChecked();
 end
 
