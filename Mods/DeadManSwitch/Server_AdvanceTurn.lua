@@ -72,7 +72,7 @@ function Trigger_Dms_Damage(territoryModification, game, order, result, addNewOr
         	local defendingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.To].OwnerPlayerID;
 
 			local event = WL.GameOrderEvent.Create(order.PlayerID, "Triggered a Dead Man's Switch", {}, {territoryModification});
-			event.TerritoryAnnotationsOpt = { [order.To] = WL.TerritoryAnnotation.Create("Triggered DMS") };
+			event.TerritoryAnnotationsOpt = { [order.To] = WL.TerritoryAnnotation.Create("Triggered DMS", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany)) };
 			addNewOrder(event, true);
 
             local instance = WL.NoParameterCardInstance.Create(WL.CardID.Bomb);
@@ -87,7 +87,7 @@ function Trigger_Dms_Damage(territoryModification, game, order, result, addNewOr
 		territoryModification.SetArmiesTo = result.ActualArmies.Subtract(damageArmies).NumArmies;
 
 		event = WL.GameOrderEvent.Create(order.PlayerID, "Triggered a Dead Man's Switch", {}, {territoryModification});
-		event.TerritoryAnnotationsOpt = { [order.To] = WL.TerritoryAnnotation.Create("Triggered DMS") };
+		event.TerritoryAnnotationsOpt = { [order.To] = WL.TerritoryAnnotation.Create("Triggered DMS", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany)) };
 		addNewOrder(event, true);
 
 	elseif (Mod.Settings.isDamageTypePercent) then
@@ -98,7 +98,7 @@ function Trigger_Dms_Damage(territoryModification, game, order, result, addNewOr
 		territoryModification.SetArmiesTo = result.ActualArmies.Subtract(damageArmies).NumArmies;
 
 		event = WL.GameOrderEvent.Create(order.PlayerID, "Triggered a Dead Man's Switch", {}, {territoryModification});
-		event.TerritoryAnnotationsOpt = { [order.To] = WL.TerritoryAnnotation.Create("Triggered DMS") };
+		event.TerritoryAnnotationsOpt = { [order.To] = WL.TerritoryAnnotation.Create("Triggered DMS", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany)) };
 		addNewOrder(event, true);
 	end
 
@@ -155,21 +155,20 @@ function BuildStructures(game, addNewOrder)
 
 			local td = game.Map.Territories[territoryID];
 			event.JumpToActionSpotOpt = WL.RectangleVM.Create(td.MiddlePointX, td.MiddlePointY, td.MiddlePointX, td.MiddlePointY);
-			event.TerritoryAnnotationsOpt = { [territoryID] = WL.TerritoryAnnotation.Create("Build DMS") };
+			event.TerritoryAnnotationsOpt = { [territoryID] = WL.TerritoryAnnotation.Create("Build DMS", 8, GetColourIntegerFromHex(BUTTON_COLOURS.DarkGreen)) };
 
 			addNewOrder(event);
 		end
 	end
 
 	for territoryID,pendingDmsGroup in pairs(groupBy(removedPendingDMS, function(t) return t.TerritoryID; end)) do
-		print("Removed pending DMS for territory " .. territoryID .. " because ownership changed");
 		local pendingDms = first(pendingDmsGroup);
 		if (pendingDms ~= nil) then
 			local event = WL.GameOrderEvent.Create(pendingDms.PlayerID, "Unable to build Dead Man's Switch on " .. game.Map.Territories[territoryID].Name, {}, {});
 
 			local td = game.Map.Territories[territoryID];
 			event.JumpToActionSpotOpt = WL.RectangleVM.Create(td.MiddlePointX, td.MiddlePointY, td.MiddlePointX, td.MiddlePointY);
-			event.TerritoryAnnotationsOpt = { [territoryID] = WL.TerritoryAnnotation.Create("Unable to build DMS") };
+			event.TerritoryAnnotationsOpt = { [territoryID] = WL.TerritoryAnnotation.Create("Unable to build DMS", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Red)) };
 
 			addNewOrder(event);
 		end

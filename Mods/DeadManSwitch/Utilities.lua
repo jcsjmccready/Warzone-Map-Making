@@ -206,6 +206,19 @@ function GetGrayColors()
     };
 end
 
+--given 0-255 RGB integers, return a single 24-bit integer, useful for annotations
+function GetColourInteger (red, green, blue)
+	return red*256^2 + green*256 + blue;
+end
+
+--given a hex colour string like "#RRGGBB", return a single 24-bit integer
+function GetColourIntegerFromHex(hexColour)
+    local normalized = string.gsub(hexColour, "#", "");
+    return tonumber(normalized, 16);
+end
+
+
+
 TEXT_DEFAULT_COLOUR = "#CCCCCC";
 ERROR_COLOUR = "#FF0000";
 SUBHEADING_COLOUR = "#FFFF00";
