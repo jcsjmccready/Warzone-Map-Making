@@ -3,7 +3,6 @@ require("Utilities");
 -- todo:
 -- determine if actual armies includes special units
 -- commerce support
--- dynamic text on play card ui damage type
 -- test ally triggers
 
 
