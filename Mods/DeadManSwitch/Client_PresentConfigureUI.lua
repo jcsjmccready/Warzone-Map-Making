@@ -7,6 +7,7 @@ end;
 
 function Create_UI_Controls(rootParent)
     local mainModUI = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
+    UI.CreateLabel(mainModUI).SetText('Allows the creation of Dead Man Switch structure. After an attacker takes a territory containing one, it will trigger and deal damage to the attacker.');
 
     ---- Acquiring type
     acquiringTypeHeading = UI.CreateVerticalLayoutGroup(mainModUI);
@@ -14,20 +15,24 @@ function Create_UI_Controls(rootParent)
     UI.CreateLabel(acquiringTypeHeading).SetText('Acquiring type:').SetColor(getColourCode('subheading'));
 
     -- Card acquiring type
-    isAcquiringTypeCard = UI.CreateRadioButton(acquiringType).SetGroup(acquiringType).SetText('Card');
+    acquiringTypeCardHeading = UI.CreateVerticalLayoutGroup(acquiringTypeHeading);
+    isAcquiringTypeCard = UI.CreateRadioButton(acquiringTypeCardHeading).SetGroup(acquiringType).SetText('Card');
 
     -- Card acquiring type sub-options
     isAcquiringTypeCard.SetOnValueChanged(function() 
     
         if(isAcquiringTypeCard.GetIsChecked()) then
             Create_Card_SubOptions_UI(acquiringTypeHeading);
+            isAcquiringTypeCard.SetInteractable(false);
         else
            UI.Destroy(cardOptionsHeading);
+            isAcquiringTypeCard.SetInteractable(true);
         end
     end);
 
     -- Commerce acquiring type
-    isAcquiringTypeCommerce = UI.CreateRadioButton(acquiringType).SetGroup(acquiringType).SetText('Commerce');
+    acquiringTypeCommerceHeading = UI.CreateVerticalLayoutGroup(acquiringTypeHeading);
+    isAcquiringTypeCommerce = UI.CreateRadioButton(acquiringTypeCommerceHeading).SetGroup(acquiringType).SetText('Commerce');
 
     ---- Damage type
     damageTypeHeading = UI.CreateVerticalLayoutGroup(mainModUI);
@@ -35,25 +40,38 @@ function Create_UI_Controls(rootParent)
     UI.CreateLabel(damageTypeHeading).SetText('Damage type when triggered:').SetColor(getColourCode('subheading'));
 
     triggerDamageType = UI.CreateRadioButtonGroup(damageTypeHeading);
-    isDamageTypeBomb = UI.CreateRadioButton(damageTypeHeading).SetGroup(triggerDamageType).SetText('Play Bomb Card');
-    isDamageTypeFlat = UI.CreateRadioButton(damageTypeHeading).SetGroup(triggerDamageType).SetText('Flat Damage');
-    isDamageTypePercent = UI.CreateRadioButton(damageTypeHeading).SetGroup(triggerDamageType).SetText('% Damage');
+
+    -- bomb damage
+    damageTypeBombHeading = UI.CreateVerticalLayoutGroup(damageTypeHeading);
+    isDamageTypeBomb = UI.CreateRadioButton(damageTypeBombHeading).SetGroup(triggerDamageType).SetText('Play Bomb Card');
+
+    -- flat damage
+    damageTypeFlatHeading = UI.CreateVerticalLayoutGroup(damageTypeHeading);
+    isDamageTypeFlat = UI.CreateRadioButton(damageTypeFlatHeading).SetGroup(triggerDamageType).SetText('Flat Damage');
+
+    -- percentage damage
+    damageTypePercentHeading = UI.CreateVerticalLayoutGroup(damageTypeHeading);
+    isDamageTypePercent = UI.CreateRadioButton(damageTypePercentHeading).SetGroup(triggerDamageType).SetText('% Damage');
 
     isDamageTypeFlat.SetOnValueChanged(function() 
     
         if(isDamageTypeFlat.GetIsChecked()) then
-            Create_FlatDamage_SubOptions_UI(damageTypeHeading);
+            Create_FlatDamage_SubOptions_UI(damageTypeFlatHeading);
+            isDamageTypeFlat.SetInteractable(false);
         else
            UI.Destroy(flatDamageHeading);
+           isDamageTypeFlat.SetInteractable(true);
         end
     end);
 
     isDamageTypePercent.SetOnValueChanged(function() 
     
         if(isDamageTypePercent.GetIsChecked()) then
-            Create_PercentageDamage_SubOptions_UI(damageTypeHeading);
+            Create_PercentageDamage_SubOptions_UI(damageTypePercentHeading);
+            isDamageTypePercent.SetInteractable(false);
         else
            UI.Destroy(percentageDamageHeading);
+           isDamageTypePercent.SetInteractable(true);
         end
     end);
 
