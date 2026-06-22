@@ -1,7 +1,7 @@
 function Client_SaveConfigureUI(alert, addCard)
 
     local damageTypeMessage = "ERROR";
-    -- Mod.Settings.isAcquiringTypeCommerce = isAcquiringTypeCommerce.GetIsChecked();
+    Mod.Settings.isAcquiringTypeCommerce = isAcquiringTypeCommerce;
 
     Mod.Settings.isDamageTypeBomb = isDamageTypeBomb.GetIsChecked();
     if(Mod.Settings.isDamageTypeBomb) then

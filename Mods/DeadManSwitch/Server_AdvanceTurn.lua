@@ -1,11 +1,6 @@
 require("Utilities");
 
--- todo:
--- determine if actual armies includes special units
--- commerce support
 -- test ally triggers
--- feature art
-
 
 function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrder)
 

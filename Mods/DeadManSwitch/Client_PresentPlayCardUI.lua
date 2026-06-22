@@ -47,15 +47,12 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
     end);
 end
 
-
-
 function TargetTerritoryClicked()
 	UI.InterceptNextTerritoryClick(TerritoryClicked);
 	TargetTerritoryInstructionLabel.SetText("Please click on the territory you wish to create the Dead Man's Switch on.").SetColor(TEXT_DEFAULT_COLOUR);
 	TargetTerritoryBtn.SetInteractable(false);
     PlayCardBtn.SetInteractable(false);
 end
-
 
 function TerritoryClicked(terrDetails)
 	if UI.IsDestroyed(TargetTerritoryBtn) then
