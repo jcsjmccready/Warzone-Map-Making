@@ -1,0 +1,1 @@
+This mod allows players to create a Dead Man's Switch (DMS) by playing a card. DMS's are single-use structures that deal damage to an attacker after they take it, such as by playing a bomb.
