@@ -1,7 +1,6 @@
 function Client_SaveConfigureUI(alert, addCard)
 
     local damageTypeMessage = "ERROR";
-    -- Mod.Settings.isAcquiringTypeCommerce = isAcquiringTypeCommerce.GetIsChecked();
 
     Mod.Settings.isDamageTypeBomb = isDamageTypeBomb.GetIsChecked();
     if(Mod.Settings.isDamageTypeBomb) then
@@ -48,6 +47,12 @@ function Client_SaveConfigureUI(alert, addCard)
         end
 
     addCard("Dead Man's Switch Card", "Play this card to create a Dead Man's Switch on any territory you control (at the end of the turn). If this territory is taken, afterwards, " .. damageTypeMessage, "DmsCard.png", Mod.Settings.NumPieces, Mod.Settings.MinPieces, Mod.Settings.InitialPieces, Mod.Settings.CardWeight);
+    end
+
+    Mod.Settings.isAcquiringTypeCommerce = isAcquiringTypeCommerce.GetIsChecked();
+    if(Mod.Settings.isAcquiringTypeCommerce) then
+        Mod.Settings.CommerceCost = commerceCost.GetValue();
+        Mod.Settings.ConcurrentDMSLimit = concurrentDMSLimit.GetValue();
     end
 end
 

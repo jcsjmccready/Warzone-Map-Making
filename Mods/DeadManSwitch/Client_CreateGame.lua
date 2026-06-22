@@ -6,4 +6,8 @@ function Client_CreateGame(settings, alert)
     if settings.Cards == nil or settings.Cards[WL.CardID.Bomb] == nil then
         alert("Bombs must be enabled for this mod to work.");
     end
+
+    if(settings.CommerceGame == false) then
+        alert("Commerce must be enabled for this mod to work.");
+    end
 end

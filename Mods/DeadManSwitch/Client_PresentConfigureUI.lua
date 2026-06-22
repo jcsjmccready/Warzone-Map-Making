@@ -22,7 +22,7 @@ function Create_UI_Controls(rootParent)
     isAcquiringTypeCard.SetOnValueChanged(function() 
 
         if(isAcquiringTypeCard.GetIsChecked()) then
-            Create_Card_SubOptions_UI(acquiringTypeHeading);
+            Create_Card_SubOptions_UI(acquiringTypeCardHeading);
             isAcquiringTypeCard.SetInteractable(false);
         else
            UI.Destroy(cardOptionsHeading);
@@ -31,18 +31,19 @@ function Create_UI_Controls(rootParent)
     end);
 
     -- Commerce acquiring type
-    isAcquiringTypeCommerce = false;
-    -- acquiringTypeCommerceHeading = UI.CreateVerticalLayoutGroup(acquiringTypeHeading);
-    -- isAcquiringTypeCommerce = UI.CreateRadioButton(acquiringTypeCommerceHeading).SetGroup(acquiringType).SetText('Commerce');
+    acquiringTypeCommerceHeading = UI.CreateVerticalLayoutGroup(acquiringTypeHeading);
+    isAcquiringTypeCommerce = UI.CreateRadioButton(acquiringTypeCommerceHeading).SetGroup(acquiringType).SetText('Commerce');
     
-    -- isAcquiringTypeCommerce.SetOnValueChanged(function() 
+    isAcquiringTypeCommerce.SetOnValueChanged(function() 
 
-    --     if(isAcquiringTypeCommerce.GetIsChecked()) then
-    --         isAcquiringTypeCommerce.SetInteractable(false);
-    --     else
-    --        isAcquiringTypeCommerce.SetInteractable(true);
-    --     end
-    -- end);
+        if(isAcquiringTypeCommerce.GetIsChecked()) then
+            isAcquiringTypeCommerce.SetInteractable(false);
+            Create_Commerce_SubOptions_UI(acquiringTypeCommerceHeading);
+        else
+           isAcquiringTypeCommerce.SetInteractable(true);
+           UI.Destroy(commerceHeading);
+        end
+    end);
 
     ---- Damage type
     damageTypeHeading = UI.CreateVerticalLayoutGroup(mainModUI);
@@ -117,6 +118,24 @@ function Create_PercentageDamage_SubOptions_UI(rootParent)
         .SetSliderMinValue(0)
         .SetSliderMaxValue(30)
         .SetValue(Mod.Settings.PercentageMinDamage or 1);
+end;
+
+function Create_Commerce_SubOptions_UI(rootParent)
+    commerceHeading = UI.CreateVerticalLayoutGroup(rootParent);
+
+    local horz = UI.CreateHorizontalLayoutGroup(commerceHeading);
+    UI.CreateLabel(horz).SetText('Cost to build a DMS').SetPreferredWidth(290);
+    commerceCost = UI.CreateNumberInputField(horz)
+        .SetSliderMinValue(1)
+		.SetSliderMaxValue(40)
+        .SetValue(Mod.Settings.CommerceCost or 20);
+
+    local horz = UI.CreateHorizontalLayoutGroup(commerceHeading);
+    UI.CreateLabel(horz).SetText('Maximum number of DMS at once').SetPreferredWidth(290);
+    concurrentDMSLimit = UI.CreateNumberInputField(horz)
+        .SetSliderMinValue(1)
+		.SetSliderMaxValue(5)
+        .SetValue(Mod.Settings.ConcurrentDMSLimit or 3);
 end;
 
 function Create_FlatDamage_SubOptions_UI(rootParent)

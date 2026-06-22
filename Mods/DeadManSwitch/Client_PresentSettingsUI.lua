@@ -36,4 +36,12 @@ function Client_PresentSettingsUI(rootParent)
         UI.CreateLabel(cardVGroup).SetText("Minimum Pieces: " .. Mod.Settings.MinPieces);
         UI.CreateLabel(cardVGroup).SetText("Initial Pieces: " .. Mod.Settings.InitialPieces);
     end
+
+    if(Mod.Settings.isAcquiringTypeCommerce) then
+        local cardVGroup = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
+
+        UI.CreateLabel(cardVGroup).SetText("Building Dead Man's Switch:");
+        UI.CreateLabel(cardVGroup).SetText("Cost: " .. Mod.Settings.CommerceCost);
+        UI.CreateLabel(cardVGroup).SetText("Concurrent DMS Limit: " .. Mod.Settings.ConcurrentDMSLimit);
+    end
 end
