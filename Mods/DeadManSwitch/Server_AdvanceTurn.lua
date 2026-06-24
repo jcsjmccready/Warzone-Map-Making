@@ -29,7 +29,7 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
 
 	-- --Check if this is an attack against a territory with a dms.
 	if (order.proxyType == 'GameOrderAttackTransfer' and result.IsAttack and result.IsSuccessful) then
-        local structureID = WL.StructureType.Custom("Dead Man Switch");
+        local structureID = WL.StructureType.Custom("Dead Man's Switch");
         local structures = game.ServerGame.LatestTurnStanding.Territories[order.To].Structures;
 
 		if (structures == nil) then return; end;
@@ -111,7 +111,7 @@ end
 
 function BuildStructures(game, addNewOrder)
 
-	local structureID = WL.StructureType.Custom("Dead Man Switch");
+	local structureID = WL.StructureType.Custom("Dead Man's Switch");
 
 	local privateGameData = Mod.PrivateGameData;
 	local pending = privateGameData.PendingDMS;
