@@ -10,13 +10,13 @@ function Create_UI_Controls(rootParent)
     UI.CreateLabel(mainModUI).SetText("Allows the creation of a Dead Man's Switch (DMS) structure. After an attacker takes a territory containing one, it will trigger and deal damage to the attacker.");
 
     ---- Acquiring type
-    acquiringTypeHeading = UI.CreateVerticalLayoutGroup(mainModUI);
+    local acquiringTypeHeading = UI.CreateVerticalLayoutGroup(mainModUI);
     local acquiringType = UI.CreateRadioButtonGroup(acquiringTypeHeading);
     UI.CreateLabel(acquiringTypeHeading).SetText('Acquiring type:').SetColor(SUBHEADING_COLOUR);
 
     -- Card acquiring type
-    acquiringTypeCardHeading = UI.CreateVerticalLayoutGroup(acquiringTypeHeading);
-    isAcquiringTypeCard = UI.CreateRadioButton(acquiringTypeCardHeading).SetGroup(acquiringType).SetText('Card');
+    local acquiringTypeCardHeading = UI.CreateVerticalLayoutGroup(acquiringTypeHeading);
+    isAcquiringTypeCard = UI.CreateRadioButton(acquiringTypeCardHeading).SetGroup(acquiringType).SetText('Card').SetIsChecked(Mod.Settings.isAcquiringTypeCard or true);
 
     -- Card acquiring type sub-options
     isAcquiringTypeCard.SetOnValueChanged(function() 
@@ -34,15 +34,15 @@ function Create_UI_Controls(rootParent)
     isAcquiringTypeCommerce = false;
 
     ---- Damage type
-    damageTypeHeading = UI.CreateVerticalLayoutGroup(mainModUI);
+    local damageTypeHeading = UI.CreateVerticalLayoutGroup(mainModUI);
 
     UI.CreateLabel(damageTypeHeading).SetText('Damage type when triggered:').SetColor(SUBHEADING_COLOUR);
 
     triggerDamageType = UI.CreateRadioButtonGroup(damageTypeHeading);
 
     -- bomb damage
-    damageTypeBombHeading = UI.CreateVerticalLayoutGroup(damageTypeHeading);
-    isDamageTypeBomb = UI.CreateRadioButton(damageTypeBombHeading).SetGroup(triggerDamageType).SetText('Play Bomb Card');
+    local damageTypeBombHeading = UI.CreateVerticalLayoutGroup(damageTypeHeading);
+    isDamageTypeBomb = UI.CreateRadioButton(damageTypeBombHeading).SetGroup(triggerDamageType).SetText('Play Bomb Card').SetIsChecked(Mod.Settings.isDamageTypeBomb or true);
 
     isDamageTypeBomb.SetOnValueChanged(function() 
 
@@ -54,8 +54,8 @@ function Create_UI_Controls(rootParent)
     end);
 
     -- flat damage
-    damageTypeFlatHeading = UI.CreateVerticalLayoutGroup(damageTypeHeading);
-    isDamageTypeFlat = UI.CreateRadioButton(damageTypeFlatHeading).SetGroup(triggerDamageType).SetText('Flat Damage');
+    local damageTypeFlatHeading = UI.CreateVerticalLayoutGroup(damageTypeHeading);
+    isDamageTypeFlat = UI.CreateRadioButton(damageTypeFlatHeading).SetGroup(triggerDamageType).SetText('Flat Damage').SetIsChecked(Mod.Settings.isDamageTypeFlat or false);
 
     isDamageTypeFlat.SetOnValueChanged(function() 
 
@@ -69,8 +69,9 @@ function Create_UI_Controls(rootParent)
     end);
 
     -- percentage damage
-    damageTypePercentHeading = UI.CreateVerticalLayoutGroup(damageTypeHeading);
-    isDamageTypePercent = UI.CreateRadioButton(damageTypePercentHeading).SetGroup(triggerDamageType).SetText('% Damage');
+    local damageTypePercentHeading = UI.CreateVerticalLayoutGroup(damageTypeHeading);
+    isDamageTypePercent = UI.CreateRadioButton(damageTypePercentHeading).SetGroup(triggerDamageType).SetText('% Damage').SetIsChecked(Mod.Settings.isDamageTypePercent or false);
+
 
     isDamageTypePercent.SetOnValueChanged(function() 
 
@@ -84,9 +85,25 @@ function Create_UI_Controls(rootParent)
     end);
 
 
-    optionalsHeading = UI.CreateVerticalLayoutGroup(mainModUI);
+    local optionalsHeading = UI.CreateVerticalLayoutGroup(mainModUI);
     UI.CreateLabel(optionalsHeading).SetText('Optionals:').SetColor(SUBHEADING_COLOUR);
     allyTriggers = UI.CreateCheckBox(optionalsHeading).SetText("Allies trigger DMS").SetIsChecked(Mod.Settings.AllyTriggers or false);
+    
+    if(isAcquiringTypeCard.GetIsChecked()) then -- one time check for loading up from settings
+        Create_Card_SubOptions_UI(acquiringTypeHeading);
+        isAcquiringTypeCard.SetInteractable(false);
+    end
+    if(isDamageTypePercent.GetIsChecked()) then -- one time check for loading up from settings
+        Create_PercentageDamage_SubOptions_UI(damageTypePercentHeading);
+        isDamageTypePercent.SetInteractable(false);
+    end
+    if(isDamageTypeFlat.GetIsChecked()) then -- one time check for loading up from settings
+        Create_FlatDamage_SubOptions_UI(damageTypeFlatHeading);
+        isDamageTypeFlat.SetInteractable(false);
+    end
+    if(isDamageTypeBomb.GetIsChecked()) then -- one time check for loading up from settings
+        isDamageTypeBomb.SetInteractable(false);
+    end
 end;
 
 function Create_PercentageDamage_SubOptions_UI(rootParent)

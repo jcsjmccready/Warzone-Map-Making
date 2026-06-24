@@ -3,7 +3,6 @@ require("Utilities");
 -- test ally triggers
 -- structure not being removed on server-side
 -- minimum damage on % damage not applied properly on server-side
--- applied settings don't reapply when exiting a game back to lobby
 
 function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrder)
 
