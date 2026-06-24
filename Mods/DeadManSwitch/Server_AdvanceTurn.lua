@@ -2,7 +2,7 @@ require("Utilities");
 
 -- test ally triggers
 -- structure not being removed on server-side
--- minimum damage on % damage not applied properly on server-side
+-- force bomb setting not working
 
 function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrder)
 
@@ -54,14 +54,14 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
 
         structures[structureID] = structures[structureID] - numberOfDMS;
 
-        local territoryModification = WL.TerritoryModification.Create(order.To);
-		territoryModification.SetStructuresOpt = structures;
-
-		Trigger_Dms_Damage(territoryModification, game, order, result, addNewOrder, numberOfDMS);
+		Trigger_Dms_Damage(game, order, result, addNewOrder, numberOfDMS, structures);
     end
 end
 
-function Trigger_Dms_Damage(territoryModification, game, order, result, addNewOrder, numberOfDMS)
+function Trigger_Dms_Damage(game, order, result, addNewOrder, numberOfDMS, structures)
+
+	local territoryModification = WL.TerritoryModification.Create(order.To);
+	territoryModification.SetStructuresOpt = structures;
 
 	if (Mod.Settings.isDamageTypeBomb) then
 		-- unable to programatically play cards without them being enabled
