@@ -54,14 +54,14 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
 
         structures[structureID] = structures[structureID] - numberOfDMS;
 
-		Trigger_Dms_Damage(game, order, result, addNewOrder, numberOfDMS, structures);
+        local territoryModification = WL.TerritoryModification.Create(order.To);
+		territoryModification.SetStructuresOpt = structures;
+
+		Trigger_Dms_Damage(territoryModification, game, order, result, addNewOrder, numberOfDMS);
     end
 end
 
-function Trigger_Dms_Damage(game, order, result, addNewOrder, numberOfDMS, structures)
-
-	local territoryModification = WL.TerritoryModification.Create(order.To);
-	territoryModification.SetStructuresOpt = structures;
+function Trigger_Dms_Damage(territoryModification, game, order, result, addNewOrder, numberOfDMS)
 
 	if (Mod.Settings.isDamageTypeBomb) then
 		-- unable to programatically play cards without them being enabled
