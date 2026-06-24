@@ -91,10 +91,14 @@ function Trigger_Dms_Damage(territoryModification, game, order, result, addNewOr
 
 	elseif (Mod.Settings.isDamageTypePercent) then
 		local armiesAfterAttack = result.ActualArmies.NumArmies - result.AttackingArmiesKilled.NumArmies;
-		local damagePercent = (1 - Mod.Settings.PercentageDamage) ^ numberOfDMS;
-		local armiesRemaining = WL.Armies.Create(math.max(math.floor(armiesAfterAttack * damagePercent + 0.5), Mod.Settings.PercentageMinDamage));
+		local remainingArmies = armiesAfterAttack;
 
-		territoryModification.SetArmiesTo = armiesRemaining.NumArmies;
+		for _ = 1, numberOfDMS do
+			remainingArmies = math.floor(remainingArmies * (1 - Mod.Settings.PercentageDamage) + 0.5);
+		end
+
+		local minimumRemainingArmies = math.max(0, armiesAfterAttack - Mod.Settings.PercentageMinDamage);
+		territoryModification.SetArmiesTo = math.min(remainingArmies, minimumRemainingArmies);
 
 		event = WL.GameOrderEvent.Create(order.PlayerID, "Triggered a Dead Man's Switch", {}, {territoryModification});
 		event.TerritoryAnnotationsOpt = { [order.To] = WL.TerritoryAnnotation.Create("Triggered DMS", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany)) };
