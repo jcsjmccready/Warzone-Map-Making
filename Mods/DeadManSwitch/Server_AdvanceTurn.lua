@@ -63,16 +63,18 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
 end
 
 function Trigger_Dms_Damage(structureID, game, order, result, addNewOrder, numberOfDMS)
-	local structures = game.ServerGame.LatestTurnStanding.Territories[order.To].Structures;
+	local existingStructures = game.ServerGame.LatestTurnStanding.Territories[order.To].Structures;
+	local structures = {};
+
+	for key, value in pairs(existingStructures or {}) do
+		if(key ~= structureID) then
+			structures[key] = value;
+		end;
+	end
+
 	structures[structureID] = 0;
 	local territoryModification = WL.TerritoryModification.Create(order.To);
 	territoryModification.SetStructuresOpt = structures;
-
-	-- todo: remove logging
-	local publicGameData = Mod.PublicGameData;
-	local intermediaryTable = territoryModification.SetStructuresOpt;
-	publicGameData.logging = intermediaryTable;
-	Mod.PublicGameData = publicGameData
 
 	if (Mod.Settings.isDamageTypeBomb) then
 		-- unable to programatically play cards without them being enabled
@@ -115,6 +117,11 @@ function Trigger_Dms_Damage(structureID, game, order, result, addNewOrder, numbe
 		event.TerritoryAnnotationsOpt = { [order.To] = WL.TerritoryAnnotation.Create("Triggered DMS", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany)) };
 		addNewOrder(event, true);
 	end
+
+	local values = GetTableValues(structures);
+	print(values);
+	local loggingEvent = WL.GameOrderEvent.Create(order.PlayerID, values, {}, {territoryModification});
+	addNewOrder(loggingEvent, true);
 
 end
 

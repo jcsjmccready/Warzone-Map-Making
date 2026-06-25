@@ -6,6 +6,15 @@ function NewIdentity()
 	Mod.PublicGameData = data;
 	return ret;
 end
+
+function GetTableValues(tbl)
+    local string = '';
+    for k,v in pairs(tbl) do
+        string = string .. tostring(k) .. ' x ' .. tostring(v) .. ';';
+    end
+    return string;
+end
+
 function Dump(obj)
 	if obj.proxyType ~= nil then
 		DumpProxy(obj);
