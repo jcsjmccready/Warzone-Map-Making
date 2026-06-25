@@ -35,13 +35,13 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
 	-- --Check if this is an attack against a territory with a dms.
 	if (order.proxyType == 'GameOrderAttackTransfer' and result.IsAttack and result.IsSuccessful) then
         local structureID = WL.StructureType.Custom("Dead Man's Switch");
-        local structures = game.ServerGame.LatestTurnStanding.Territories[order.To].Structures;
+        local existingStructures = game.ServerGame.LatestTurnStanding.Territories[order.To].Structures;
 
-		if (structures == nil) then return; end;
+		if (existingStructures == nil) then return; end;
 
         local numberOfDMS = 0;
-		if (structures[structureID] ~= nil) then
-			numberOfDMS = numberOfDMS + structures[structureID];
+		if (existingStructures[structureID] ~= nil) then
+			numberOfDMS = numberOfDMS + existingStructures[structureID];
 		end
 
 		--If no DMS here, abort.
@@ -58,24 +58,24 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
 			return;
 		end;
 
-		Trigger_Dms_Damage(structureID, game, order, result, addNewOrder, numberOfDMS);
+		local structures = {};
+
+		-- copy old structures but skip dms
+		for key, value in pairs(existingStructures or {}) do
+			if(key ~= structureID) then
+				structures[key] = value;
+			end;
+		end
+
+		structures[structureID] = 0;
+		local territoryModification = WL.TerritoryModification.Create(order.To);
+		territoryModification.SetStructuresOpt = structures;
+
+		Trigger_Dms_Damage(territoryModification, game, order, result, addNewOrder, numberOfDMS);
     end
 end
 
-function Trigger_Dms_Damage(structureID, game, order, result, addNewOrder, numberOfDMS)
-	local existingStructures = game.ServerGame.LatestTurnStanding.Territories[order.To].Structures;
-	local structures = {};
-
-	for key, value in pairs(existingStructures or {}) do
-		if(key ~= structureID) then
-			structures[key] = value;
-		end;
-	end
-
-	structures[structureID] = 0;
-	local territoryModification = WL.TerritoryModification.Create(order.To);
-	territoryModification.SetStructuresOpt = structures;
-
+function Trigger_Dms_Damage(territoryModification, game, order, result, addNewOrder, numberOfDMS)
 	if (Mod.Settings.isDamageTypeBomb) then
 		-- unable to programatically play cards without them being enabled
         if game.Settings.Cards ~= nil and game.Settings.Cards[WL.CardID.Bomb] ~= nil then
@@ -117,12 +117,6 @@ function Trigger_Dms_Damage(structureID, game, order, result, addNewOrder, numbe
 		event.TerritoryAnnotationsOpt = { [order.To] = WL.TerritoryAnnotation.Create("Triggered DMS", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany)) };
 		addNewOrder(event, true);
 	end
-
-	local values = GetTableValues(structures);
-	print(values);
-	local loggingEvent = WL.GameOrderEvent.Create(order.PlayerID, values, {}, {territoryModification});
-	addNewOrder(loggingEvent, true);
-
 end
 
 ---Server_AdvanceTurn_End hook
