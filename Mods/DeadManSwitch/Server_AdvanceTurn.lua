@@ -52,17 +52,18 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
 			return;
 		end;
 
-        structures[structureID] = 0;
 
-        local territoryModification = WL.TerritoryModification.Create(order.To);
-		territoryModification.SetStructuresOpt = structures;
-
-		Trigger_Dms_Damage(territoryModification, game, order, result, addNewOrder, numberOfDMS);
+		Trigger_Dms_Damage(structureID, game, order, result, addNewOrder, numberOfDMS);
     end
 end
 
-function Trigger_Dms_Damage(territoryModification, game, order, result, addNewOrder, numberOfDMS)
-
+function Trigger_Dms_Damage(structureID, game, order, result, addNewOrder, numberOfDMS)
+	
+	local structures = game.ServerGame.LatestTurnStanding.Territories[order.To].Structures;
+	structures[structureID] = 0;
+	local territoryModification = WL.TerritoryModification.Create(order.To);
+	territoryModification.SetStructuresOpt = structures;
+	
 	if (Mod.Settings.isDamageTypeBomb) then
 		-- unable to programatically play cards without them being enabled
         if game.Settings.Cards ~= nil and game.Settings.Cards[WL.CardID.Bomb] ~= nil then
