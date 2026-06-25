@@ -110,7 +110,7 @@ function Trigger_Dms_Damage(territoryModification, game, order, result, addNewOr
 			remainingArmies = math.floor(remainingArmies * (1 - Mod.Settings.PercentageDamage) + 0.5);
 		end
 
-		local minimumRemainingArmies = math.max(0, armiesAfterAttack - Mod.Settings.PercentageMinDamage);
+		local minimumRemainingArmies = math.max(0, armiesAfterAttack - (Mod.Settings.PercentageMinDamage * numberOfDMS));
 		territoryModification.SetArmiesTo = math.min(remainingArmies, minimumRemainingArmies);
 
 		local event = WL.GameOrderEvent.Create(order.PlayerID, "Triggered a Dead Man's Switch", {}, {territoryModification});
