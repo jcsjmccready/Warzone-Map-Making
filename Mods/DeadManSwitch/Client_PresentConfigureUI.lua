@@ -1,5 +1,7 @@
 require("Utilities");
 
+---Client_PresentConfigureUI hook
+---@param rootParent RootParent
 function Client_PresentConfigureUI(rootParent)
 Create_UI_Controls(rootParent);
 

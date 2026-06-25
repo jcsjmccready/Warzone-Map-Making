@@ -4,6 +4,12 @@ require("Utilities");
 -- structure not being removed on server-side
 -- force bomb setting not working
 
+---Server_AdvanceTurn_Order
+---@param game GameServerHook
+---@param order GameOrder
+---@param result GameOrderResult
+---@param skipThisOrder fun(modOrderControl: EnumModOrderControl) # Allows you to skip the current order
+---@param addNewOrder fun(order: GameOrder) # Adds a game order, will be processed before any of the rest of the orders
 function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrder)
 
     if (order.proxyType == 'GameOrderPlayCardCustom' and startsWith(order.ModData, "CreateDMS_")) then
@@ -52,18 +58,22 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
 			return;
 		end;
 
-
 		Trigger_Dms_Damage(structureID, game, order, result, addNewOrder, numberOfDMS);
     end
 end
 
 function Trigger_Dms_Damage(structureID, game, order, result, addNewOrder, numberOfDMS)
-	
 	local structures = game.ServerGame.LatestTurnStanding.Territories[order.To].Structures;
 	structures[structureID] = 0;
 	local territoryModification = WL.TerritoryModification.Create(order.To);
 	territoryModification.SetStructuresOpt = structures;
-	
+
+	-- todo: remove logging
+	local publicGameData = Mod.PublicGameData;
+	local intermediaryTable = territoryModification.SetStructuresOpt;
+	publicGameData.logging = intermediaryTable;
+	Mod.PublicGameData = publicGameData
+
 	if (Mod.Settings.isDamageTypeBomb) then
 		-- unable to programatically play cards without them being enabled
         if game.Settings.Cards ~= nil and game.Settings.Cards[WL.CardID.Bomb] ~= nil then
@@ -86,7 +96,7 @@ function Trigger_Dms_Damage(structureID, game, order, result, addNewOrder, numbe
 		local damageArmies = WL.Armies.Create(damageAmount + result.AttackingArmiesKilled.NumArmies);
 		territoryModification.SetArmiesTo = result.ActualArmies.Subtract(damageArmies).NumArmies;
 
-		event = WL.GameOrderEvent.Create(order.PlayerID, "Triggered a Dead Man's Switch", {}, {territoryModification});
+		local event = WL.GameOrderEvent.Create(order.PlayerID, "Triggered a Dead Man's Switch", {}, {territoryModification});
 		event.TerritoryAnnotationsOpt = { [order.To] = WL.TerritoryAnnotation.Create("Triggered DMS", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany)) };
 		addNewOrder(event, true);
 
@@ -101,17 +111,19 @@ function Trigger_Dms_Damage(structureID, game, order, result, addNewOrder, numbe
 		local minimumRemainingArmies = math.max(0, armiesAfterAttack - Mod.Settings.PercentageMinDamage);
 		territoryModification.SetArmiesTo = math.min(remainingArmies, minimumRemainingArmies);
 
-		event = WL.GameOrderEvent.Create(order.PlayerID, "Triggered a Dead Man's Switch", {}, {territoryModification});
+		local event = WL.GameOrderEvent.Create(order.PlayerID, "Triggered a Dead Man's Switch", {}, {territoryModification});
 		event.TerritoryAnnotationsOpt = { [order.To] = WL.TerritoryAnnotation.Create("Triggered DMS", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany)) };
 		addNewOrder(event, true);
 	end
 
 end
 
+---Server_AdvanceTurn_End hook
+---@param game GameServerHook
+---@param addNewOrder fun(order: GameOrder) # Adds a game order, will be processed before any of the rest of the orders
 function Server_AdvanceTurn_End(game, addNewOrder)
 	BuildStructures(game, addNewOrder);
 end
-
 
 function BuildStructures(game, addNewOrder)
 
