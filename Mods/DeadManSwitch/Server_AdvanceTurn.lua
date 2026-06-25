@@ -1,8 +1,6 @@
 require("Utilities");
 
 -- test ally triggers
--- structure not being removed on server-side
--- force bomb setting not working
 
 ---Server_AdvanceTurn_Order
 ---@param game GameServerHook
