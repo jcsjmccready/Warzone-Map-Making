@@ -52,7 +52,7 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
 			return;
 		end;
 
-        structures[structureID] = structures[structureID] - numberOfDMS;
+        structures[structureID] = 0;
 
         local territoryModification = WL.TerritoryModification.Create(order.To);
 		territoryModification.SetStructuresOpt = structures;
