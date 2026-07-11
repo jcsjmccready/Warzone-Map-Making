@@ -1,10 +1,8 @@
 require("Utilities");
 
--- test trigger logic works
--- implement movement blocking logic
 -- check movement blocking logic for special units
 -- implement tank ignore logic
--- better art
+-- implement tank destroy logic
 
 ---Server_AdvanceTurn_Order
 ---@param game GameServerHook
@@ -16,7 +14,7 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
 
     if (order.proxyType == 'GameOrderPlayCardCustom' and startsWith(order.ModData, "CreateBarbedWire_")) then
 
-        local targetTerritoryID = tonumber(string.sub(order.ModData, 11))
+        local targetTerritoryID = tonumber(string.sub(order.ModData, 18))
 		if (game.ServerGame.LatestTurnStanding.Territories[targetTerritoryID].OwnerPlayerID ~= order.PlayerID) then
 			return; --not our territory
 		end
@@ -34,7 +32,7 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
 		Mod.PrivateGameData = privateGameData;
     end
 
-	BlockMovementFromTriggeredBarbedWire(game, order, result, addNewOrder);
+	BlockMovementFromTriggeredBarbedWire(game, order, result, skipThisOrder, addNewOrder);
 	TriggerBarbedWireOnAttack(game, order, result, addNewOrder);
 end
 
@@ -46,20 +44,21 @@ function Server_AdvanceTurn_End(game, addNewOrder)
 	ResetTriggeredBarbedWire(game, addNewOrder);
 end
 
-
 ---@param game GameServerHook
 ---@param order GameOrder
 ---@param result GameOrderResult
+---@param skipThisOrder fun(modOrderControl: EnumModOrderControl) # Allows you to skip the current order
 ---@param addNewOrder fun(order: GameOrder) # Adds a game order, will be processed before any of the rest of the orders
-function BlockMovementFromTriggeredBarbedWire(game, order, result, addNewOrder)
-	if (order.proxyType ~= 'GameOrderAttackTransfer' or not result.IsAttack or not result.IsSuccessful) then
+function BlockMovementFromTriggeredBarbedWire(game, order, result, skipThisOrder, addNewOrder)
+	if (order.proxyType ~= 'GameOrderAttackTransfer') then
 		return;
 	end
 
-    local triggeredBarbedWireStructId = WL.StructureType.Custom("TriggeredBarbedWired");
-    local existingStructures = game.ServerGame.LatestTurnStanding.Territories[order.To].Structures;
+    local triggeredBarbedWireStructId = WL.StructureType.Custom("TriggeredBarbedWire");
+    local existingStructures = game.ServerGame.LatestTurnStanding.Territories[order.From].Structures;
 
 	if (existingStructures == nil) then return; end;
+
 
     local numberOfTriggeredBarbedWire = 0;
 	if (existingStructures[triggeredBarbedWireStructId] ~= nil) then
@@ -69,21 +68,13 @@ function BlockMovementFromTriggeredBarbedWire(game, order, result, addNewOrder)
 	--If no barbed wire here, abort.
 	if (numberOfTriggeredBarbedWire == 0) then return; end;
 
-    --If an attack of 0, abort, so skipped orders don't trigger the barbed wire
-	if (result.ActualArmies.IsEmpty) then return; end;
+	Dump(existingStructures);
 
-	-- block this attack by setting the number of armies to 0, and add an annotation to the territory
-
-	
-	addNewOrder(WL.GameOrderEvent.Create(order.PlayerID, 'Movement blocked by barbed wire', {}, {}), true);	-- The second argument makes sure this order isn't processed when the initial attack is skipped
-
-	if (result.DefendingArmiesKilled.IsEmpty) then
-		-- A successful attack on a territory where no defending armies were killed must mean it was a territory defended by 0 armies.  In this case, we can't stop the attack by simply setting DefendingArmiesKilled to 0, since attacks against 0 are always successful. 
-		-- Instead of skipping the order, we can set the ActualArmies to 0, to make it a 0 army attack
-		result.ActualArmies = WL.Armies.Create(0);
-	else
-		result.DefendingArmiesKilled = WL.Armies.Create(0);
-	end
+	-- block this attack by skipping
+	skipThisOrder(WL.ModOrderControl.SkipAndSupressSkippedMessage); --suppress the meaningless/detailless 'Mod skipped order' message, since the above message provides the details
+	local event = WL.GameOrderEvent.Create(order.PlayerID, 'Movement blocked by barbed wire', {}, {});
+	event.TerritoryAnnotationsOpt = { [order.From] = WL.TerritoryAnnotation.Create("Troops stuck", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany)) };
+	addNewOrder(event);
 end
 
 ---@param game GameServerHook
@@ -95,7 +86,7 @@ function TriggerBarbedWireOnAttack(game, order, result, addNewOrder)
 		return;
 	end
 
-    local primedBarbedWireStructId = WL.StructureType.Custom("PrimedBarbedWired");
+    local primedBarbedWireStructId = WL.StructureType.Custom("PrimedBarbedWire");
     local existingStructures = game.ServerGame.LatestTurnStanding.Territories[order.To].Structures;
 
 	if (existingStructures == nil) then return; end;
@@ -136,7 +127,7 @@ function TriggerBarbedWireOnAttack(game, order, result, addNewOrder)
 	end
 
 	structures[primedBarbedWireStructId] = 0;
-    local triggeredBarbedWireStructId = WL.StructureType.Custom("TriggeredBarbedWired");
+    local triggeredBarbedWireStructId = WL.StructureType.Custom("TriggeredBarbedWire");
 	structures[triggeredBarbedWireStructId] = numberOfPrimedBarbedWire;
 
 	local territoryModification = WL.TerritoryModification.Create(order.To);
@@ -145,23 +136,26 @@ function TriggerBarbedWireOnAttack(game, order, result, addNewOrder)
 	local event = WL.GameOrderEvent.Create(order.PlayerID, "Triggered a Barbed Wire", {}, {territoryModification});
 	event.TerritoryAnnotationsOpt = { [order.To] = WL.TerritoryAnnotation.Create("Triggered Barbed Wire", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany)) };
 	addNewOrder(event, true);
+	Mod.PrivateGameData = privateGameData;
+
 end
 
 ---@param game GameServerHook
 ---@param addNewOrder fun(order: GameOrder) # Adds a game order, will be processed before any of the rest of the orders
 function ResetTriggeredBarbedWire(game, addNewOrder)
-	local triggeredBarbedWireStructId = WL.StructureType.Custom("TriggeredBarbedWired");
-	local primedBarbedWireStructId = WL.StructureType.Custom("PrimedBarbedWired");
+	local triggeredBarbedWireStructId = WL.StructureType.Custom("TriggeredBarbedWire");
+	local primedBarbedWireStructId = WL.StructureType.Custom("PrimedBarbedWire");
 	local anyReset = false;
 
 	local privateGameData = Mod.PrivateGameData;
 	local triggeredTerritoryIds = privateGameData.TriggeredTerritoryIds or {};
 	local triggeredTerritorySet = {};
+
 	for _, territoryId in pairs(triggeredTerritoryIds) do
 		triggeredTerritorySet[territoryId] = true;
 	end
 
-	local event = WL.GameOrderEvent.Create(nil, "Reset Barbed Wire", {}, {});
+	local territoryModifications = {};
 	for _, territory in pairs(game.ServerGame.LatestTurnStanding.Territories) do
 		if not triggeredTerritorySet[territory.ID] then
 			local structures = territory.Structures;
@@ -172,16 +166,16 @@ function ResetTriggeredBarbedWire(game, addNewOrder)
 				local territoryModification = WL.TerritoryModification.Create(territory.ID);
 				territoryModification.SetStructuresOpt = structures;
 
-				event.TerritoryModificationsOpt[territory.ID] = territoryModification;
-				event.TerritoryAnnotationsOpt[territory.ID] = WL.TerritoryAnnotation.Create("Reset Barbed Wire", 8, GetColourIntegerFromHex(BUTTON_COLOURS.DarkGreen));
+				table.insert(territoryModifications, territoryModification);
 			end
 		end
 	end
 	if (anyReset) then
+		local event = WL.GameOrderEvent.Create(WL.PlayerID.Neutral, "Reset Barbed Wire", {}, territoryModifications);
 		addNewOrder(event);
 	end
 
-	
+
 	privateGameData.TriggeredTerritoryIds = nil;
 	Mod.PrivateGameData = privateGameData;
 end
@@ -190,7 +184,7 @@ end
 ---@param addNewOrder fun(order: GameOrder) # Adds a game order, will be processed before any of the rest of the orders
 function BuildStructures(game, addNewOrder)
 
-	local structureID = WL.StructureType.Custom("PrimedBarbedWired");
+	local structureID = WL.StructureType.Custom("PrimedBarbedWire");
 
 	local privateGameData = Mod.PrivateGameData;
 	local pending = privateGameData.PendingBarbedWire;

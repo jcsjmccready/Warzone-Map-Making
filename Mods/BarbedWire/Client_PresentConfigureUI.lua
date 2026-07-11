@@ -38,12 +38,15 @@ function Create_UI_Controls(rootParent)
     local optionalsHeading = UI.CreateVerticalLayoutGroup(mainModUI);
     UI.CreateLabel(optionalsHeading).SetText('Optionals:').SetColor(SUBHEADING_COLOUR);
     allyTriggers = UI.CreateCheckBox(optionalsHeading).SetText("Allies trigger barbed wire").SetIsChecked(Mod.Settings.AllyTriggers or false);
-    tanksIgnore = UI.CreateCheckBox(optionalsHeading).SetText("Troops with tanks ignore triggered barbed wire").SetIsChecked(Mod.Settings.TanksIgnore or false);
+    tanksIgnore = UI.CreateCheckBox(optionalsHeading).SetText("Armies with tanks can ignore triggered barbed wire").SetIsChecked(Mod.Settings.TanksIgnore or false);
+    tanksDestroy = UI.CreateCheckBox(optionalsHeading).SetText("Tanks destroy barbed wire on entry").SetIsChecked(Mod.Settings.TanksDestroy or false);
 
     if(isAcquiringTypeCard.GetIsChecked()) then -- one time check for loading up from settings
         Create_Card_SubOptions_UI(acquiringTypeHeading);
         isAcquiringTypeCard.SetInteractable(false);
     end
+end
+
 
 function Create_Card_SubOptions_UI(rootParent)
     cardOptionsHeading = UI.CreateVerticalLayoutGroup(rootParent);
@@ -76,7 +79,4 @@ function Create_Card_SubOptions_UI(rootParent)
         .SetSliderMinValue(0)
         .SetSliderMaxValue(5)
         .SetValue(Mod.Settings.InitialPieces or 5);
-
-end
-
 end

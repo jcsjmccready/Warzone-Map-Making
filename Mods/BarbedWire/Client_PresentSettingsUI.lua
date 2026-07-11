@@ -6,8 +6,11 @@ function Client_PresentSettingsUI(rootParent)
 
     UI.CreateLabel(descriptionVGroup).SetText("If a territory containing a Barbed Wire is taken, the next turn, they can not move out. It resets one turn later.");
 
+    if(Mod.Settings.TanksDestroy) then
+        UI.CreateLabel(descriptionVGroup).SetText("Tanks destroy Barbed Wire on entry");
+    end
     if(Mod.Settings.TanksIgnore) then
-        UI.CreateLabel(descriptionVGroup).SetText("Troops with tanks can ignore triggered Barbed Wire");
+        UI.CreateLabel(descriptionVGroup).SetText("Armies with tanks can ignore triggered Barbed Wire");
     end
 
     if(Mod.Settings.AllyTriggers) then

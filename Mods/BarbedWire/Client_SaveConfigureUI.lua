@@ -7,7 +7,9 @@ function Client_SaveConfigureUI(alert, addCard)
 
     Mod.Settings.AllyTriggers = allyTriggers.GetIsChecked();
     Mod.Settings.TanksIgnore = tanksIgnore.GetIsChecked();
+    Mod.Settings.TanksDestroy = tanksDestroy.GetIsChecked();
 
+    print(isAcquiringTypeCard.GetIsChecked());
     Mod.Settings.isAcquiringTypeCard = isAcquiringTypeCard.GetIsChecked();
     if(Mod.Settings.isAcquiringTypeCard) then
         Mod.Settings.NumPieces = numPieces.GetValue();
