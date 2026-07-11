@@ -10,6 +10,7 @@ end;
 function Create_UI_Controls(rootParent)
     local mainModUI = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
     UI.CreateLabel(mainModUI).SetText("Allows the creation of a Barbed Wire structure. After an attacker takes a territory containing one, it will trigger and block movement out of the territory the next turn. It resets one turn later.");
+    UI.CreateLabel(mainModUI).SetText("Multiple barbed wires in a single territory do not increase the effect*");
 
     ---- Acquiring type
     local acquiringTypeHeading = UI.CreateVerticalLayoutGroup(mainModUI);
@@ -38,13 +39,53 @@ function Create_UI_Controls(rootParent)
     local optionalsHeading = UI.CreateVerticalLayoutGroup(mainModUI);
     UI.CreateLabel(optionalsHeading).SetText('Optionals:').SetColor(SUBHEADING_COLOUR);
     allyTriggers = UI.CreateCheckBox(optionalsHeading).SetText("Allies trigger barbed wire").SetIsChecked(Mod.Settings.AllyTriggers or false);
-    tanksIgnore = UI.CreateCheckBox(optionalsHeading).SetText("Armies with tanks can ignore triggered barbed wire").SetIsChecked(Mod.Settings.TanksIgnore or false);
-    tanksDestroy = UI.CreateCheckBox(optionalsHeading).SetText("Tanks destroy barbed wire on entry").SetIsChecked(Mod.Settings.TanksDestroy or false);
+    isTankSpecialBehaviour = UI.CreateCheckBox(optionalsHeading).SetText("Include Tank special behaviour").SetIsChecked(Mod.Settings.IsTankSpecialBehaviour or false);
+
+    -- Tank sub-options
+    isTankSpecialBehaviour.SetOnValueChanged(function() 
+
+        if(isTankSpecialBehaviour.GetIsChecked()) then
+            Create_Tank_SubOptions_UI(optionalsHeading);
+        else
+           UI.Destroy(tankSupportHeading);
+           tanksIgnore.SetIsChecked(false);
+           tanksDestroy.SetIsChecked(false);
+        end
+    end);
 
     if(isAcquiringTypeCard.GetIsChecked()) then -- one time check for loading up from settings
         Create_Card_SubOptions_UI(acquiringTypeHeading);
         isAcquiringTypeCard.SetInteractable(false);
     end
+    if(isTankSpecialBehaviour.GetIsChecked()) then -- one time check for loading up from settings
+        Create_Tank_SubOptions_UI(optionalsHeading);
+    end
+end
+
+function Create_Tank_SubOptions_UI(rootParent)
+    tankSupportHeading = UI.CreateVerticalLayoutGroup(rootParent);
+    tankSpecialBehaviourGroup = UI.CreateRadioButtonGroup(tankSupportHeading);
+    -- bomb damage
+    tanksIgnore = UI.CreateRadioButton(tankSupportHeading).SetGroup(tankSpecialBehaviourGroup).SetText('Armies with Tanks ignore triggered barbed wire').SetIsChecked(Mod.Settings.TanksIgnore or false);
+    tanksDestroy = UI.CreateRadioButton(tankSupportHeading).SetGroup(tankSpecialBehaviourGroup).SetText('Tanks destroy barbed wire on entry/exit').SetIsChecked(Mod.Settings.TanksDestroy or false);
+
+    tanksIgnore.SetOnValueChanged(function() 
+
+        if(tanksIgnore.GetIsChecked()) then
+            tanksIgnore.SetInteractable(false);
+        else
+           tanksIgnore.SetInteractable(true);
+        end
+    end);
+    
+    tanksDestroy.SetOnValueChanged(function() 
+
+        if(tanksDestroy.GetIsChecked()) then
+            tanksDestroy.SetInteractable(false);
+        else
+           tanksDestroy.SetInteractable(true);
+        end
+    end);
 end
 
 

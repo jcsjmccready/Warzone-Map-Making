@@ -6,10 +6,11 @@ function Client_SaveConfigureUI(alert, addCard)
     Mod.Settings.isAcquiringTypeCommerce = isAcquiringTypeCommerce;
 
     Mod.Settings.AllyTriggers = allyTriggers.GetIsChecked();
-    Mod.Settings.TanksIgnore = tanksIgnore.GetIsChecked();
-    Mod.Settings.TanksDestroy = tanksDestroy.GetIsChecked();
 
-    print(isAcquiringTypeCard.GetIsChecked());
+    Mod.Settings.IsTankSpecialBehaviour = isTankSpecialBehaviour.GetIsChecked();
+    Mod.Settings.TanksIgnore = Mod.Settings.IsTankSpecialBehaviour and tanksIgnore.GetIsChecked();
+    Mod.Settings.TanksDestroy = Mod.Settings.IsTankSpecialBehaviour and tanksDestroy.GetIsChecked();
+
     Mod.Settings.isAcquiringTypeCard = isAcquiringTypeCard.GetIsChecked();
     if(Mod.Settings.isAcquiringTypeCard) then
         Mod.Settings.NumPieces = numPieces.GetValue();
@@ -34,7 +35,7 @@ function Client_SaveConfigureUI(alert, addCard)
             return;
         end
 
-    addCard("Barbed Wire Card", "Play this card to create a Barbed Wire on any territory you control (at the end of the turn). If this territory is taken, then next turn, troops can not move out. It resets one turn later." , "BarbedWireCard.png", Mod.Settings.NumPieces, Mod.Settings.MinPieces, Mod.Settings.InitialPieces, Mod.Settings.CardWeight);
+    addCard("Barbed Wire Card", "Play this card to create a Barbed Wire on any territory you control (at the end of the turn). If this territory is taken, then next turn, armies can not move out. It resets one turn later." , "BarbedWireCard.png", Mod.Settings.NumPieces, Mod.Settings.MinPieces, Mod.Settings.InitialPieces, Mod.Settings.CardWeight);
     end
 end
 
