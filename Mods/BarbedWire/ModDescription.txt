@@ -1,1 +1,1 @@
-This mod allows players to create a Dead Man's Switch (DMS) by playing a card. DMS's are single-use structures that deal damage to an attacker after they take it, such as by playing a bomb.
+This mod allows players to create a Barbed Wire by playing a card. If a territory containing a Barbed Wire is successfully taken, it blocks movement out the following turn and then resets
