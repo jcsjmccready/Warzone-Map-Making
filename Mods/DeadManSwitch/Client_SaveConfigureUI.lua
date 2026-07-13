@@ -8,7 +8,7 @@ function Client_SaveConfigureUI(alert, addCard)
 
     Mod.Settings.isDamageTypeBomb = isDamageTypeBomb.GetIsChecked();
     if(Mod.Settings.isDamageTypeBomb) then
-        damageTypeMessage = "a bomb is played on it.";
+        damageTypeMessage = "a bomb is automatically played on it.";
     end
 
     Mod.Settings.isDamageTypeFlat = isDamageTypeFlat.GetIsChecked();
@@ -21,7 +21,7 @@ function Client_SaveConfigureUI(alert, addCard)
     if(Mod.Settings.isDamageTypePercent) then
         Mod.Settings.PercentageDamage = percentageDamage.GetValue();
         Mod.Settings.PercentageMinDamage = percentageMinDamage.GetValue();
-        damageTypeMessage = "it takes " .. math.floor(Mod.Settings.PercentageDamage * 100) .. "% damage, with a minimum of " .. Mod.Settings.PercentageMinDamage .. " armies killed.";
+        damageTypeMessage = math.floor(Mod.Settings.PercentageDamage * 100) .. "% of the armies (with a minimum of " .. Mod.Settings.PercentageMinDamage .. " armies) are killed.";
     end
 
     Mod.Settings.AllyTriggers = allyTriggers.GetIsChecked();
@@ -50,7 +50,7 @@ function Client_SaveConfigureUI(alert, addCard)
             return;
         end
 
-    addCard("Dead Man's Switch Card", "Play this card to create a Dead Man's Switch on any territory you control (at the end of the turn). If this territory is taken, afterwards, " .. damageTypeMessage, "DmsCard.png", Mod.Settings.NumPieces, Mod.Settings.MinPieces, Mod.Settings.InitialPieces, Mod.Settings.CardWeight);
+    addCard("Dead Man's Switch Card", "Play this card to create a Dead Man's Switch on any territory you control (at the end of the turn). If this territory is successfully captured, afterwards, " .. damageTypeMessage, "DmsCard.png", Mod.Settings.NumPieces, Mod.Settings.MinPieces, Mod.Settings.InitialPieces, Mod.Settings.CardWeight);
     end
 end
 

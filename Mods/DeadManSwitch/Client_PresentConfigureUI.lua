@@ -9,7 +9,7 @@ end;
 
 function Create_UI_Controls(rootParent)
     local mainModUI = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
-    UI.CreateLabel(mainModUI).SetText("Allows the creation of a Dead Man's Switch (DMS) structure. After an attacker takes a territory containing one, it will trigger and deal damage to the attacker.");
+    UI.CreateLabel(mainModUI).SetText("Allows the creation of a Dead Man's Switch (DMS) structure. DMS's are single-use structures that deal damage to an attackers armies after they successfully capture the territory it is on.");
 
     ---- Acquiring type
     local acquiringTypeHeading = UI.CreateVerticalLayoutGroup(mainModUI);

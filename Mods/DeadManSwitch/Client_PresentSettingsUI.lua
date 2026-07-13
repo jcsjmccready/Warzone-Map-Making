@@ -4,7 +4,7 @@ function Client_PresentSettingsUI(rootParent)
     local damageTypeMessage = "ERROR";
 
     if(Mod.Settings.isDamageTypeBomb) then
-        damageTypeMessage = "a bomb is played on it.";
+        damageTypeMessage = "a bomb is automatically played on it.";
     end
 
     if(Mod.Settings.isDamageTypeFlat) then
@@ -12,12 +12,12 @@ function Client_PresentSettingsUI(rootParent)
     end
 
     if(Mod.Settings.isDamageTypePercent) then
-        damageTypeMessage = "it takes " .. math.floor(Mod.Settings.PercentageDamage * 100) .. "% damage, with a minimum of " .. Mod.Settings.PercentageMinDamage .. " armies killed.";
+        damageTypeMessage = math.floor(Mod.Settings.PercentageDamage * 100) .. "% of the armies (with a minimum of " .. Mod.Settings.PercentageMinDamage .. " armies) are killed.";
     end
 
     local descriptionVGroup = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
 
-    UI.CreateLabel(descriptionVGroup).SetText("If a territory containing a Dead Man's Switch is taken, afterwards, " .. damageTypeMessage);
+    UI.CreateLabel(descriptionVGroup).SetText("If a territory containing a Dead Man's Switch is successfully captured, afterwards, it is destroyed and " .. damageTypeMessage);
 
     if(Mod.Settings.AllyTriggers) then
         UI.CreateLabel(descriptionVGroup).SetText("Any allies can trigger then Dead Man's Switch");
