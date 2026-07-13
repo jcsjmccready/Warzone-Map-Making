@@ -35,7 +35,7 @@ function Client_SaveConfigureUI(alert, addCard)
             return;
         end
 
-    addCard("Barbed Wire Card", "Play this card to create a Barbed Wire on any territory you control (at the end of the turn). If this territory is taken, then next turn, armies can not move out. It resets one turn later." , "BarbedWireCard.png", Mod.Settings.NumPieces, Mod.Settings.MinPieces, Mod.Settings.InitialPieces, Mod.Settings.CardWeight);
+    addCard("Barbed Wire Card", "Play this card to create a Barbed Wire on any territory you control (at the end of the turn). If this territory is succesfully captured, on the following turn, attack/transfer orders out of that territory will be blocked." , "BarbedWireCard.png", Mod.Settings.NumPieces, Mod.Settings.MinPieces, Mod.Settings.InitialPieces, Mod.Settings.CardWeight);
     end
 end
 

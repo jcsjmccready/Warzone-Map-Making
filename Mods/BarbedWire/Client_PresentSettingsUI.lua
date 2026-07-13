@@ -4,7 +4,7 @@ function Client_PresentSettingsUI(rootParent)
 
     local descriptionVGroup = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
 
-    UI.CreateLabel(descriptionVGroup).SetText("If a territory containing a Barbed Wire is taken, the next turn, armies can not move out. It resets one turn later.");
+    UI.CreateLabel(descriptionVGroup).SetText("If a territory containing a Barbed Wire is successfully captured, on the following turn, attack/transfer orders out of that territory will be blocked.");
 
     if(Mod.Settings.TanksDestroy) then
         UI.CreateLabel(descriptionVGroup).SetText("Tanks destroy Barbed Wire on entry/exit");

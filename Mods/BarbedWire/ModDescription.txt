@@ -1,1 +1,3 @@
-This mod allows players to create a Barbed Wire by playing a card. If a territory containing a Barbed Wire is successfully taken, it blocks movement out the following turn and then resets.
+This mod allows players to create a Barbed Wire structure by playing a card. 
+If a territory containing a Barbed Wire is successfully captured, the triggered Barbed Wire blocks attack/transfer orders out of the territory the following turn.
+It resets at the end of the turn, allowing attack/transfer orders once again.

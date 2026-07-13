@@ -9,7 +9,6 @@ end;
 
 function Create_UI_Controls(rootParent)
     local mainModUI = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
-    UI.CreateLabel(mainModUI).SetText("Allows the creation of a Barbed Wire structure. After an attacker takes a territory containing one, it will trigger and block movement out of the territory the next turn. It resets one turn later.");
     UI.CreateLabel(mainModUI).SetText("Multiple barbed wires in a single territory do not increase the effect*");
 
     ---- Acquiring type
