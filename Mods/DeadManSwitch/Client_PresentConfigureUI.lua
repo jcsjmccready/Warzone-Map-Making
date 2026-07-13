@@ -145,8 +145,8 @@ function Create_Card_SubOptions_UI(rootParent)
     UI.CreateLabel(horz).SetText('Number of Pieces to divide the card into').SetFlexibleWidth(290);
     numPieces = UI.CreateNumberInputField(horz)
         .SetSliderMinValue(1)
-        .SetSliderMaxValue(11)
-        .SetValue(Mod.Settings.NumPieces or 5);
+        .SetSliderMaxValue(15)
+        .SetValue(Mod.Settings.NumPieces or 7);
 
     local horz = UI.CreateHorizontalLayoutGroup(cardOptionsHeading);
     UI.CreateLabel(horz).SetText('Card weight (how common the card is)').SetPreferredWidth(290);
@@ -168,6 +168,6 @@ function Create_Card_SubOptions_UI(rootParent)
     initialPieces = UI.CreateNumberInputField(horz)
         .SetSliderMinValue(0)
         .SetSliderMaxValue(5)
-        .SetValue(Mod.Settings.InitialPieces or 5);
+        .SetValue(Mod.Settings.InitialPieces or 1);
 
 end;

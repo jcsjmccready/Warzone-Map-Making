@@ -1,7 +1,5 @@
 require("Utilities");
 
--- test ally triggers
-
 ---Server_AdvanceTurn_Order
 ---@param game GameServerHook
 ---@param order GameOrder
