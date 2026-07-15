@@ -1,0 +1,3 @@
+This mod allows players to create a Fear and Charm structure by playing a card. 
+Fear structures force armies to move away from it.
+Charm structures force armies to move towards it.
