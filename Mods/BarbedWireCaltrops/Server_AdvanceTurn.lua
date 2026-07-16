@@ -31,25 +31,25 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
 		Mod.PrivateGameData = privateGameData;
     end
 
-	-- if (order.proxyType == 'GameOrderPlayCardCustom' and startsWith(order.ModData, "CreateTankCaltrop_")) then
+	if (order.proxyType == 'GameOrderPlayCardCustom' and startsWith(order.ModData, "CreateTankCaltrop_")) then
 
-    --     local targetTerritoryID = tonumber(string.sub(order.ModData, 19))
-	-- 	if (game.ServerGame.LatestTurnStanding.Territories[targetTerritoryID].OwnerPlayerID ~= order.PlayerID) then
-	-- 		return; --not our territory
-	-- 	end
+        local targetTerritoryID = tonumber(string.sub(order.ModData, 19))
+		if (game.ServerGame.LatestTurnStanding.Territories[targetTerritoryID].OwnerPlayerID ~= order.PlayerID) then
+			return; --not our territory
+		end
 
-	-- 	-- store pending build orders for end of turn
-	-- 	local pendingTankCaltrop = {};
-	-- 	pendingTankCaltrop.PlayerID = order.PlayerID;
-	-- 	pendingTankCaltrop.Message = order.Description;
-	-- 	pendingTankCaltrop.TerritoryID = targetTerritoryID;
+		-- store pending build orders for end of turn
+		local pendingTankCaltrop = {};
+		pendingTankCaltrop.PlayerID = order.PlayerID;
+		pendingTankCaltrop.Message = order.Description;
+		pendingTankCaltrop.TerritoryID = targetTerritoryID;
 
-	-- 	local privateGameData = Mod.PrivateGameData;
-	-- 	if (privateGameData.PendingTankCaltrop == nil) then privateGameData.PendingTankCaltrop = {}; end;
-	-- 	table.insert(privateGameData.PendingTankCaltrop, pendingTankCaltrop);
+		local privateGameData = Mod.PrivateGameData;
+		if (privateGameData.PendingTankCaltrop == nil) then privateGameData.PendingTankCaltrop = {}; end;
+		table.insert(privateGameData.PendingTankCaltrop, pendingTankCaltrop);
 
-	-- 	Mod.PrivateGameData = privateGameData;
-    -- end
+		Mod.PrivateGameData = privateGameData;
+    end
 
 	HandleAttackTransferInTriggeredStructure(game, order, result, skipThisOrder, addNewOrder);
 	HandleAttackTransferToStructure(game, order, result, addNewOrder);
@@ -72,32 +72,31 @@ function HandleAttackTransferInTriggeredStructure(game, order, result, skipThisO
 	if (order.proxyType ~= 'GameOrderAttackTransfer') then
 		return;
 	end
-
-	if (Mod.Settings.BarbedWireTanksIgnore and result.ActualArmies ~= nil and result.ActualArmies.SpecialUnits ~= nil) then
-		local hasTank = false;
+	
+	--todo: Mod.Settings.BarbedWireTanksIgnore
+	local hasTank = false;
+	if (result.ActualArmies ~= nil and result.ActualArmies.SpecialUnits ~= nil) then
 		for _, specialUnit in ipairs(result.ActualArmies.SpecialUnits) do
 			if specialUnit ~= nil and specialUnit.Name == "Tank" then
 				hasTank = true;
 				break;
 			end
 		end
-
-		if hasTank then
-			return; -- tanks ignore barbed wire, so don't block movement
-		end
 	end
 
 	-- movement blocking logic below
-
     local triggeredBarbedWireStructId = WL.StructureType.Custom("TriggeredBarbedWire");
+	local triggeredTankCaltropStructId = WL.StructureType.Custom("TriggeredTankCaltrop");
     local existingStructures = game.ServerGame.LatestTurnStanding.Territories[order.From].Structures;
 
 	if (existingStructures == nil) then return; end;
-
-
     local numberOfTriggeredBarbedWire = 0;
 	if (existingStructures[triggeredBarbedWireStructId] ~= nil) then
 		numberOfTriggeredBarbedWire = numberOfTriggeredBarbedWire + existingStructures[triggeredBarbedWireStructId];
+	end
+    local numberOfTriggeredTankCaltrop = 0;
+	if (existingStructures[numberOfTriggeredTankCaltrop] ~= nil) then
+		numberOfTriggeredTankCaltrop = numberOfTriggeredTankCaltrop + existingStructures[triggeredTankCaltropStructId];
 	end
 
 	--If no barbed wire here, abort.
@@ -108,6 +107,22 @@ function HandleAttackTransferInTriggeredStructure(game, order, result, skipThisO
 	local event = WL.GameOrderEvent.Create(order.PlayerID, 'Movement blocked by barbed wire', {}, {});
 	event.TerritoryAnnotationsOpt = { [order.From] = WL.TerritoryAnnotation.Create("Armies stuck", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany)) };
 	addNewOrder(event);
+
+
+	-- if no tank caltrop and tanks ignore barbed wire, return from method
+	-- if tank caltrop and no barbed wire, troops proceed, tank does not
+	-- if barbed wire and no tank caltrop, troops struck, tank proceeds
+	-- if barbed wire and tank caltrop, all stuck
+	-- if barbed wire and tank caltrop and tank ignore barbed wire, all stuck
+
+	-- evaluate is tank can proceed
+	-- evaluate if troop can proceed without tank
+	-- evaluate if troop can proceed with tank
+
+	-- anyTanks
+	-- anyTroops
+
+
 end
 
 ---@param game GameServerHook
