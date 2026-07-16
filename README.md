@@ -1,6 +1,6 @@
 # Warzone-Map-Making
 
-Storing the tools, completed maps & extensions I use for warzone map making.
+Storing the mods, map-making tools, map-making extensions & completed maps I use for warzone/warlight/war.app.
 
 ## Extensions
 For extensions to work in inkscape, add them to the folder: %appdata%\inkscape\extensions

@@ -1,0 +1,4 @@
+This mod allows players to create a Barbed Wire structure & Tank Caltrops structure by playing a card. 
+If a territory containing a Barbed Wire is successfully captured, the triggered Barbed Wire blocks attack/transfer orders out of the territory the following turn.
+If a territory containing a Tank Caltrop is successfully captured with an army including a tank, the triggered Tank Caltrop blocks tanks from movement in attack/transfer orders out of the territory the following turn.
+Both structures reset at the end of the turn, allowing attack/transfer orders once again.
