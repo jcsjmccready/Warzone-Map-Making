@@ -1,5 +1,8 @@
 require("Utilities");
 
+-- todo: implement tank caltrop trigger logic
+-- todo: imeplement tank caltrop move block logic
+
 ---Server_AdvanceTurn_Order
 ---@param game GameServerHook
 ---@param order GameOrder
@@ -28,8 +31,28 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
 		Mod.PrivateGameData = privateGameData;
     end
 
-	HandleAttackTransferInTriggeredBarbedWire(game, order, result, skipThisOrder, addNewOrder);
-	HandleAttackTransferToBarbedWire(game, order, result, addNewOrder);
+	-- if (order.proxyType == 'GameOrderPlayCardCustom' and startsWith(order.ModData, "CreateTankCaltrop_")) then
+
+    --     local targetTerritoryID = tonumber(string.sub(order.ModData, 19))
+	-- 	if (game.ServerGame.LatestTurnStanding.Territories[targetTerritoryID].OwnerPlayerID ~= order.PlayerID) then
+	-- 		return; --not our territory
+	-- 	end
+
+	-- 	-- store pending build orders for end of turn
+	-- 	local pendingTankCaltrop = {};
+	-- 	pendingTankCaltrop.PlayerID = order.PlayerID;
+	-- 	pendingTankCaltrop.Message = order.Description;
+	-- 	pendingTankCaltrop.TerritoryID = targetTerritoryID;
+
+	-- 	local privateGameData = Mod.PrivateGameData;
+	-- 	if (privateGameData.PendingTankCaltrop == nil) then privateGameData.PendingTankCaltrop = {}; end;
+	-- 	table.insert(privateGameData.PendingTankCaltrop, pendingTankCaltrop);
+
+	-- 	Mod.PrivateGameData = privateGameData;
+    -- end
+
+	HandleAttackTransferInTriggeredStructure(game, order, result, skipThisOrder, addNewOrder);
+	HandleAttackTransferToStructure(game, order, result, addNewOrder);
 end
 
 ---Server_AdvanceTurn_End hook
@@ -37,7 +60,7 @@ end
 ---@param addNewOrder fun(order: GameOrder) # Adds a game order, will be processed before any of the rest of the orders
 function Server_AdvanceTurn_End(game, addNewOrder)
 	BuildStructures(game, addNewOrder);
-	ResetTriggeredBarbedWire(game, addNewOrder);
+	ResetTriggeredStructures(game, addNewOrder);
 end
 
 ---@param game GameServerHook
@@ -45,12 +68,12 @@ end
 ---@param result GameOrderResult
 ---@param skipThisOrder fun(modOrderControl: EnumModOrderControl) # Allows you to skip the current order
 ---@param addNewOrder fun(order: GameOrder) # Adds a game order, will be processed before any of the rest of the orders
-function HandleAttackTransferInTriggeredBarbedWire(game, order, result, skipThisOrder, addNewOrder)
+function HandleAttackTransferInTriggeredStructure(game, order, result, skipThisOrder, addNewOrder)
 	if (order.proxyType ~= 'GameOrderAttackTransfer') then
 		return;
 	end
 
-	if (Mod.Settings.TanksIgnore and result.ActualArmies ~= nil and result.ActualArmies.SpecialUnits ~= nil) then
+	if (Mod.Settings.BarbedWireTanksIgnore and result.ActualArmies ~= nil and result.ActualArmies.SpecialUnits ~= nil) then
 		local hasTank = false;
 		for _, specialUnit in ipairs(result.ActualArmies.SpecialUnits) do
 			if specialUnit ~= nil and specialUnit.Name == "Tank" then
@@ -91,7 +114,7 @@ end
 ---@param order GameOrder
 ---@param result GameOrderResult
 ---@param addNewOrder fun(order: GameOrder) # Adds a game order, will be processed before any of the rest of the orders
-function HandleAttackTransferToBarbedWire(game, order, result, addNewOrder)
+function HandleAttackTransferToStructure(game, order, result, addNewOrder)
 
 	if (order.proxyType ~= 'GameOrderAttackTransfer') then
 		return;
@@ -192,7 +215,7 @@ function HandleAttackTransferToBarbedWire(game, order, result, addNewOrder)
     local territoryOwnerPlayerID = game.ServerGame.LatestTurnStanding.Territories[order.To].OwnerPlayerID;
     local attackerTeam = game.ServerGame.Game.Players[order.PlayerID].Team;
     local ownerTeam = game.ServerGame.Game.Players[territoryOwnerPlayerID].Team;
-	if(attackerTeam ~= nil and ownerTeam ~= nil and attackerTeam ~=-1 and ownerTeam ~=-1 and attackerTeam == ownerTeam and Mod.Settings.AllyTriggers == false) then
+	if(attackerTeam ~= nil and ownerTeam ~= nil and attackerTeam ~=-1 and ownerTeam ~=-1 and attackerTeam == ownerTeam and Mod.Settings.BarbedWireAllyTriggers == false) then
 		return;
 	end;
 
@@ -202,8 +225,8 @@ function HandleAttackTransferToBarbedWire(game, order, result, addNewOrder)
 	-- store triggered ids to not reset them at the end of the turn.
 	local triggeredTerritoryId = order.To;
 	local privateGameData = Mod.PrivateGameData;
-	if (privateGameData.TriggeredTerritoryIds == nil) then privateGameData.TriggeredTerritoryIds = {}; end;
-	table.insert(privateGameData.TriggeredTerritoryIds, triggeredTerritoryId);
+	if (privateGameData.TriggeredBarbedWireTerritoryIds == nil) then privateGameData.TriggeredBarbedWireTerritoryIds = {}; end;
+	table.insert(privateGameData.TriggeredBarbedWireTerritoryIds, triggeredTerritoryId);
 
 	-- copy old structures but skip wire
 	for key, value in pairs(existingStructures or {}) do
@@ -228,13 +251,36 @@ end
 
 ---@param game GameServerHook
 ---@param addNewOrder fun(order: GameOrder) # Adds a game order, will be processed before any of the rest of the orders
-function ResetTriggeredBarbedWire(game, addNewOrder)
-	local triggeredBarbedWireStructId = WL.StructureType.Custom("TriggeredBarbedWire");
-	local primedBarbedWireStructId = WL.StructureType.Custom("PrimedBarbedWire");
-	local anyReset = false;
-
+function ResetTriggeredStructures(game, addNewOrder)
 	local privateGameData = Mod.PrivateGameData;
-	local triggeredTerritoryIds = privateGameData.TriggeredTerritoryIds or {};
+
+	if(Mod.Settings.IncludeBarbedWire) then
+		local primedStructId = WL.StructureType.Custom("PrimedBarbedWire");
+		local triggeredStructId = WL.StructureType.Custom("TriggeredBarbedWire");
+		local triggeredTerritoryIds = privateGameData.TriggeredBarbedWireTerritoryIds or {};
+		ResetStructure(game, addNewOrder, primedStructId, triggeredStructId, "Barbed Wire", triggeredTerritoryIds)
+		privateGameData.TriggeredBarbedWireTerritoryIds = nil;
+	end
+	if(Mod.Settings.IncludeTankCaltrop) then
+		local primedStructId = WL.StructureType.Custom("PrimedTankCaltrop");
+		local triggeredStructId = WL.StructureType.Custom("TriggeredTankCaltrop");
+		local triggeredTerritoryIds = privateGameData.TriggeredTankCaltropTerritoryIds or {};
+
+		ResetStructure(game, addNewOrder, primedStructId, triggeredStructId, "Tank Caltrop", triggeredTerritoryIds);
+		privateGameData.TriggeredTankCaltropTerritoryIds = nil;
+	end
+
+	Mod.PrivateGameData = privateGameData;
+end
+
+---@param game GameServerHook
+---@param addNewOrder fun(order: GameOrder) # Adds a game order, will be processed before any of the rest of the orders
+---@param primedStructId EnumValue
+---@param triggeredStructId EnumValue
+---@param structName string
+---@param triggeredTerritoryIds any
+function ResetStructure(game, addNewOrder, primedStructId, triggeredStructId, structName, triggeredTerritoryIds)
+	local anyReset = false;
 	local triggeredTerritorySet = {};
 
 	for _, territoryId in pairs(triggeredTerritoryIds) do
@@ -245,9 +291,9 @@ function ResetTriggeredBarbedWire(game, addNewOrder)
 	for _, territory in pairs(game.ServerGame.LatestTurnStanding.Territories) do
 		if not triggeredTerritorySet[territory.ID] then
 			local structures = territory.Structures;
-			if (structures ~= nil and structures[triggeredBarbedWireStructId] ~= nil and structures[triggeredBarbedWireStructId] > 0) then
-				structures[primedBarbedWireStructId] = (structures[primedBarbedWireStructId] or 0) + structures[triggeredBarbedWireStructId];
-				structures[triggeredBarbedWireStructId] = 0;
+			if (structures ~= nil and structures[triggeredStructId] ~= nil and structures[triggeredStructId] > 0) then
+				structures[primedStructId] = (structures[primedStructId] or 0) + structures[triggeredStructId];
+				structures[triggeredStructId] = 0;
 				anyReset = true;
 				local territoryModification = WL.TerritoryModification.Create(territory.ID);
 				territoryModification.SetStructuresOpt = structures;
@@ -257,82 +303,85 @@ function ResetTriggeredBarbedWire(game, addNewOrder)
 		end
 	end
 	if (anyReset) then
-		local event = WL.GameOrderEvent.Create(WL.PlayerID.Neutral, "Reset Barbed Wire", {}, territoryModifications);
+		local event = WL.GameOrderEvent.Create(WL.PlayerID.Neutral, "Reset ".. structName, {}, territoryModifications);
 		addNewOrder(event);
 	end
-
-
-	privateGameData.TriggeredTerritoryIds = nil;
-	Mod.PrivateGameData = privateGameData;
 end
 
 ---@param game GameServerHook
 ---@param addNewOrder fun(order: GameOrder) # Adds a game order, will be processed before any of the rest of the orders
 function BuildStructures(game, addNewOrder)
-
-	local structureID = WL.StructureType.Custom("PrimedBarbedWire");
-
 	local privateGameData = Mod.PrivateGameData;
-	local pending = privateGameData.PendingBarbedWire;
+	if(Mod.Settings.IncludeBarbedWire) then
+		BuildStructureType(game, addNewOrder, privateGameData.PendingBarbedWire, WL.StructureType.Custom("PrimedBarbedWire"), "Barbed Wire");
+		privateGameData.PendingBarbedWire = nil;
+	end
+	if(Mod.Settings.IncludeTankCaltrop) then
+		BuildStructureType(game, addNewOrder, privateGameData.PendingTankCaltrop, WL.StructureType.Custom("PrimedTankCaltrop"), "Tank Caltrop");
+		privateGameData.PendingTankCaltrop = nil;
+	end
 
+	Mod.PrivateGameData = privateGameData;
+end
+
+---@param game GameServerHook
+---@param addNewOrder fun(order: GameOrder) # Adds a game order, will be processed before any of the rest of the orders
+function BuildStructureType(game, addNewOrder, pending, structureID, structureName)
 	if (pending == nil) then return; end;
 
 	-- Split pending builds into ones we can still build and ones we removed because ownership changed.
-	local removedPendingBarbedWire = {};
-	local remainingPendingBarbedWire = {};
+	local removedPendingStructure = {};
+	local remainingPendingStructure = {};
 	for _,pendingDms in pairs(pending) do
 		if (pendingDms.PlayerID ~= game.ServerGame.LatestTurnStanding.Territories[pendingDms.TerritoryID].OwnerPlayerID) then
-			table.insert(removedPendingBarbedWire, pendingDms);
+			table.insert(removedPendingStructure, pendingDms);
 		else
-			table.insert(remainingPendingBarbedWire, pendingDms);
+			table.insert(remainingPendingStructure, pendingDms);
 		end
 	end
 
-	pending = remainingPendingBarbedWire;
+	pending = remainingPendingStructure;
 
-	-- We will now build a barbed wire for each pending barbed wire. However, we need to take care to ensure that if there are two build orders for the same territory that we build both of them,
+	-- We will now build a structure for each pending structure. However, we need to take care to ensure that if there are two build orders for the same territory that we build both of them,
 	--	so we first group by the territory ID so we get all build orders for the same territory together.
-	for territoryID,pendingBarbedWireGroup in pairs(groupBy(pending, function(t) return t.TerritoryID; end)) do
+	for territoryID,pendingStructureGroup in pairs(groupBy(pending, function(t) return t.TerritoryID; end)) do
 
-		local numBarbedWireToBuild = #pendingBarbedWireGroup;
+		local numStructureToBuild = #pendingStructureGroup;
 
 		local structures = game.ServerGame.LatestTurnStanding.Territories[territoryID].Structures;
 
 		if (structures == nil) then structures = {}; end;
 		if (structures[structureID] == nil) then
-			structures[structureID] = numBarbedWireToBuild;
+			structures[structureID] = numStructureToBuild;
 		else
-			structures[structureID] = structures[structureID] + numBarbedWireToBuild;
+			structures[structureID] = structures[structureID] + numStructureToBuild;
 		end
 
 		local territoryModification = WL.TerritoryModification.Create(territoryID);
 		territoryModification.SetStructuresOpt = structures;
 
-		local pendingBarbedWire = first(pendingBarbedWireGroup);
-		if (pendingBarbedWire ~= nil) then
-			local event = WL.GameOrderEvent.Create(pendingBarbedWire.PlayerID, pendingBarbedWire.Message, {}, {territoryModification});
+		local pendingStructure = first(pendingStructureGroup);
+		if (pendingStructure ~= nil) then
+			local event = WL.GameOrderEvent.Create(pendingStructure.PlayerID, pendingStructure.Message, {}, {territoryModification});
 
 			local td = game.Map.Territories[territoryID];
 			event.JumpToActionSpotOpt = WL.RectangleVM.Create(td.MiddlePointX, td.MiddlePointY, td.MiddlePointX, td.MiddlePointY);
-			event.TerritoryAnnotationsOpt = { [territoryID] = WL.TerritoryAnnotation.Create("Build Barbed Wire", 8, GetColourIntegerFromHex(BUTTON_COLOURS.DarkGreen)) };
+			event.TerritoryAnnotationsOpt = { [territoryID] = WL.TerritoryAnnotation.Create("Build ".. structureName, 8, GetColourIntegerFromHex(BUTTON_COLOURS.DarkGreen)) };
 
 			addNewOrder(event);
 		end
 	end
 
-	for territoryID,pendingBarbedWireGroup in pairs(groupBy(removedPendingBarbedWire, function(t) return t.TerritoryID; end)) do
-		local pendingBarbedWire = first(pendingBarbedWireGroup);
-		if (pendingBarbedWire ~= nil) then
-			local event = WL.GameOrderEvent.Create(pendingBarbedWire.PlayerID, "Unable to build Barbed Wire on " .. game.Map.Territories[territoryID].Name, {}, {});
+	for territoryID,pendingStructureGroup in pairs(groupBy(removedPendingStructure, function(t) return t.TerritoryID; end)) do
+		local pendingStructure = first(pendingStructureGroup);
+		if (pendingStructure ~= nil) then
+			local event = WL.GameOrderEvent.Create(pendingStructure.PlayerID, "Unable to build " .. structureName .. " on " .. game.Map.Territories[territoryID].Name, {}, {});
 
 			local td = game.Map.Territories[territoryID];
 			event.JumpToActionSpotOpt = WL.RectangleVM.Create(td.MiddlePointX, td.MiddlePointY, td.MiddlePointX, td.MiddlePointY);
-			event.TerritoryAnnotationsOpt = { [territoryID] = WL.TerritoryAnnotation.Create("Unable to build Barbed Wire", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Red)) };
+			event.TerritoryAnnotationsOpt = { [territoryID] = WL.TerritoryAnnotation.Create("Unable to build " .. structureName, 8, GetColourIntegerFromHex(BUTTON_COLOURS.Red)) };
 
 			addNewOrder(event);
 		end
 	end
-
-	privateGameData.PendingBarbedWire = nil;
-	Mod.PrivateGameData = privateGameData;
 end

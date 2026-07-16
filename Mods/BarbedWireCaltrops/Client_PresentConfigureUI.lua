@@ -72,7 +72,6 @@ function Create_BarbedWire_SubOptions_UI(rootParent)
 
     -- Tank sub-options
     barbedWireIsTankSpecialBehaviour.SetOnValueChanged(function() 
-
         if(barbedWireIsTankSpecialBehaviour.GetIsChecked()) then
             Create_BarbedWire_Tank_SubOptions_UI(optionalsHeading);
         else
@@ -104,7 +103,7 @@ function Create_BarbedWire_Tank_SubOptions_UI(rootParent)
     barbedWireTankSupportHeading = UI.CreateVerticalLayoutGroup(rootParent);
     barbedWireTankSpecialBehaviourGroup = UI.CreateRadioButtonGroup(barbedWireTankSupportHeading);
     
-    barbedWireTanksIgnore = UI.CreateRadioButton(barbedWireTankSupportHeading).SetGroup(barbedWireTankSpecialBehaviourGroup).SetText('Armies with Tanks ignore triggered barbed wire').SetIsChecked(Mod.Settings.BarbedWireTanksIgnore or false);
+    barbedWireTanksIgnore = UI.CreateRadioButton(barbedWireTankSupportHeading).SetGroup(barbedWireTankSpecialBehaviourGroup).SetText('Armies with Tanks ignore triggered barbed wire').SetIsChecked(Mod.Settings.BarbedWireTanksIgnore or true);
     barbedWireTanksDestroy = UI.CreateRadioButton(barbedWireTankSupportHeading).SetGroup(barbedWireTankSpecialBehaviourGroup).SetText('Tanks destroy barbed wire on entry/exit').SetIsChecked(Mod.Settings.BarbedWireTanksDestroy or false);
 
     barbedWireTanksIgnore.SetOnValueChanged(function() 
