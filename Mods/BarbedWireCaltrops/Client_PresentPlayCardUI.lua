@@ -8,6 +8,13 @@ require('Utilities')
 function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog)
     Game = game;
 
+    cardAffect = "ERROR";
+    if(cardInstance.CardID == Mod.Settings.BarbedWireCardID) then
+        cardAffect = "Barbed Wire";
+    elseif(cardInstance.CardID == Mod.Settings.TankCaltropCardID) then
+        cardAffect = "Tank Caltrop";
+    end
+
     --If this dialog is already open, close the previous one. This prevents two copies of it from being open at once which can cause errors due to only saving one instance of TargetTerritoryBtn
     if (Close ~= nil) then
         Close();
@@ -28,7 +35,7 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
         TargetTerritoryInstructionLabel = UI.CreateLabel(vert).SetText("");
 
         PlayCardBtn = UI.CreateButton(buttonsHGroup)
-            .SetText("Play Card")
+            .SetText("Play ".. cardAffect)
             .SetInteractable(false)
             .SetColor(BUTTON_COLOURS.DarkGreen)
             .SetFlexibleWidth(0.7)
@@ -43,7 +50,7 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
 
                 local jumpToSpot = WL.RectangleVM.Create(td.MiddlePointX, td.MiddlePointY, td.MiddlePointX, td.MiddlePointY);
 
-                if (playCard("Build a Barbed Wire on " .. TargetTerritoryName, "CreateBarbedWire_" .. TargetTerritoryID, WL.TurnPhase.Attacks, {}, jumpToSpot)) then
+                if (playCard("Build a " .. cardAffect .. " on " .. TargetTerritoryName, "Create" .. TrimAllWhitespace(cardAffect).. "_" .. TargetTerritoryID, WL.TurnPhase.Attacks, {}, jumpToSpot)) then
                     close();
                 end
             end);
@@ -52,7 +59,7 @@ end
 
 function TargetTerritoryClicked()
 	UI.InterceptNextTerritoryClick(TerritoryClicked);
-	TargetTerritoryInstructionLabel.SetText("Please click on the territory you wish to create the Barbed Wire on.").SetColor(TEXT_DEFAULT_COLOUR);
+	TargetTerritoryInstructionLabel.SetText("Please click on the territory you wish to create the " .. cardAffect .. " on.").SetColor(TEXT_DEFAULT_COLOUR);
 	TargetTerritoryBtn.SetInteractable(false);
     PlayCardBtn.SetInteractable(false);
 end

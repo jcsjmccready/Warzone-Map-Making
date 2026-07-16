@@ -122,6 +122,10 @@ function TrimWhitespace(s)
     return s:match "^%s*(.-)%s*$"
 end
 
+function TrimAllWhitespace(s)
+    return s:gsub("%s+", "")
+end
+
 function ParseCommaDelimitedString(str)
 	local result = {}
     local start = 1
