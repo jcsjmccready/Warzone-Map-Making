@@ -53,8 +53,7 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
 		if (game.ServerGame.Game.Players[territoryOwnerPlayerID] ~= nil) then
 	        ownerTeam = game.ServerGame.Game.Players[territoryOwnerPlayerID].Team;
 		end
-		print("attacker team: " ..attackerTeam);
-		print("owern team: " ..ownerTeam);
+
 		if(attackerTeam ~= nil and ownerTeam ~= nil and attackerTeam ~=-1 and ownerTeam ~=-1 and attackerTeam == ownerTeam and Mod.Settings.AllyTriggers == false) then
 			return;
 		end;
