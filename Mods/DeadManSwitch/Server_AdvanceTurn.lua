@@ -49,7 +49,12 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
 		-- abort if on same team and ally triggers is disabled
         local territoryOwnerPlayerID = game.ServerGame.LatestTurnStanding.Territories[order.To].OwnerPlayerID;
         local attackerTeam = game.ServerGame.Game.Players[order.PlayerID].Team;
-        local ownerTeam = game.ServerGame.Game.Players[territoryOwnerPlayerID].Team;
+		local ownerTeam = WL.PlayerID.Neutral;
+		if (game.ServerGame.Game.Players[territoryOwnerPlayerID] ~= nil) then
+	        ownerTeam = game.ServerGame.Game.Players[territoryOwnerPlayerID].Team;
+		end
+		print("attacker team: " ..attackerTeam);
+		print("owern team: " ..ownerTeam);
 		if(attackerTeam ~= nil and ownerTeam ~= nil and attackerTeam ~=-1 and ownerTeam ~=-1 and attackerTeam == ownerTeam and Mod.Settings.AllyTriggers == false) then
 			return;
 		end;
