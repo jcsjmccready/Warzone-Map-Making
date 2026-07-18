@@ -57,14 +57,14 @@ function Create_FearCard_SubOptions_UI(rootParent)
     fearDistance = UI.CreateNumberInputField(horz)
         .SetSliderMinValue(1)
         .SetSliderMaxValue(3)
-        .SetValue(Mod.Settings.Distance or 1);
+        .SetValue(Mod.Settings.FearDistance or 1);
 
     local horz = UI.CreateHorizontalLayoutGroup(fearCardVHeading);
     UI.CreateLabel(horz).SetText('Duration of the fear effect').SetPreferredWidth(290);
     fearDuration = UI.CreateNumberInputField(horz)
         .SetSliderMinValue(1)
         .SetSliderMaxValue(5)
-        .SetValue(Mod.Settings.Duration or 2);
+        .SetValue(Mod.Settings.FearDuration or 2);
 
     local horz = UI.CreateHorizontalLayoutGroup(fearCardVHeading);
     UI.CreateLabel(horz).SetText('Falloff % of the fear effect per step').SetPreferredWidth(290);
@@ -72,7 +72,7 @@ function Create_FearCard_SubOptions_UI(rootParent)
         .SetWholeNumbers(false)
         .SetSliderMinValue(0)
         .SetSliderMaxValue(1)
-        .SetValue(Mod.Settings.Falloff or 0.5);
+        .SetValue(Mod.Settings.FearFalloff or 0.5);
 
     local horz = UI.CreateHorizontalLayoutGroup(fearCardVHeading);
     UI.CreateLabel(horz).SetText('Can only create on own territories').SetPreferredWidth(290);
@@ -85,7 +85,7 @@ function Create_FearCard_SubOptions_UI(rootParent)
     fearNumPieces = UI.CreateNumberInputField(horz)
         .SetSliderMinValue(1)
         .SetSliderMaxValue(11)
-        .SetValue(Mod.Settings.NumPieces or 5);
+        .SetValue(Mod.Settings.FearNumPieces or 5);
 
     local horz = UI.CreateHorizontalLayoutGroup(fearCardVHeading);
     UI.CreateLabel(horz).SetText('Card weight (how common the card is)').SetPreferredWidth(290);
@@ -93,21 +93,21 @@ function Create_FearCard_SubOptions_UI(rootParent)
         .SetWholeNumbers(false)
         .SetSliderMinValue(0)
         .SetSliderMaxValue(5)
-        .SetValue(Mod.Settings.Weight or 1.0);
+        .SetValue(Mod.Settings.FearWeight or 1.0);
     
     local horz = UI.CreateHorizontalLayoutGroup(fearCardVHeading);
     UI.CreateLabel(horz).SetText('Minimum pieces awarded per turn').SetPreferredWidth(290);
     fearMinPieces = UI.CreateNumberInputField(horz)
         .SetSliderMinValue(0)
         .SetSliderMaxValue(5)
-        .SetValue(Mod.Settings.MinPieces or 1);
+        .SetValue(Mod.Settings.FearMinPieces or 1);
     
     local horz = UI.CreateHorizontalLayoutGroup(fearCardVHeading);
     UI.CreateLabel(horz).SetText('Pieces given to each player at the start').SetPreferredWidth(290);
     fearInitialPieces = UI.CreateNumberInputField(horz)
         .SetSliderMinValue(0)
         .SetSliderMaxValue(5)
-        .SetValue(Mod.Settings.InitialPieces or 5);
+        .SetValue(Mod.Settings.FearInitialPieces or 5);
 end
 
 
@@ -121,14 +121,14 @@ function Create_CharmCard_SubOptions_UI(rootParent)
     charmDistance = UI.CreateNumberInputField(horz)
         .SetSliderMinValue(1)
         .SetSliderMaxValue(3)
-        .SetValue(Mod.Settings.Distance or 1);
+        .SetValue(Mod.Settings.CharmDistance or 1);
 
     local horz = UI.CreateHorizontalLayoutGroup(charmCardVHeading);
     UI.CreateLabel(horz).SetText('Duration of the charm effect').SetPreferredWidth(290);
     charmDuration = UI.CreateNumberInputField(horz)
         .SetSliderMinValue(1)
         .SetSliderMaxValue(5)
-        .SetValue(Mod.Settings.Duration or 2);
+        .SetValue(Mod.Settings.CharmDuration or 2);
 
     local horz = UI.CreateHorizontalLayoutGroup(charmCardVHeading);
     UI.CreateLabel(horz).SetText('Falloff % of the charm effect per step').SetPreferredWidth(290);
@@ -136,7 +136,7 @@ function Create_CharmCard_SubOptions_UI(rootParent)
         .SetWholeNumbers(false)
         .SetSliderMinValue(0)
         .SetSliderMaxValue(1)
-        .SetValue(Mod.Settings.Falloff or 0.5);
+        .SetValue(Mod.Settings.CharmFalloff or 0.5);
 
     local horz = UI.CreateHorizontalLayoutGroup(charmCardVHeading);
     UI.CreateLabel(horz).SetText('Can only create on own territories').SetPreferredWidth(290);
@@ -149,7 +149,7 @@ function Create_CharmCard_SubOptions_UI(rootParent)
     charmNumPieces = UI.CreateNumberInputField(horz)
         .SetSliderMinValue(1)
         .SetSliderMaxValue(11)
-        .SetValue(Mod.Settings.NumPieces or 5);
+        .SetValue(Mod.Settings.CharmNumPieces or 5);
 
     local horz = UI.CreateHorizontalLayoutGroup(charmCardVHeading);
     UI.CreateLabel(horz).SetText('Card weight (how common the card is)').SetPreferredWidth(290);
@@ -157,19 +157,19 @@ function Create_CharmCard_SubOptions_UI(rootParent)
         .SetWholeNumbers(false)
         .SetSliderMinValue(0)
         .SetSliderMaxValue(5)
-        .SetValue(Mod.Settings.Weight or 1.0);
+        .SetValue(Mod.Settings.CharmWeight or 1.0);
     
     local horz = UI.CreateHorizontalLayoutGroup(charmCardVHeading);
     UI.CreateLabel(horz).SetText('Minimum pieces awarded per turn').SetPreferredWidth(290);
     charmMinPieces = UI.CreateNumberInputField(horz)
         .SetSliderMinValue(0)
         .SetSliderMaxValue(5)
-        .SetValue(Mod.Settings.MinPieces or 1);
+        .SetValue(Mod.Settings.CharmMinPieces or 1);
     
     local horz = UI.CreateHorizontalLayoutGroup(charmCardVHeading);
     UI.CreateLabel(horz).SetText('Pieces given to each player at the start').SetPreferredWidth(290);
     charmInitialPieces = UI.CreateNumberInputField(horz)
         .SetSliderMinValue(0)
         .SetSliderMaxValue(5)
-        .SetValue(Mod.Settings.InitialPieces or 5);
+        .SetValue(Mod.Settings.CharmInitialPieces or 5);
 end

@@ -10,7 +10,6 @@ require("Utilities");
 -- questions:
 -- we need to check the logic for the falloff. Review the nuke config pattern and additive vs multiplicative 
 -- implement forced attacks
--- add cracked masks for final turn of effect indicators (replace the structuer with one that shows it is the final turn)
 
 ---Server_AdvanceTurn_Order
 ---@param game GameServerHook
@@ -23,6 +22,9 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
     if (order.proxyType == 'GameOrderPlayCardCustom' and startsWith(order.ModData, "CreateFear_")) then
         local targetTerritoryID = tonumber(string.sub(order.ModData, 12)) or 0
 		local structureID = WL.StructureType.Custom("Fear");
+		if(Mod.Settings.FearDuration == 1) then
+			structureID = WL.StructureType.Custom("FadingFear");
+		end
 		local structures = game.ServerGame.LatestTurnStanding.Territories[targetTerritoryID].Structures;
 
 		if (structures == nil) then structures = {}; end;
@@ -62,6 +64,9 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
     if (order.proxyType == 'GameOrderPlayCardCustom' and startsWith(order.ModData, "CreateCharm_")) then
         local targetTerritoryID = tonumber(string.sub(order.ModData, 13)) or 0;
 		local structureID = WL.StructureType.Custom("Charm");
+		if(Mod.Settings.FearDuration == 1) then
+			structureID = WL.StructureType.Custom("FadingCharm");
+		end
 		local structures = game.ServerGame.LatestTurnStanding.Territories[targetTerritoryID].Structures;
 
 		if (structures == nil) then structures = {}; end;
@@ -124,41 +129,66 @@ function Server_AdvanceTurn_End(game, addNewOrder)
 	--todo: all of the above but also for charms
 
 	for i, fear in ipairs(fears) do
+		local fadingStructureID = WL.StructureType.Custom("FadingFear");
 		local structureID = WL.StructureType.Custom("Fear");
 		local existingStructures = game.ServerGame.LatestTurnStanding.Territories[fear.TerritoryId].Structures or {};
 
 		local numberOfFears = 0;
-		if (existingStructures[structureID] ~= nil) then
-			numberOfFears = numberOfFears + existingStructures[structureID];
+		if (existingStructures[fadingStructureID] ~= nil) then
+			numberOfFears = numberOfFears + existingStructures[fadingStructureID];
 		end
 		if(fear.TurnEnd == game.Game.TurnNumber) then
-			-- Fear has expired, remove the structure
+			-- Fear has expired, decrement the structure count by 1
 			local structures = {};
 
-			-- copy old structures but skip dms
+			-- copy old structures and decrement the targeted structure count
 			for key, value in pairs(existingStructures or {}) do
-				if(key ~= structureID) then
-					structures[key] = value;
-				end;
+				structures[key] = value;
 			end
-
-			structures[structureID] = math.max(numberOfFears - 1, 0);
+			if (structures[fadingStructureID] ~= nil) then
+				structures[fadingStructureID] = math.max(structures[fadingStructureID] - 1, 0);
+			end
 			local territoryModification = WL.TerritoryModification.Create(fear.TerritoryId);
 			territoryModification.SetStructuresOpt = structures;
 
 			local event = WL.GameOrderEvent.Create(fear.PlayerOwnerId, "Fear wears off in " .. game.Map.Territories[fear.TerritoryId].Name , {}, {territoryModification});
 			event.TerritoryAnnotationsOpt = { [fear.TerritoryId] = WL.TerritoryAnnotation.Create("Fear wears off", 8, GetColourIntegerFromHex(BUTTON_COLOURS.ElectricPurple)) };
 			addNewOrder(event, true);
-		else
-			-- fear ongoing, RUN AWAY!
-			for affectedTerritoryId, effectStrength in pairs(fear.TerritoryEffectStrength or {}) do
-				local territoryStanding = game.ServerGame.LatestTurnStanding.Territories[affectedTerritoryId];
-				if (territoryStanding ~= nil and territoryStanding.NumArmies ~= nil) then
-					territoryPercentageArmiesFeared[affectedTerritoryId] = math.min(effectStrength, 1);
-				end
+		elseif (fear.TurnEnd == game.Game.TurnNumber + 1) then
+			-- convert fear into fading fear
+			local structures = {};
+
+			-- copy old structures and convert one fear instance into a fading fear
+			for key, value in pairs(existingStructures or {}) do
+				structures[key] = value;
 			end
+			if (structures[structureID] ~= nil) then
+				structures[structureID] = math.max(structures[structureID] - 1, 0);
+			end
+			if (structures[fadingStructureID] == nil) then
+				structures[fadingStructureID] = 1;
+			else
+				structures[fadingStructureID] = structures[fadingStructureID] + 1;
+			end
+			local territoryModification = WL.TerritoryModification.Create(fear.TerritoryId);
+			territoryModification.SetStructuresOpt = structures;
+
+			local event = WL.GameOrderEvent.Create(fear.PlayerOwnerId, "Fear begins to fade in " .. game.Map.Territories[fear.TerritoryId].Name, {}, {territoryModification});
+			event.TerritoryAnnotationsOpt = { [fear.TerritoryId] = WL.TerritoryAnnotation.Create("Fear fading", 8, GetColourIntegerFromHex(BUTTON_COLOURS.ElectricPurple)) };
+			addNewOrder(event, true);
+		else
+			-- -- fear ongoing, RUN AWAY!
+			-- for affectedTerritoryId, effectStrength in pairs(fear.TerritoryEffectStrength or {}) do
+			-- 	local territoryStanding = game.ServerGame.LatestTurnStanding.Territories[affectedTerritoryId];
+			-- 	if (territoryStanding ~= nil and territoryStanding.NumArmies ~= nil) then
+			-- 		territoryPercentageArmiesFeared[affectedTerritoryId] = math.min(effectStrength, 1);
+			-- 	end
+			-- end
 		end
 	end
+
+	-- create attacks for fears
+
 
 	-- ---@type [CharmFearInstance]
 	-- local charms = priv.Charms or {};
@@ -167,7 +197,7 @@ function Server_AdvanceTurn_End(game, addNewOrder)
 	-- 	if(charm.TurnEnd == game.Game.TurnNumber) then
 	-- 		-- Charm has expired, remove the structure
 
-	-- 		local structureID = WL.StructureType.Custom("Charm");
+	-- 		local structureID = WL.StructureType.Custom("FadingCharm");
 	-- 		local existingStructures = game.ServerGame.LatestTurnStanding.Territories[charm.TerritoryId].Structures or {};
 
 	-- 		local numberOfCharms = 0;
