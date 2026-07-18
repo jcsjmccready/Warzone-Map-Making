@@ -8,7 +8,7 @@ end;
 
 function Create_UI_Controls(rootParent)
     local mainModUI = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
-    UI.CreateLabel(mainModUI).SetText('Does not affect special units unless 100% of the army is being feared/charmed*');
+    UI.CreateLabel(mainModUI).SetText('In team games, if feared or charmed, army movement will attack teammates*');
 
     ---- include cards
     local includeCardsHeading = UI.CreateVerticalLayoutGroup(mainModUI);
@@ -47,9 +47,23 @@ function Create_UI_Controls(rootParent)
     end
 end
 
+function Update_FalloffExamplesLabel(exampleLabel, falloffField, distanceField)
+    local falloff = falloffField.GetValue() or 0;
+    local maxDistance = math.max(1, distanceField.GetValue() or 1);
+    local examples = {};
+
+    for distance = 0, maxDistance do
+        local percentAffected = math.floor((falloff ^ distance) * 100 + 0.5) / 100;
+        table.insert(examples, string.format('D%s=%s%%', distance, percentAffected * 100));
+    end
+
+    exampleLabel.SetText('Falloff examples: ' .. table.concat(examples, ', '));
+end
+
 function Create_FearCard_SubOptions_UI(rootParent)
     fearCardVHeading = UI.CreateVerticalLayoutGroup(rootParent);
     UI.CreateLabel(fearCardVHeading).SetText("Creates a structure that 'fears' armies, forcing them to move away from it.");
+    UI.CreateLabel(charmCardVHeading).SetText("All armies on the selected territory are forced to leave*");
     UI.CreateLabel(fearCardVHeading).SetText("Fear Settings:").SetColor(BUTTON_COLOURS.ElectricPurple);
 
     local horz = UI.CreateHorizontalLayoutGroup(fearCardVHeading);
@@ -73,6 +87,27 @@ function Create_FearCard_SubOptions_UI(rootParent)
         .SetSliderMinValue(0)
         .SetSliderMaxValue(1)
         .SetValue(Mod.Settings.FearFalloff or 0.5);
+
+    local horz = UI.CreateHorizontalLayoutGroup(fearCardVHeading);
+    local fallOffExamples = UI.CreateLabel(horz).SetText('Falloff examples: ').SetPreferredWidth(290).SetColor(BUTTON_COLOURS.DarkGray);
+
+    local refreshExamplesButton = UI.CreateButton(horz)
+        .SetText('Refresh')
+        .SetPreferredWidth(150);
+
+    refreshExamplesButton.SetOnClick(function()
+        Update_FalloffExamplesLabel(fallOffExamples, fearFalloff, fearDistance);
+    end);
+
+    Update_FalloffExamplesLabel(fallOffExamples, fearFalloff, fearDistance);
+        
+    local horz = UI.CreateHorizontalLayoutGroup(fearCardVHeading);
+    UI.CreateLabel(horz).SetText('Maximum fear % where Special Units Are Immune').SetPreferredWidth(290);
+    fearSpecialUnitThreshold = UI.CreateNumberInputField(horz)
+        .SetWholeNumbers(false)
+        .SetSliderMinValue(0)
+        .SetSliderMaxValue(1)
+        .SetValue(Mod.Settings.FearSpecialUnitThreshold or 0.5);
 
     local horz = UI.CreateHorizontalLayoutGroup(fearCardVHeading);
     UI.CreateLabel(horz).SetText('Can only create on own territories').SetPreferredWidth(290);
@@ -114,6 +149,7 @@ end
 function Create_CharmCard_SubOptions_UI(rootParent)
     charmCardVHeading = UI.CreateVerticalLayoutGroup(rootParent);
     UI.CreateLabel(charmCardVHeading).SetText("Creates a structure that forces armies to move towards it.");
+    UI.CreateLabel(charmCardVHeading).SetText("Armies on the selected territory can not leave*");
     UI.CreateLabel(charmCardVHeading).SetText("Charm Settings:").SetColor(BUTTON_COLOURS.Orchid);
 
     local horz = UI.CreateHorizontalLayoutGroup(charmCardVHeading);
@@ -137,6 +173,28 @@ function Create_CharmCard_SubOptions_UI(rootParent)
         .SetSliderMinValue(0)
         .SetSliderMaxValue(1)
         .SetValue(Mod.Settings.CharmFalloff or 0.5);
+
+    local horz = UI.CreateHorizontalLayoutGroup(charmCardVHeading);
+    local charmFalloffExamples = UI.CreateLabel(horz).SetText('Falloff examples: ').SetPreferredWidth(290).SetColor(BUTTON_COLOURS.DarkGray);
+    
+
+    local refreshCharmExamplesButton = UI.CreateButton(horz)
+        .SetText('Refresh')
+        .SetPreferredWidth(150);
+
+    refreshCharmExamplesButton.SetOnClick(function()
+        Update_FalloffExamplesLabel(charmFalloffExamples, charmFalloff, charmDistance);
+    end);
+
+    Update_FalloffExamplesLabel(charmFalloffExamples, charmFalloff, charmDistance);
+
+    local horz = UI.CreateHorizontalLayoutGroup(charmCardVHeading);
+    UI.CreateLabel(horz).SetText('Maximum charm % where Special Units are Immune').SetPreferredWidth(290);
+    charmSpecialUnitThreshold = UI.CreateNumberInputField(horz)
+        .SetWholeNumbers(false)
+        .SetSliderMinValue(0)
+        .SetSliderMaxValue(1)
+        .SetValue(Mod.Settings.CharmSpecialUnitThreshold or 0.5);
 
     local horz = UI.CreateHorizontalLayoutGroup(charmCardVHeading);
     UI.CreateLabel(horz).SetText('Can only create on own territories').SetPreferredWidth(290);

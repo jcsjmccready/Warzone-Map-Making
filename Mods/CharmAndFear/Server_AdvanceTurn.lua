@@ -4,12 +4,14 @@ require("Utilities");
 ---@class CharmFearInstance # Active card expire behaviour enums
 ---@field TerritoryId number # TerritoryId of where the charm/fear is
 ---@field TurnEnd integer # final turn of the charm/fear instance
----@field TerritoryEffectStrength table<number, number> # territory id: % of armies effected
+---@field AffectedTerritoryDistances table<number, number> # territory id: distance from the source territory along the fear/charm path
 ---@field PlayerOwnerId number # id of the player that created the instance
 
 -- questions:
 -- we need to check the logic for the falloff. Review the nuke config pattern and additive vs multiplicative 
 -- implement forced attacks
+-- handle muiltiple fears nearby - we shouldnt run from a lesser fear to a greater fear
+-- non-deterministic fear path. Same fear will always fear in same path due to territory ordering
 
 ---Server_AdvanceTurn_Order
 ---@param game GameServerHook
@@ -47,13 +49,13 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
 		local priv = Mod.PrivateGameData;
 		local fears = priv.Fears or {};
 
-		local territoryEffects = getTerritoriesWithFearCharmStrength(game, targetTerritoryID, Mod.Settings.FearDistance, Mod.Settings.FearFalloff);
+		local territoryDistances = getTerritoriesAndDistance(game, targetTerritoryID, Mod.Settings.FearDistance);
 
 		---@type CharmFearInstance
 		local fearInstance = {
 			TerritoryId = targetTerritoryID,
 			TurnEnd = game.Game.TurnNumber + Mod.Settings.FearDuration-1, -- 1 turn duration means only this turn. i.e. Will go at the end of the current turn after triggering 
-			TerritoryEffectStrength = territoryEffects,
+			AffectedTerritoryDistances = territoryDistances,
 			PlayerOwnerId = tonumber(order.PlayerID) or WL.PlayerID.Neutral
 		}
 		table.insert(fears, fearInstance);
@@ -61,7 +63,7 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
 		Mod.PrivateGameData = priv;
     end
 
-    if (order.proxyType == 'GameOrderPlayCardCustom' and startsWith(order.ModData, "CreateCharm_")) then
+     if (order.proxyType == 'GameOrderPlayCardCustom' and startsWith(order.ModData, "CreateCharm_")) then
         local targetTerritoryID = tonumber(string.sub(order.ModData, 13)) or 0;
 		local structureID = WL.StructureType.Custom("Charm");
 		if(Mod.Settings.FearDuration == 1) then
@@ -89,13 +91,13 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
 		local priv = Mod.PrivateGameData;
 		local charms = priv.Charms or {};
 
-		local territoryEffects = getTerritoriesWithFearCharmStrength(game, targetTerritoryID, Mod.Settings.CharmDistance, Mod.Settings.CharmFalloff);
+		local territoryDistances = getTerritoriesAndDistance(game, targetTerritoryID, Mod.Settings.CharmDistance);
 
 		---@type CharmFearInstance
 		local charmInstance = {
 			TerritoryId = targetTerritoryID,
 			TurnEnd = game.Game.TurnNumber + Mod.Settings.CharmDuration-1, -- 1 turn duration means only this turn. i.e. Will go at the end of the current turn after triggering 
-			TerritoryEffectStrength = territoryEffects,
+			AffectedTerritoryDistances = territoryDistances,
 			PlayerOwnerId = tonumber(order.PlayerID) or WL.PlayerID.Neutral
 		}
 		table.insert(charms, charmInstance);
@@ -128,15 +130,82 @@ function Server_AdvanceTurn_End(game, addNewOrder)
 
 	--todo: all of the above but also for charms
 
-	for i, fear in ipairs(fears) do
+	-- iterate in reverse so we can remove
+	for i = #fears, 1, -1 do
+		local fear = fears[i];
 		local fadingStructureID = WL.StructureType.Custom("FadingFear");
 		local structureID = WL.StructureType.Custom("Fear");
 		local existingStructures = game.ServerGame.LatestTurnStanding.Territories[fear.TerritoryId].Structures or {};
 
-		local numberOfFears = 0;
-		if (existingStructures[fadingStructureID] ~= nil) then
-			numberOfFears = numberOfFears + existingStructures[fadingStructureID];
+		-- fear ongoing, RUN AWAY!
+		for affectedTerritoryId, distanceFromSource in pairs(fear.AffectedTerritoryDistances or {}) do
+			local territoryStanding = game.ServerGame.LatestTurnStanding.Territories[affectedTerritoryId];
+			if (territoryStanding ~= nil and territoryStanding.NumArmies ~= nil and territoryStanding.OwnerPlayerID ~= WL.PlayerID.Neutral) then
+				local normalizedDistance = distanceFromSource or 0;
+				local connectedTerritories = game.Map.Territories[affectedTerritoryId].ConnectedTo or {};
+				local selectedTerritoryId = 0;
+
+				--determine where the armies flee to
+
+				if(normalizedDistance == Mod.Settings.FearDistance) then -- army runs out of fear range
+					for neighbourTerritoryId, _ in pairs(connectedTerritories) do
+						if (fear.AffectedTerritoryDistances[neighbourTerritoryId] == nil) then
+							selectedTerritoryId = neighbourTerritoryId;
+							break;
+						end
+					end
+				else --army runs away from fear or to another of same distance if no better choice
+					local bestNeighbourDistance = nil;
+					for neighbourTerritoryId, _ in pairs(connectedTerritories) do
+						local neighbourDistance = fear.AffectedTerritoryDistances[neighbourTerritoryId];
+						if (neighbourDistance ~= nil and neighbourDistance > normalizedDistance) then
+							if (bestNeighbourDistance == nil or neighbourDistance > bestNeighbourDistance) then
+								selectedTerritoryId = neighbourTerritoryId;
+								bestNeighbourDistance = neighbourDistance;
+							end
+						end
+					end
+				end
+
+				-- create movement to selectedTerritoryId
+				local territoryOwnerId = territoryStanding.OwnerPlayerID;
+				local falloff = (Mod.Settings.FearFalloff or 0);
+				local fearPercentage = math.floor((falloff ^ (distanceFromSource or 0)) * 100 + 0.5) / 100;
+				local isEntireArmyFeared = fearPercentage >= 1;
+				local areSuImmune = fearPercentage < (Mod.Settings.FearSpecialUnitThreshold or 0);
+
+				print("fear %: ".. fearPercentage)
+				local armies = nil;
+				if(isEntireArmyFeared) then
+					print("entire army feared")
+					armies = WL.Armies.Create(territoryStanding.NumArmies.NumArmies, territoryStanding.NumArmies.SpecialUnits or {});
+				else
+					local selectedSpecialUnits = nil;
+					if (not areSuImmune and territoryStanding.NumArmies.SpecialUnits ~= nil) then
+						selectedSpecialUnits = {};
+						for _, specialUnit in ipairs(territoryStanding.NumArmies.SpecialUnits) do
+							if (math.random() < fearPercentage) then
+								table.insert(selectedSpecialUnits, specialUnit);
+							end
+						end
+					end
+
+					local moveArmiesCount = math.max(0, math.floor(territoryStanding.NumArmies.NumArmies * fearPercentage + 0.5));
+					print("moveArmiesCount: " .. moveArmiesCount)
+					armies = WL.Armies.Create(moveArmiesCount, selectedSpecialUnits);
+				end
+
+				if (selectedTerritoryId ~= 0 and armies ~= nil) then
+					local moveOrder = WL.GameOrderAttackTransfer.Create(territoryOwnerId, affectedTerritoryId, selectedTerritoryId, WL.AttackTransferEnum.AttackTransfer, false, armies, false);
+					local visibleTo = { territoryOwnerId };
+					local event = WL.GameOrderEvent.Create(territoryOwnerId, "Feared", visibleTo, {});
+					event.TerritoryAnnotationsOpt = { [affectedTerritoryId] = WL.TerritoryAnnotation.Create("Feared", 8, GetColourIntegerFromHex(BUTTON_COLOURS.ElectricPurple)) };
+					addNewOrder(event);
+					addNewOrder(moveOrder);
+				end
+			end
 		end
+
 		if(fear.TurnEnd == game.Game.TurnNumber) then
 			-- Fear has expired, decrement the structure count by 1
 			local structures = {};
@@ -153,7 +222,8 @@ function Server_AdvanceTurn_End(game, addNewOrder)
 
 			local event = WL.GameOrderEvent.Create(fear.PlayerOwnerId, "Fear wears off in " .. game.Map.Territories[fear.TerritoryId].Name , {}, {territoryModification});
 			event.TerritoryAnnotationsOpt = { [fear.TerritoryId] = WL.TerritoryAnnotation.Create("Fear wears off", 8, GetColourIntegerFromHex(BUTTON_COLOURS.ElectricPurple)) };
-			addNewOrder(event, true);
+			addNewOrder(event);
+			table.remove(fears, i);
 		elseif (fear.TurnEnd == game.Game.TurnNumber + 1) then
 			-- convert fear into fading fear
 			local structures = {};
@@ -175,20 +245,9 @@ function Server_AdvanceTurn_End(game, addNewOrder)
 
 			local event = WL.GameOrderEvent.Create(fear.PlayerOwnerId, "Fear begins to fade in " .. game.Map.Territories[fear.TerritoryId].Name, {}, {territoryModification});
 			event.TerritoryAnnotationsOpt = { [fear.TerritoryId] = WL.TerritoryAnnotation.Create("Fear fading", 8, GetColourIntegerFromHex(BUTTON_COLOURS.ElectricPurple)) };
-			addNewOrder(event, true);
-		else
-			-- -- fear ongoing, RUN AWAY!
-			-- for affectedTerritoryId, effectStrength in pairs(fear.TerritoryEffectStrength or {}) do
-			-- 	local territoryStanding = game.ServerGame.LatestTurnStanding.Territories[affectedTerritoryId];
-			-- 	if (territoryStanding ~= nil and territoryStanding.NumArmies ~= nil) then
-			-- 		territoryPercentageArmiesFeared[affectedTerritoryId] = math.min(effectStrength, 1);
-			-- 	end
-			-- end
+			addNewOrder(event);
 		end
 	end
-
-	-- create attacks for fears
-
 
 	-- ---@type [CharmFearInstance]
 	-- local charms = priv.Charms or {};
@@ -223,16 +282,14 @@ function Server_AdvanceTurn_End(game, addNewOrder)
 	-- 		addNewOrder(event, true);
 	-- 	end
 	-- end
-	
 
 	priv.Fears = fears;
 	-- priv.Charms = charms;
 	Mod.PrivateGameData = priv;
 end
 
-function getTerritoriesWithFearCharmStrength (game, targetTerritoryID, intMaxDistance, stepDecay)
-    local decay = math.max(0, math.min(1, stepDecay or 0));
-    local territoryEffectStrength = { [targetTerritoryID] = 1.0 };
+function getTerritoriesAndDistance (game, targetTerritoryID, intMaxDistance)
+    local territoryDistances = { [targetTerritoryID] = 0 };
     local arrTerrProcessed = { [targetTerritoryID] = true }; --list of terrs already processed
     local arrTerrListToProcess = { targetTerritoryID }; --terrs remaining to be processed
 
@@ -240,13 +297,12 @@ function getTerritoriesWithFearCharmStrength (game, targetTerritoryID, intMaxDis
 
     while (intDepth < intMaxDistance and #arrTerrListToProcess > 0) do
         local intNextTerrID = {};
-        local ringEffectStrength = math.max(0, 1.0 - ((intDepth + 1) * decay));
 
         for _, terrID in ipairs(arrTerrListToProcess) do
-            for neighbourTerrID, _ in pairs (game.Map.Territories [terrID].ConnectedTo) do
+            for neighbourTerrID, _ in pairs (game.Map.Territories [terrID].ConnectedTo or {}) do
                 if not arrTerrProcessed [neighbourTerrID] then
                     arrTerrProcessed [neighbourTerrID] = true;
-                    territoryEffectStrength[neighbourTerrID] = ringEffectStrength;
+                    territoryDistances[neighbourTerrID] = intDepth + 1;
                     table.insert(intNextTerrID, neighbourTerrID);
                 end
             end
@@ -256,5 +312,5 @@ function getTerritoriesWithFearCharmStrength (game, targetTerritoryID, intMaxDis
         intDepth = intDepth + 1;
     end
 
-    return territoryEffectStrength;
+    return territoryDistances;
 end

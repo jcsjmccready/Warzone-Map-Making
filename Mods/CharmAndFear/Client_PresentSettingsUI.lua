@@ -19,7 +19,8 @@ function Client_PresentSettingsUI(rootParent)
         UI.CreateLabel(fearCardVGroup).SetText("Can only create on own territories: " .. tostring(Mod.Settings.FearCreateOnlyOwnTerritories));
         UI.CreateLabel(fearCardVGroup).SetText("Fear Distance: " .. Mod.Settings.FearDistance);
         UI.CreateLabel(fearCardVGroup).SetText("Fear Duration: " .. Mod.Settings.FearDuration);
-        UI.CreateLabel(fearCardVGroup).SetText("Fear Falloff: " .. Mod.Settings.FearFalloff);
+        UI.CreateLabel(fearCardVGroup).SetText("Fear % Falloff Per Step: " .. Mod.Settings.FearFalloff);
+        UI.CreateLabel(fearCardVGroup).SetText("Maximum Fear % where Special Units are Immune: " .. Mod.Settings.FearSpecialUnitThreshold);
         UI.CreateLabel(fearCardVGroup).SetText("");
         UI.CreateLabel(fearCardVGroup).SetText("");
         UI.CreateLabel(fearCardVGroup).SetText("");
@@ -41,7 +42,9 @@ function Client_PresentSettingsUI(rootParent)
         UI.CreateLabel(charmCardVGroup).SetText("Can only create on own territories: " .. tostring(Mod.Settings.CharmCreateOnlyOwnTerritories));
         UI.CreateLabel(charmCardVGroup).SetText("Charm Distance: " .. Mod.Settings.CharmDistance);
         UI.CreateLabel(charmCardVGroup).SetText("Charm Duration: " .. Mod.Settings.CharmDuration);
-        UI.CreateLabel(charmCardVGroup).SetText("Charm Falloff: " .. Mod.Settings.CharmFalloff);
+        UI.CreateLabel(charmCardVGroup).SetText("Charm % Falloff Per Step: " .. Mod.Settings.CharmFalloff);
+        UI.CreateLabel(charmCardVGroup).SetText("Maximum Charm % where Special Units are Immune: " .. Mod.Settings.CharmSpecialUnitThreshold);
+
 
         UI.CreateLabel(charmCardVGroup).SetText("");
         UI.CreateLabel(charmCardVGroup).SetText("");

@@ -7,15 +7,32 @@ function Client_SaveConfigureUI(alert, addCard)
 
         Mod.Settings.FearDistance = fearDistance.GetValue();
         Mod.Settings.FearDuration = fearDuration.GetValue();
-        Mod.Settings.FearFalloff = fearFalloff.GetValue();
+        Mod.Settings.FearFalloff = math.floor(fearFalloff.GetValue() * 100 + 0.5) / 100;
+        Mod.Settings.FearSpecialUnitThreshold = math.floor(fearSpecialUnitThreshold.GetValue() * 100 + 0.5) / 100;
         Mod.Settings.FearCreateOnlyOwnTerritories = fearCreateOnlyOwnTerritories.GetIsChecked();
 
-        if (Mod.Settings.FearDistance < 1) then
-            alert("Fear distance cannot be less than 1");
+        if (Mod.Settings.FearDistance < 0) then
+            alert("Fear distance cannot be less than 0");
             return;
         end
         if (Mod.Settings.FearDuration < 1) then
             alert("Fear duration cannot be less than 1");
+            return;
+        end
+        if (Mod.Settings.FearFalloff < 0) then
+            alert("Fear falloff cannot be less than 0");
+            return;
+        end
+        if (Mod.Settings.FearFalloff > 1) then
+            alert("Fear falloff cannot be greater than 1");
+            return;
+        end
+        if (Mod.Settings.FearSpecialUnitThreshold < 0) then
+            alert("Special unit fear threshold cannot be less than 0");
+            return;
+        end
+        if (Mod.Settings.FearSpecialUnitThreshold > 1) then
+            alert("Special unit fear threshold cannot be greater than 1");
             return;
         end
 
@@ -57,15 +74,32 @@ function Client_SaveConfigureUI(alert, addCard)
     if(Mod.Settings.IncludeCharmCard) then
         Mod.Settings.CharmDistance = charmDistance.GetValue();
         Mod.Settings.CharmDuration = charmDuration.GetValue();
-        Mod.Settings.CharmFalloff = charmFalloff.GetValue();
+        Mod.Settings.CharmFalloff = math.floor(charmFalloff.GetValue() * 100 + 0.5) / 100;
+        Mod.Settings.CharmSpecialUnitThreshold = math.floor(charmSpecialUnitThreshold.GetValue() * 100 + 0.5) / 100;
         Mod.Settings.CharmCreateOnlyOwnTerritories = charmCreateOnlyOwnTerritories.GetIsChecked();
 
-        if (Mod.Settings.CharmDistance < 1) then
-            alert("Charm distance cannot be less than 1");
+        if (Mod.Settings.CharmDistance < 0) then
+            alert("Charm distance cannot be less than 0");
             return;
         end
         if (Mod.Settings.CharmDuration < 1) then
             alert("Charm duration cannot be less than 1");
+            return;
+        end
+        if (Mod.Settings.CharmFalloff < 0) then
+            alert("Charm falloff cannot be less than 0");
+            return;
+        end
+        if (Mod.Settings.CharmFalloff > 1) then
+            alert("Charm falloff cannot be greater than 1");
+            return;
+        end
+        if (Mod.Settings.CharmSpecialUnitThreshold < 0) then
+            alert("Special unit charm threshold cannot be less than 0");
+            return;
+        end
+        if (Mod.Settings.CharmSpecialUnitThreshold > 1) then
+            alert("Special unit charm threshold cannot be greater than 1");
             return;
         end
 
