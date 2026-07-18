@@ -1,3 +1,15 @@
+function Determine_Falloff_Examples(falloffField, distanceField)
+    local falloff = falloffField or 0;
+    local maxDistance = math.max(1, distanceField or 1);
+    local examples = {};
+
+    for distance = 0, maxDistance do
+        local percentAffected = math.floor((falloff ^ distance) * 100 + 0.5) / 100;
+        table.insert(examples, string.format('D%s=%s%%', distance, percentAffected * 100));
+    end
+
+    return 'Falloff examples: ' .. table.concat(examples, ', ');
+end
 
 function NewIdentity()
 	local data = Mod.PublicGameData;

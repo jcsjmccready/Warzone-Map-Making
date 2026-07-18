@@ -47,19 +47,6 @@ function Create_UI_Controls(rootParent)
     end
 end
 
-function Update_FalloffExamplesLabel(exampleLabel, falloffField, distanceField)
-    local falloff = falloffField.GetValue() or 0;
-    local maxDistance = math.max(1, distanceField.GetValue() or 1);
-    local examples = {};
-
-    for distance = 0, maxDistance do
-        local percentAffected = math.floor((falloff ^ distance) * 100 + 0.5) / 100;
-        table.insert(examples, string.format('D%s=%s%%', distance, percentAffected * 100));
-    end
-
-    exampleLabel.SetText('Falloff examples: ' .. table.concat(examples, ', '));
-end
-
 function Create_FearCard_SubOptions_UI(rootParent)
     fearCardVHeading = UI.CreateVerticalLayoutGroup(rootParent);
     UI.CreateLabel(fearCardVHeading).SetText("Creates a structure that 'fears' armies, forcing them to move away from it.");
@@ -96,10 +83,11 @@ function Create_FearCard_SubOptions_UI(rootParent)
         .SetPreferredWidth(150);
 
     refreshExamplesButton.SetOnClick(function()
-        Update_FalloffExamplesLabel(fallOffExamples, fearFalloff, fearDistance);
+        fallOffExamples.SetValue(Determine_Falloff_Examples(fearFalloff.GetValue(), fearDistance.GetValue()), ', ');
     end);
 
-    Update_FalloffExamplesLabel(fallOffExamples, fearFalloff, fearDistance);
+    fallOffExamples.SetValue(Determine_Falloff_Examples(fearFalloff.GetValue(), fearDistance.GetValue()), ', ');
+
         
     local horz = UI.CreateHorizontalLayoutGroup(fearCardVHeading);
     UI.CreateLabel(horz).SetText('Maximum fear % where Special Units Are Immune').SetPreferredWidth(290);
@@ -183,10 +171,10 @@ function Create_CharmCard_SubOptions_UI(rootParent)
         .SetPreferredWidth(150);
 
     refreshCharmExamplesButton.SetOnClick(function()
-        Update_FalloffExamplesLabel(charmFalloffExamples, charmFalloff, charmDistance);
+        charmFalloffExamples.SetText((Determine_Falloff_Examples(charmFalloff.GetValue(), charmDistance.GetValue())));
     end);
 
-    Update_FalloffExamplesLabel(charmFalloffExamples, charmFalloff, charmDistance);
+    charmFalloffExamples.SetText((Determine_Falloff_Examples(charmFalloff.GetValue(), charmDistance.GetValue())));
 
     local horz = UI.CreateHorizontalLayoutGroup(charmCardVHeading);
     UI.CreateLabel(horz).SetText('Maximum charm % where Special Units are Immune').SetPreferredWidth(290);

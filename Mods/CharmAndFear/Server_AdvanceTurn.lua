@@ -8,10 +8,10 @@ require("Utilities");
 ---@field PlayerOwnerId number # id of the player that created the instance
 
 -- questions:
--- we need to check the logic for the falloff. Review the nuke config pattern and additive vs multiplicative 
--- implement forced attacks
 -- handle muiltiple fears nearby - we shouldnt run from a lesser fear to a greater fear
 -- non-deterministic fear path. Same fear will always fear in same path due to territory ordering
+-- shrink the size of the masks
+-- the % of the troops doesn't appear to be working all the time?
 
 ---Server_AdvanceTurn_Order
 ---@param game GameServerHook
@@ -104,7 +104,6 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
 		priv.Charms = charms;
 		Mod.PrivateGameData = priv;
     end
-
 end
 
 ---Server_AdvanceTurn_End hook
@@ -114,21 +113,6 @@ function Server_AdvanceTurn_End(game, addNewOrder)
 	local priv = Mod.PrivateGameData;
 	---@type [CharmFearInstance]
 	local fears = priv.Fears or {};
-
-	---@type table<number, number>
-	local territoryPercentageArmiesFeared = {}
-
-	--todo:
-	-- remove the fears that have expired from mod data
-	-- loop through fears in reverse so we can remove as we go
-	-- store territory and upsert % armies feared
-	-- store expiring fears
-	-- end loop
-	-- at this point we should have looped through all fears
-	-- now create orders for army movement, if fear = 100% then include special units
-	-- now create orders for fear expiry
-
-	--todo: all of the above but also for charms
 
 	-- iterate in reverse so we can remove
 	for i = #fears, 1, -1 do
@@ -249,42 +233,111 @@ function Server_AdvanceTurn_End(game, addNewOrder)
 		end
 	end
 
-	-- ---@type [CharmFearInstance]
-	-- local charms = priv.Charms or {};
+	---@type [CharmFearInstance]
+	local charms = priv.Charms or {};
 
-	-- for i, charm in ipairs(charms) do
-	-- 	if(charm.TurnEnd == game.Game.TurnNumber) then
-	-- 		-- Charm has expired, remove the structure
+	for i = #charms, 1, -1 do
+		local charm = charms[i];
+		local fadingStructureID = WL.StructureType.Custom("FadingCharm");
+		local structureID = WL.StructureType.Custom("Charm");
+		local existingStructures = game.ServerGame.LatestTurnStanding.Territories[charm.TerritoryId].Structures or {};
 
-	-- 		local structureID = WL.StructureType.Custom("FadingCharm");
-	-- 		local existingStructures = game.ServerGame.LatestTurnStanding.Territories[charm.TerritoryId].Structures or {};
+		for affectedTerritoryId, distanceFromSource in pairs(charm.AffectedTerritoryDistances or {}) do
+			local territoryStanding = game.ServerGame.LatestTurnStanding.Territories[affectedTerritoryId];
+			if (territoryStanding ~= nil and territoryStanding.NumArmies ~= nil and territoryStanding.OwnerPlayerID ~= WL.PlayerID.Neutral) then
+				local normalizedDistance = distanceFromSource or 0;
+				local connectedTerritories = game.Map.Territories[affectedTerritoryId].ConnectedTo or {};
+				local selectedTerritoryId = 0;
 
-	-- 		local numberOfCharms = 0;
-	-- 		if (existingStructures[structureID] ~= nil) then
-	-- 			numberOfCharms = numberOfCharms + existingStructures[structureID];
-	-- 		end
+				if (normalizedDistance > 0) then
+					local bestNeighbourDistance = nil;
+					for neighbourTerritoryId, _ in pairs(connectedTerritories) do
+						local neighbourDistance = charm.AffectedTerritoryDistances[neighbourTerritoryId];
+						if (neighbourDistance ~= nil and neighbourDistance < normalizedDistance) then
+							if (bestNeighbourDistance == nil or neighbourDistance < bestNeighbourDistance) then
+								selectedTerritoryId = neighbourTerritoryId;
+								bestNeighbourDistance = neighbourDistance;
+							end
+						end
+					end
+				end
 
-	-- 		local structures = {};
+				local territoryOwnerId = territoryStanding.OwnerPlayerID;
+				local falloff = (Mod.Settings.CharmFalloff or 0);
+				local charmPercentage = math.floor((falloff ^ (distanceFromSource or 0)) * 100 + 0.5) / 100;
+				local isEntireArmyCharmed = charmPercentage >= 1;
+				local areSuImmune = charmPercentage < (Mod.Settings.CharmSpecialUnitThreshold or 0);
 
-	-- 		-- copy old structures but skip dms
-	-- 		for key, value in pairs(existingStructures or {}) do
-	-- 			if(key ~= structureID) then
-	-- 				structures[key] = value;
-	-- 			end;
-	-- 		end
+				local armies = nil;
+				if(isEntireArmyCharmed) then
+					armies = WL.Armies.Create(territoryStanding.NumArmies.NumArmies, territoryStanding.NumArmies.SpecialUnits or {});
+				else
+					local selectedSpecialUnits = nil;
+					if (not areSuImmune and territoryStanding.NumArmies.SpecialUnits ~= nil) then
+						selectedSpecialUnits = {};
+						for _, specialUnit in ipairs(territoryStanding.NumArmies.SpecialUnits) do
+							if (math.random() < charmPercentage) then
+								table.insert(selectedSpecialUnits, specialUnit);
+							end
+						end
+					end
 
-	-- 		structures[structureID] = math.max(numberOfCharms - 1, 0);
-	-- 		local territoryModification = WL.TerritoryModification.Create(charm.TerritoryId);
-	-- 		territoryModification.SetStructuresOpt = structures;
+					local moveArmiesCount = math.max(0, math.floor(territoryStanding.NumArmies.NumArmies * charmPercentage + 0.5));
+					armies = WL.Armies.Create(moveArmiesCount, selectedSpecialUnits);
+				end
 
-	-- 		local event = WL.GameOrderEvent.Create(charm.PlayerOwnerId, "Charm wears off in " .. game.Map.Territories[charm.TerritoryId].Name , {}, {territoryModification});
-	-- 		event.TerritoryAnnotationsOpt = { [charm.TerritoryId] = WL.TerritoryAnnotation.Create("Charm wears off", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Orchid)) };
-	-- 		addNewOrder(event, true);
-	-- 	end
-	-- end
+				if (selectedTerritoryId ~= 0 and armies ~= nil) then
+					local moveOrder = WL.GameOrderAttackTransfer.Create(territoryOwnerId, affectedTerritoryId, selectedTerritoryId, WL.AttackTransferEnum.AttackTransfer, false, armies, false);
+					local visibleTo = { territoryOwnerId };
+					local event = WL.GameOrderEvent.Create(territoryOwnerId, "Charmed", visibleTo, {});
+					event.TerritoryAnnotationsOpt = { [affectedTerritoryId] = WL.TerritoryAnnotation.Create("Charmed", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Orchid)) };
+					addNewOrder(event);
+					addNewOrder(moveOrder);
+				end
+			end
+		end
+
+		if(charm.TurnEnd == game.Game.TurnNumber) then
+			local structures = {};
+
+			for key, value in pairs(existingStructures or {}) do
+				structures[key] = value;
+			end
+			if (structures[fadingStructureID] ~= nil) then
+				structures[fadingStructureID] = math.max(structures[fadingStructureID] - 1, 0);
+			end
+			local territoryModification = WL.TerritoryModification.Create(charm.TerritoryId);
+			territoryModification.SetStructuresOpt = structures;
+
+			local event = WL.GameOrderEvent.Create(charm.PlayerOwnerId, "Charm wears off in " .. game.Map.Territories[charm.TerritoryId].Name , {}, {territoryModification});
+			event.TerritoryAnnotationsOpt = { [charm.TerritoryId] = WL.TerritoryAnnotation.Create("Charm wears off", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Orchid)) };
+			addNewOrder(event);
+			table.remove(charms, i);
+		elseif (charm.TurnEnd == game.Game.TurnNumber + 1) then
+			local structures = {};
+
+			for key, value in pairs(existingStructures or {}) do
+				structures[key] = value;
+			end
+			if (structures[structureID] ~= nil) then
+				structures[structureID] = math.max(structures[structureID] - 1, 0);
+			end
+			if (structures[fadingStructureID] == nil) then
+				structures[fadingStructureID] = 1;
+			else
+				structures[fadingStructureID] = structures[fadingStructureID] + 1;
+			end
+			local territoryModification = WL.TerritoryModification.Create(charm.TerritoryId);
+			territoryModification.SetStructuresOpt = structures;
+
+			local event = WL.GameOrderEvent.Create(charm.PlayerOwnerId, "Charm begins to fade in " .. game.Map.Territories[charm.TerritoryId].Name, {}, {territoryModification});
+			event.TerritoryAnnotationsOpt = { [charm.TerritoryId] = WL.TerritoryAnnotation.Create("Charm fading", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Orchid)) };
+			addNewOrder(event);
+		end
+	end
 
 	priv.Fears = fears;
-	-- priv.Charms = charms;
+	priv.Charms = charms;
 	Mod.PrivateGameData = priv;
 end
 
