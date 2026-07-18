@@ -50,7 +50,7 @@ function HandleAttackTransferInTriggeredBarbedWire(game, order, result, skipThis
 		return;
 	end
 
-	if (Mod.Settings.TanksIgnore and result.ActualArmies ~= nil and result.ActualArmies.SpecialUnits ~= nil) then
+	if (Mod.Settings.BarbedWireTanksIgnore and result.ActualArmies ~= nil and result.ActualArmies.SpecialUnits ~= nil) then
 		local hasTank = false;
 		for _, specialUnit in ipairs(result.ActualArmies.SpecialUnits) do
 			if specialUnit ~= nil and specialUnit.Name == "Tank" then
@@ -99,7 +99,7 @@ function HandleAttackTransferToBarbedWire(game, order, result, addNewOrder)
 
 	-- handle tank destroy logic - track structures to not create a new triggered barbed wire if it was destroyed by a tank
 	local remainingStructuresTo = game.ServerGame.LatestTurnStanding.Territories[order.To].Structures;
-	if (Mod.Settings.TanksDestroy and result.ActualArmies ~= nil and result.ActualArmies.SpecialUnits ~= nil) then
+	if (Mod.Settings.BarbedWireTanksDestroy and result.ActualArmies ~= nil and result.ActualArmies.SpecialUnits ~= nil) then
 		local hasTank = false;
 		for _, specialUnit in ipairs(result.ActualArmies.SpecialUnits) do
 			if specialUnit ~= nil and specialUnit.Name == "Tank" then
@@ -191,8 +191,13 @@ function HandleAttackTransferToBarbedWire(game, order, result, addNewOrder)
 	-- abort if on same team and ally triggers is disabled
     local territoryOwnerPlayerID = game.ServerGame.LatestTurnStanding.Territories[order.To].OwnerPlayerID;
     local attackerTeam = game.ServerGame.Game.Players[order.PlayerID].Team;
-    local ownerTeam = game.ServerGame.Game.Players[territoryOwnerPlayerID].Team;
-	if(attackerTeam ~= nil and ownerTeam ~= nil and attackerTeam ~=-1 and ownerTeam ~=-1 and attackerTeam == ownerTeam and Mod.Settings.AllyTriggers == false) then
+
+	local ownerTeam = WL.PlayerID.Neutral;
+	if (game.ServerGame.Game.Players[territoryOwnerPlayerID] ~= nil) then
+		ownerTeam = game.ServerGame.Game.Players[territoryOwnerPlayerID].Team;
+	end
+
+	if(attackerTeam ~= nil and ownerTeam ~= nil and attackerTeam ~=-1 and ownerTeam ~=-1 and attackerTeam == ownerTeam and Mod.Settings.BarbedWireAllyTriggers == false) then
 		return;
 	end;
 

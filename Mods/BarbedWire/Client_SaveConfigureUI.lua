@@ -4,38 +4,55 @@
 function Client_SaveConfigureUI(alert, addCard)
 
     Mod.Settings.isAcquiringTypeCommerce = isAcquiringTypeCommerce;
-
-    Mod.Settings.AllyTriggers = allyTriggers.GetIsChecked();
-
-    Mod.Settings.IsTankSpecialBehaviour = isTankSpecialBehaviour.GetIsChecked();
-    Mod.Settings.TanksIgnore = Mod.Settings.IsTankSpecialBehaviour and tanksIgnore.GetIsChecked();
-    Mod.Settings.TanksDestroy = Mod.Settings.IsTankSpecialBehaviour and tanksDestroy.GetIsChecked();
-
     Mod.Settings.isAcquiringTypeCard = isAcquiringTypeCard.GetIsChecked();
-    if(Mod.Settings.isAcquiringTypeCard) then
-        Mod.Settings.NumPieces = numPieces.GetValue();
-        Mod.Settings.CardWeight = cardWeight.GetValue();
-        Mod.Settings.MinPieces = minPieces.GetValue();
-        Mod.Settings.InitialPieces = initialPieces.GetValue();
 
-        if (Mod.Settings.NumPieces < 1) then
-            alert("Number of pieces cannot be less than 1");
-            return;
-        end
-        if (Mod.Settings.CardWeight < 0) then
-            alert("Card weight cannot be less than 0");
-            return;
-        end
-        if (Mod.Settings.MinPieces < 0) then
-            alert("Minimum pieces cannot be less than 0");
-            return;
-        end
-        if (Mod.Settings.InitialPieces < 0) then
-            alert("Initial pieces cannot be less than 0");
-            return;
-        end
+    Mod.Settings.IncludeBarbedWire = includeBarbedWire;
 
-    addCard("Barbed Wire Card", "Play this card to create a Barbed Wire on any territory you control (at the end of the turn). If this territory is succesfully captured, on the following turn, attack/transfer orders out of that territory will be blocked." , "BarbedWireCard.png", Mod.Settings.NumPieces, Mod.Settings.MinPieces, Mod.Settings.InitialPieces, Mod.Settings.CardWeight);
+    if(Mod.Settings.IncludeBarbedWire) then
+        Mod.Settings.BarbedWireIsTankSpecialBehaviour = barbedWireIsTankSpecialBehaviour.GetIsChecked();
+        Mod.Settings.BarbedWireTanksIgnore = barbedWireIsTankSpecialBehaviour.GetIsChecked() and barbedWireTanksIgnore.GetIsChecked();
+        Mod.Settings.BarbedWireTanksDestroy = barbedWireIsTankSpecialBehaviour.GetIsChecked() and barbedWireTanksDestroy.GetIsChecked();
+
+        Mod.Settings.BarbedWireAllyTriggers = barbedWireAllyTriggers.GetIsChecked();
+
+        if(Mod.Settings.isAcquiringTypeCard) then
+            Mod.Settings.BarbedWireNumPieces = barbedWireNumPieces.GetValue();
+            Mod.Settings.BarbedWireCardWeight = barbedWireCardWeight.GetValue();
+            Mod.Settings.BarbedWireMinPieces = barbedWireMinPieces.GetValue();
+            Mod.Settings.BarbedWireInitialPieces = barbedWireInitialPieces.GetValue();
+
+            if (Mod.Settings.BarbedWireNumPieces < 1) then
+                alert("Number of barbed wire pieces cannot be less than 1");
+                return;
+            end
+            if (Mod.Settings.BarbedWireCardWeight < 0) then
+                alert("Barbed wire card weight cannot be less than 0");
+                return;
+            end
+            if (Mod.Settings.BarbedWireMinPieces < 0) then
+                alert("Minimum barbed wire pieces cannot be less than 0");
+                return;
+            end
+            if (Mod.Settings.BarbedWireInitialPieces < 0) then
+                alert("Initial barbed wire pieces cannot be less than 0");
+                return;
+            end
+
+            local barbedWireCardID = addCard(
+                "Barbed Wire Card",
+                "Play this card to create a Barbed Wire on any territory you control (at the end of the turn). If this territory is succesfully captured, on the following turn, attack/transfer orders out of that territory will be blocked.",
+                "BarbedWireCard.png",
+                Mod.Settings.BarbedWireNumPieces, 
+                Mod.Settings.BarbedWireMinPieces,
+                Mod.Settings.BarbedWireInitialPieces,
+                Mod.Settings.BarbedWireCardWeight);
+
+            Mod.Settings.BarbedWireCardID = barbedWireCardID;
+        end
+    end
+
+    if(Mod.Settings.IncludeBarbedWire == false and Mod.Settings.IncludeTankCaltrop == false) then
+        alert("You must include at least one of the two: Barbed Wire, Tank Caltrops");
+        return;
     end
 end
-

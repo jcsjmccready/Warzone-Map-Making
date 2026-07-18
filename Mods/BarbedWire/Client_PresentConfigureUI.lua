@@ -18,105 +18,117 @@ function Create_UI_Controls(rootParent)
 
     -- Card acquiring type
     local acquiringTypeCardHeading = UI.CreateVerticalLayoutGroup(acquiringTypeHeading);
-    isAcquiringTypeCard = UI.CreateRadioButton(acquiringTypeCardHeading).SetGroup(acquiringType).SetText('Card').SetIsChecked(Mod.Settings.isAcquiringTypeCard or true);
+    isAcquiringTypeCard = UI.CreateRadioButton(acquiringTypeCardHeading).SetGroup(acquiringType).SetText('Card').SetIsChecked(Mod.Settings.isAcquiringTypeCard or true).SetInteractable(false);
 
-    -- Card acquiring type sub-options
-    isAcquiringTypeCard.SetOnValueChanged(function() 
-
-        if(isAcquiringTypeCard.GetIsChecked()) then
-            Create_Card_SubOptions_UI(acquiringTypeHeading);
-            isAcquiringTypeCard.SetInteractable(false);
-        else
-           UI.Destroy(cardOptionsHeading);
-            isAcquiringTypeCard.SetInteractable(true);
-        end
-    end);
+    ---- include cards
+    local includeCardsHeading = UI.CreateVerticalLayoutGroup(mainModUI);
+    UI.CreateLabel(includeCardsHeading).SetText('Include mods:').SetColor(SUBHEADING_COLOUR);
+    
+    includeBarbedWire = true;
+    local barbedWireParentVHeading = UI.CreateVerticalLayoutGroup(includeCardsHeading);
 
     -- Commerce acquiring type
     isAcquiringTypeCommerce = false;
 
-    local optionalsHeading = UI.CreateVerticalLayoutGroup(mainModUI);
-    UI.CreateLabel(optionalsHeading).SetText('Optionals:').SetColor(SUBHEADING_COLOUR);
-    allyTriggers = UI.CreateCheckBox(optionalsHeading).SetText("Allies trigger barbed wire").SetIsChecked(Mod.Settings.AllyTriggers or false);
-    isTankSpecialBehaviour = UI.CreateCheckBox(optionalsHeading).SetText("Include Tank special behaviour").SetIsChecked(Mod.Settings.IsTankSpecialBehaviour or false);
-
-    -- Tank sub-options
-    isTankSpecialBehaviour.SetOnValueChanged(function() 
-
-        if(isTankSpecialBehaviour.GetIsChecked()) then
-            Create_Tank_SubOptions_UI(optionalsHeading);
-        else
-           UI.Destroy(tankSupportHeading);
-           tanksIgnore.SetIsChecked(false);
-           tanksDestroy.SetIsChecked(false);
-        end
-    end);
-
-    if(isAcquiringTypeCard.GetIsChecked()) then -- one time check for loading up from settings
-        Create_Card_SubOptions_UI(acquiringTypeHeading);
-        isAcquiringTypeCard.SetInteractable(false);
-    end
-    if(isTankSpecialBehaviour.GetIsChecked()) then -- one time check for loading up from settings
-        Create_Tank_SubOptions_UI(optionalsHeading);
+     -- one time check for loading up from settings
+    if(includeBarbedWire) then
+        Create_BarbedWire_SubOptions_UI(barbedWireParentVHeading);
     end
 end
 
-function Create_Tank_SubOptions_UI(rootParent)
-    tankSupportHeading = UI.CreateVerticalLayoutGroup(rootParent);
-    tankSpecialBehaviourGroup = UI.CreateRadioButtonGroup(tankSupportHeading);
-    -- bomb damage
-    tanksIgnore = UI.CreateRadioButton(tankSupportHeading).SetGroup(tankSpecialBehaviourGroup).SetText('Armies with Tanks ignore triggered barbed wire').SetIsChecked(Mod.Settings.TanksIgnore or false);
-    tanksDestroy = UI.CreateRadioButton(tankSupportHeading).SetGroup(tankSpecialBehaviourGroup).SetText('Tanks destroy barbed wire on entry/exit').SetIsChecked(Mod.Settings.TanksDestroy or false);
+function Create_BarbedWire_SubOptions_UI(rootParent)
+    barbedWireVHeading = UI.CreateVerticalLayoutGroup(rootParent);
 
-    tanksIgnore.SetOnValueChanged(function() 
+    if(isAcquiringTypeCard.GetIsChecked()) then
+        Create_BarbedWireCard_SubOptions_UI(barbedWireVHeading);
+    end
 
-        if(tanksIgnore.GetIsChecked()) then
-            tanksIgnore.SetInteractable(false);
+    local optionalsHeading = UI.CreateVerticalLayoutGroup(barbedWireVHeading);
+    UI.CreateLabel(optionalsHeading).SetText('Behaviour:').SetColor(BUTTON_COLOURS.LightBlue);
+    barbedWireAllyTriggers = UI.CreateCheckBox(optionalsHeading).SetText("Allies trigger barbed wire").SetIsChecked(Mod.Settings.BarbedWireAllyTriggers or false);
+    barbedWireIsTankSpecialBehaviour = UI.CreateCheckBox(optionalsHeading).SetText("Include Tank special behaviour").SetIsChecked(Mod.Settings.BarbedWireIsTankSpecialBehaviour or false);
+
+    -- Tank sub-options
+    barbedWireIsTankSpecialBehaviour.SetOnValueChanged(function() 
+        if(barbedWireIsTankSpecialBehaviour.GetIsChecked()) then
+            Create_BarbedWire_Tank_SubOptions_UI(optionalsHeading);
         else
-           tanksIgnore.SetInteractable(true);
+           UI.Destroy(barbedWireTankSupportHeading);
+           barbedWireTanksIgnore.SetIsChecked(false);
+           barbedWireTanksDestroy.SetIsChecked(false);
+        end
+    end);
+
+     -- one time check for loading up from settings
+    if(barbedWireIsTankSpecialBehaviour.GetIsChecked()) then
+        Create_BarbedWire_Tank_SubOptions_UI(optionalsHeading);
+    end
+end
+
+function Create_BarbedWire_Tank_SubOptions_UI(rootParent)
+    barbedWireTankSupportHeading = UI.CreateVerticalLayoutGroup(rootParent);
+    barbedWireTankSpecialBehaviourGroup = UI.CreateRadioButtonGroup(barbedWireTankSupportHeading);
+    
+    barbedWireTanksIgnore = UI.CreateRadioButton(barbedWireTankSupportHeading).SetGroup(barbedWireTankSpecialBehaviourGroup).SetText('Armies with Tanks ignore triggered barbed wire').SetIsChecked(Mod.Settings.BarbedWireTanksIgnore or true);
+    barbedWireTanksDestroy = UI.CreateRadioButton(barbedWireTankSupportHeading).SetGroup(barbedWireTankSpecialBehaviourGroup).SetText('Tanks destroy barbed wire on entry/exit').SetIsChecked(Mod.Settings.BarbedWireTanksDestroy or false);
+
+    barbedWireTanksIgnore.SetOnValueChanged(function() 
+        if(barbedWireTanksIgnore.GetIsChecked()) then
+            barbedWireTanksIgnore.SetInteractable(false);
+        else
+           barbedWireTanksIgnore.SetInteractable(true);
         end
     end);
     
-    tanksDestroy.SetOnValueChanged(function() 
-
-        if(tanksDestroy.GetIsChecked()) then
-            tanksDestroy.SetInteractable(false);
+    barbedWireTanksDestroy.SetOnValueChanged(function() 
+        if(barbedWireTanksDestroy.GetIsChecked()) then
+            barbedWireTanksDestroy.SetInteractable(false);
         else
-           tanksDestroy.SetInteractable(true);
+           barbedWireTanksDestroy.SetInteractable(true);
         end
     end);
+
+    -- initial load
+    if(barbedWireTanksIgnore.GetIsChecked()) then
+        barbedWireTanksIgnore.SetInteractable(false);
+        barbedWireTanksDestroy.SetInteractable(true);
+    else
+        barbedWireTanksIgnore.SetInteractable(true);
+        barbedWireTanksDestroy.SetInteractable(false);
+    end
 end
 
 
-function Create_Card_SubOptions_UI(rootParent)
-    cardOptionsHeading = UI.CreateVerticalLayoutGroup(rootParent);
+function Create_BarbedWireCard_SubOptions_UI(rootParent)
+    barbedWireCardOptionsHeading = UI.CreateVerticalLayoutGroup(rootParent);
 
-    local horz = UI.CreateHorizontalLayoutGroup(cardOptionsHeading);
-    UI.CreateLabel(horz).SetText('Number of Pieces to divide the card into').SetFlexibleWidth(290);
-    numPieces = UI.CreateNumberInputField(horz)
+    UI.CreateLabel(barbedWireCardOptionsHeading).SetText('Card:').SetColor(BUTTON_COLOURS.LightBlue);
+    local horz = UI.CreateHorizontalLayoutGroup(barbedWireCardOptionsHeading);
+    UI.CreateLabel(horz).SetText('Number of pieces to divide the card into').SetPreferredWidth(290);
+    barbedWireNumPieces = UI.CreateNumberInputField(horz)
         .SetSliderMinValue(1)
         .SetSliderMaxValue(11)
-        .SetValue(Mod.Settings.NumPieces or 5);
+        .SetValue(Mod.Settings.BarbedWireNumPieces or 5);
 
-    local horz = UI.CreateHorizontalLayoutGroup(cardOptionsHeading);
+    local horz = UI.CreateHorizontalLayoutGroup(barbedWireCardOptionsHeading);
     UI.CreateLabel(horz).SetText('Card weight (how common the card is)').SetPreferredWidth(290);
-    cardWeight = UI.CreateNumberInputField(horz)
+    barbedWireCardWeight = UI.CreateNumberInputField(horz)
         .SetWholeNumbers(false)
         .SetSliderMinValue(0)
         .SetSliderMaxValue(5)
-        .SetValue(Mod.Settings.Weight or 1.0);
+        .SetValue(Mod.Settings.BarbedWireWeight or 1.0);
     
-    local horz = UI.CreateHorizontalLayoutGroup(cardOptionsHeading);
+    local horz = UI.CreateHorizontalLayoutGroup(barbedWireCardOptionsHeading);
     UI.CreateLabel(horz).SetText('Minimum pieces awarded per turn').SetPreferredWidth(290);
-    minPieces = UI.CreateNumberInputField(horz)
+    barbedWireMinPieces = UI.CreateNumberInputField(horz)
         .SetSliderMinValue(0)
         .SetSliderMaxValue(5)
-        .SetValue(Mod.Settings.MinPieces or 1);
+        .SetValue(Mod.Settings.BarbedWireMinPieces or 1);
     
-    local horz = UI.CreateHorizontalLayoutGroup(cardOptionsHeading);
+    local horz = UI.CreateHorizontalLayoutGroup(barbedWireCardOptionsHeading);
     UI.CreateLabel(horz).SetText('Pieces given to each player at the start').SetPreferredWidth(290);
-    initialPieces = UI.CreateNumberInputField(horz)
+    barbedWireInitialPieces = UI.CreateNumberInputField(horz)
         .SetSliderMinValue(0)
         .SetSliderMaxValue(5)
-        .SetValue(Mod.Settings.InitialPieces or 5);
+        .SetValue(Mod.Settings.BarbedWireInitialPieces or 5);
 end
