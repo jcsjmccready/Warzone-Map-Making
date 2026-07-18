@@ -210,6 +210,7 @@ function HandleAttackTransferToStructure(game, order, result, addNewOrder)
     local primedBarbedWireStructId = WL.StructureType.Custom("PrimedBarbedWire");
 	local primedTankCaltropStructId = WL.StructureType.Custom("PrimedTankCaltrop");
 	local triggeredTankCaltropStructId = WL.StructureType.Custom("TriggeredTankCaltrop");
+
     local existingStructuresTo = game.ServerGame.LatestTurnStanding.Territories[order.To].Structures;
 
 	if (existingStructuresTo == nil) then return; end;
@@ -238,6 +239,7 @@ function HandleAttackTransferToStructure(game, order, result, addNewOrder)
 	end
 
 	local orderHasTroops = result.ActualArmies.NumArmies ~= 0;
+	local orderHasWireTrigger = orderHasTroops or orderHasNonTankSU;
 
 	-- -- handle tank destroy logic - track structures to not create a new triggered barbed wire if it was destroyed by a tank
 	local remainingStructuresTo = game.ServerGame.LatestTurnStanding.Territories[order.To].Structures;
@@ -251,56 +253,82 @@ function HandleAttackTransferToStructure(game, order, result, addNewOrder)
 		return;
 	end
 
-    -- local existingStructures = remainingStructuresTo;
-	-- if (existingStructures == nil) then return; end;
+    local existingStructures = remainingStructuresTo;
+	if (existingStructures == nil) then return; end;
 
-    -- local numberOfPrimedBarbedWire = 0;
-	-- if (existingStructures[primedBarbedWireStructId] ~= nil) then
-	-- 	numberOfPrimedBarbedWire = numberOfPrimedBarbedWire + existingStructures[primedBarbedWireStructId];
-	-- end
+    local numberOfPrimedBarbedWire = 0;
+	if (existingStructures[primedBarbedWireStructId] ~= nil) then
+		numberOfPrimedBarbedWire = numberOfPrimedBarbedWire + existingStructures[primedBarbedWireStructId];
+	end
 
-	-- --If no barbed wire here, abort.
-	-- if (numberOfPrimedBarbedWire == 0) then return; end;
+    --If an attack of 0, abort, so skipped orders don't trigger the barbed wire
+	if (result.ActualArmies.IsEmpty) then return; end;
 
-    -- --If an attack of 0, abort, so skipped orders don't trigger the barbed wire
-	-- if (result.ActualArmies.IsEmpty) then return; end;
+	-- abort if on same team and ally triggers is disabled
+    local territoryOwnerPlayerID = game.ServerGame.LatestTurnStanding.Territories[order.To].OwnerPlayerID;
+    local attackerTeam = game.ServerGame.Game.Players[order.PlayerID].Team;
+    local ownerTeam = WL.PlayerID.Neutral;
+	if(game.ServerGame.Game.Players[territoryOwnerPlayerID]) then
+		ownerTeam = game.ServerGame.Game.Players[territoryOwnerPlayerID].Team;
+	end
+	if(attackerTeam ~= nil 
+		and ownerTeam ~= nil 
+		and attackerTeam ~=-1
+		and ownerTeam ~=-1
+		and attackerTeam == ownerTeam 
+		and Mod.Settings.BarbedWireAllyTriggers == false
+	 	and Mod.Settings.TankCaltropAllyTriggers == false) then
+		return;
+	end;
 
-	-- -- abort if on same team and ally triggers is disabled
-    -- local territoryOwnerPlayerID = game.ServerGame.LatestTurnStanding.Territories[order.To].OwnerPlayerID;
-    -- local attackerTeam = game.ServerGame.Game.Players[order.PlayerID].Team;
-    -- local ownerTeam = game.ServerGame.Game.Players[territoryOwnerPlayerID].Team;
-	-- if(attackerTeam ~= nil and ownerTeam ~= nil and attackerTeam ~=-1 and ownerTeam ~=-1 and attackerTeam == ownerTeam and Mod.Settings.BarbedWireAllyTriggers == false) then
-	-- 	return;
-	-- end;
+	local structures = {};
 
-	-- local structures = {};
+	-- primed now becomes triggered 
+	-- store triggered ids to not reset them at the end of the turn.
+	local triggeredTerritoryId = order.To;
+	local privateGameData = Mod.PrivateGameData;
 
-	-- -- primed barbed wire now becomes triggered barbed wire
-	-- -- store triggered ids to not reset them at the end of the turn.
-	-- local triggeredTerritoryId = order.To;
-	-- local privateGameData = Mod.PrivateGameData;
-	-- if (privateGameData.TriggeredBarbedWireTerritoryIds == nil) then privateGameData.TriggeredBarbedWireTerritoryIds = {}; end;
-	-- table.insert(privateGameData.TriggeredBarbedWireTerritoryIds, triggeredTerritoryId);
+	if (privateGameData.TriggeredBarbedWireTerritoryIds == nil) then privateGameData.TriggeredBarbedWireTerritoryIds = {}; end;
+	if (privateGameData.TriggeredTankCaltropTerritoryIds == nil) then privateGameData.TriggeredTankCaltropTerritoryIds = {}; end;
 
-	-- -- copy old structures but skip wire
-	-- for key, value in pairs(existingStructures or {}) do
-	-- 	if(key ~= primedBarbedWireStructId) then
-	-- 		structures[key] = value;
-	-- 	end
-	-- end
+	-- copy old structures but skip some
+	for key, value in pairs(existingStructures or {}) do
+		if((key ~= primedBarbedWireStructId and orderHasWireTrigger) or (key ~= primedTankCaltropStructId and orderHasTank)) then
+			structures[key] = value;
+		end
+	end
 
-	-- structures[primedBarbedWireStructId] = 0;
-    -- local triggeredBarbedWireStructId = WL.StructureType.Custom("TriggeredBarbedWire");
-	-- structures[triggeredBarbedWireStructId] = numberOfPrimedBarbedWire;
+	local triggeredWire = false;
+	local triggeredCaltrop = false;
+	if(orderHasWireTrigger and Mod.Settings.IncludeBarbedWire) then
+		structures[primedBarbedWireStructId] = 0;
+		structures[triggeredBarbedWireStructId] = numberOfPrimedBarbedWire;
+		table.insert(privateGameData.TriggeredBarbedWireTerritoryIds, triggeredTerritoryId);
+		triggeredWire = true;
+	end
+	if(orderHasTank and Mod.Settings.IncludeTankCaltrop) then
+		structures[primedTankCaltropStructId] = 0;
+		structures[triggeredTankCaltropStructId] = numberOfPrimedTankCaltrop;
+		table.insert(privateGameData.TriggeredTankCaltropTerritoryIds, triggeredTerritoryId);
+		triggeredCaltrop = true;
+	end
 
-	-- local territoryModification = WL.TerritoryModification.Create(order.To);
-	-- territoryModification.SetStructuresOpt = structures;
+	local territoryModification = WL.TerritoryModification.Create(order.To);
+	territoryModification.SetStructuresOpt = structures;
 
-	-- local event = WL.GameOrderEvent.Create(order.PlayerID, "Triggered a Barbed Wire", {}, {territoryModification});
-	-- event.TerritoryAnnotationsOpt = { [order.To] = WL.TerritoryAnnotation.Create("Triggered Barbed Wire", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany)) };
-	-- addNewOrder(event, true);
-	-- Mod.PrivateGameData = privateGameData;
+	local message = "ERROR";
+	if (triggeredWire and triggeredCaltrop) then
+		message = "Triggered a Barbed Wire and Tank Caltrop";
+	elseif (triggeredWire) then
+		message = "Triggered a Barbed Wire";
+	else
+		message = "Triggered a Tank Caltrop";
+	end
 
+	local event = WL.GameOrderEvent.Create(order.PlayerID, message, {}, {territoryModification});
+	event.TerritoryAnnotationsOpt = { [order.To] = WL.TerritoryAnnotation.Create(message, 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany)) };
+	addNewOrder(event, true);
+	Mod.PrivateGameData = privateGameData;
 end
 
 ---@param game GameServerHook
@@ -320,7 +348,7 @@ function ResetTriggeredStructures(game, addNewOrder)
 		local triggeredStructId = WL.StructureType.Custom("TriggeredTankCaltrop");
 		local triggeredTerritoryIds = privateGameData.TriggeredTankCaltropTerritoryIds or {};
 
-		ResetStructure(game, addNewOrder, primedStructId, triggeredStructId, "Tank Caltrop", triggeredTerritoryIds);
+		ResetStructure(game, addNewOrder, primedStructId, triggeredStructId, "Tank Caltrops", triggeredTerritoryIds);
 		privateGameData.TriggeredTankCaltropTerritoryIds = nil;
 	end
 
