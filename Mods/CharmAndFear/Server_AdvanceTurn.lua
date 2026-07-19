@@ -9,8 +9,6 @@ require("Utilities");
 
 -- questions:
 -- handle muiltiple fears nearby - we shouldnt run from a lesser fear to a greater fear
--- non-deterministic fear path. Same fear will always fear in same path due to territory ordering
--- shrink the size of the masks
 -- the % of the troops doesn't appear to be working all the time?
 
 ---Server_AdvanceTurn_Order
@@ -124,17 +122,22 @@ function Server_AdvanceTurn_End(game, addNewOrder)
 		-- fear ongoing, RUN AWAY!
 		for affectedTerritoryId, distanceFromSource in pairs(fear.AffectedTerritoryDistances or {}) do
 			local territoryStanding = game.ServerGame.LatestTurnStanding.Territories[affectedTerritoryId];
-			if (territoryStanding ~= nil and territoryStanding.NumArmies ~= nil and territoryStanding.OwnerPlayerID ~= WL.PlayerID.Neutral) then
+			local anyArmy = (territoryStanding.NumArmies.NumArmies > 0 or 
+				(territoryStanding.NumArmies.SpecialUnits ~= nil and #territoryStanding.NumArmies.SpecialUnits > 0));
+
+			if (territoryStanding ~= nil and territoryStanding.NumArmies ~= nil 
+				and territoryStanding.OwnerPlayerID ~= WL.PlayerID.Neutral
+				and anyArmy) then
 				local normalizedDistance = distanceFromSource or 0;
 				local connectedTerritories = game.Map.Territories[affectedTerritoryId].ConnectedTo or {};
 				local selectedTerritoryId = 0;
 
 				--determine where the armies flee to
-
+				local selectableOptions = {};
 				if(normalizedDistance == Mod.Settings.FearDistance) then -- army runs out of fear range
 					for neighbourTerritoryId, _ in pairs(connectedTerritories) do
 						if (fear.AffectedTerritoryDistances[neighbourTerritoryId] == nil) then
-							selectedTerritoryId = neighbourTerritoryId;
+							table.insert(selectableOptions, neighbourTerritoryId);
 							break;
 						end
 					end
@@ -143,12 +146,20 @@ function Server_AdvanceTurn_End(game, addNewOrder)
 					for neighbourTerritoryId, _ in pairs(connectedTerritories) do
 						local neighbourDistance = fear.AffectedTerritoryDistances[neighbourTerritoryId];
 						if (neighbourDistance ~= nil and neighbourDistance > normalizedDistance) then
-							if (bestNeighbourDistance == nil or neighbourDistance > bestNeighbourDistance) then
-								selectedTerritoryId = neighbourTerritoryId;
-								bestNeighbourDistance = neighbourDistance;
+							if (bestNeighbourDistance == nil or neighbourDistance >= bestNeighbourDistance) then
+								if(neighbourDistance > bestNeighbourDistance) then
+									selectableOptions = { neighbourTerritoryId };
+									bestNeighbourDistance = neighbourDistance;
+								elseif(neighbourDistance == bestNeighbourDistance) then
+									table.insert(selectableOptions, neighbourTerritoryId);
+								end
 							end
 						end
 					end
+				end
+				if (#selectableOptions > 0) then
+					local chosenIndex = math.random(1, #selectableOptions);
+					selectedTerritoryId = selectableOptions[chosenIndex];
 				end
 
 				-- create movement to selectedTerritoryId
@@ -158,10 +169,8 @@ function Server_AdvanceTurn_End(game, addNewOrder)
 				local isEntireArmyFeared = fearPercentage >= 1;
 				local areSuImmune = fearPercentage < (Mod.Settings.FearSpecialUnitThreshold or 0);
 
-				print("fear %: ".. fearPercentage)
 				local armies = nil;
 				if(isEntireArmyFeared) then
-					print("entire army feared")
 					armies = WL.Armies.Create(territoryStanding.NumArmies.NumArmies, territoryStanding.NumArmies.SpecialUnits or {});
 				else
 					local selectedSpecialUnits = nil;
@@ -175,7 +184,6 @@ function Server_AdvanceTurn_End(game, addNewOrder)
 					end
 
 					local moveArmiesCount = math.max(0, math.floor(territoryStanding.NumArmies.NumArmies * fearPercentage + 0.5));
-					print("moveArmiesCount: " .. moveArmiesCount)
 					armies = WL.Armies.Create(moveArmiesCount, selectedSpecialUnits);
 				end
 
@@ -244,7 +252,12 @@ function Server_AdvanceTurn_End(game, addNewOrder)
 
 		for affectedTerritoryId, distanceFromSource in pairs(charm.AffectedTerritoryDistances or {}) do
 			local territoryStanding = game.ServerGame.LatestTurnStanding.Territories[affectedTerritoryId];
-			if (territoryStanding ~= nil and territoryStanding.NumArmies ~= nil and territoryStanding.OwnerPlayerID ~= WL.PlayerID.Neutral) then
+			
+			local anyArmy = (territoryStanding.NumArmies.NumArmies > 0 or 
+				(territoryStanding.NumArmies.SpecialUnits ~= nil and #territoryStanding.NumArmies.SpecialUnits > 0));
+
+			if (territoryStanding ~= nil and territoryStanding.NumArmies ~= nil 
+				and territoryStanding.OwnerPlayerID ~= WL.PlayerID.Neutral and anyArmy) then
 				local normalizedDistance = distanceFromSource or 0;
 				local connectedTerritories = game.Map.Territories[affectedTerritoryId].ConnectedTo or {};
 				local selectedTerritoryId = 0;

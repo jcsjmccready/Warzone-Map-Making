@@ -137,7 +137,6 @@ end
 function Create_CharmCard_SubOptions_UI(rootParent)
     charmCardVHeading = UI.CreateVerticalLayoutGroup(rootParent);
     UI.CreateLabel(charmCardVHeading).SetText("Creates a structure that forces armies to move towards it.");
-    UI.CreateLabel(charmCardVHeading).SetText("Armies on the selected territory can not leave*");
     UI.CreateLabel(charmCardVHeading).SetText("Charm Settings:").SetColor(BUTTON_COLOURS.Orchid);
 
     local horz = UI.CreateHorizontalLayoutGroup(charmCardVHeading);
