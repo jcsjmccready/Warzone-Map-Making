@@ -5,6 +5,9 @@ require("Utilities");
 function Client_PresentSettingsUI(rootParent)
 
     UI.CreateVerticalLayoutGroup(rootParent);
+    UI.CreateLabel(rootParent).SetText('Fear and charm triggers after deployment but before attacks*');
+    UI.CreateLabel(rootParent).SetText('In team games, if feared or charmed, army movement will attack teammates*');
+    UI.CreateLabel(rootParent).SetText('Unless immune, special units have a fear/charm % chance of being feared/charmed*');
 
     if(Mod.Settings.IncludeFearCard) then
         local fearCardVGroup = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);

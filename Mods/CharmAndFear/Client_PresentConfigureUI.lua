@@ -8,8 +8,9 @@ end;
 
 function Create_UI_Controls(rootParent)
     local mainModUI = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
-    UI.CreateLabel(mainModUI).SetText('In team games, if feared or charmed, army movement will attack teammates*');
-    UI.CreateLabel(mainModUI).SetText('Unless immune, special units have a fear/charm % chance of being feared/charmed*');
+    UI.CreateLabel(mainModUI).SetText('Fear and charm triggers after deployment but before attacks*').SetColor(BUTTON_COLOURS.DarkGray);
+    UI.CreateLabel(mainModUI).SetText('In team games, if feared or charmed, army movement will attack teammates*').SetColor(BUTTON_COLOURS.DarkGray);
+    UI.CreateLabel(mainModUI).SetText('Unless immune, special units have a fear/charm % chance of being feared/charmed*').SetColor(BUTTON_COLOURS.DarkGray);
 
     ---- include cards
     local includeCardsHeading = UI.CreateVerticalLayoutGroup(mainModUI);
@@ -130,9 +131,8 @@ function Create_FearCard_SubOptions_UI(rootParent)
     fearInitialPieces = UI.CreateNumberInputField(horz)
         .SetSliderMinValue(0)
         .SetSliderMaxValue(5)
-        .SetValue(Mod.Settings.FearInitialPieces or 5);
+        .SetValue(Mod.Settings.FearInitialPieces or 1);
 end
-
 
 function Create_CharmCard_SubOptions_UI(rootParent)
     charmCardVHeading = UI.CreateVerticalLayoutGroup(rootParent);
@@ -216,5 +216,5 @@ function Create_CharmCard_SubOptions_UI(rootParent)
     charmInitialPieces = UI.CreateNumberInputField(horz)
         .SetSliderMinValue(0)
         .SetSliderMaxValue(5)
-        .SetValue(Mod.Settings.CharmInitialPieces or 5);
+        .SetValue(Mod.Settings.CharmInitialPieces or 1);
 end
