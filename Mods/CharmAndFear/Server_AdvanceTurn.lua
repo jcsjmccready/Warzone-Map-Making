@@ -119,12 +119,14 @@ function ResolveCharmAndFear(game, addNewOrder)
 	---@type [CharmFearInstance]
 	local fears = priv.Fears or {};
 
+	local structuresByTerritory = {};
+
 	-- iterate in reverse so we can remove
 	for i = #fears, 1, -1 do
 		local fear = fears[i];
 		local fadingStructureID = WL.StructureType.Custom("FadingFear");
 		local structureID = WL.StructureType.Custom("Fear");
-		local existingStructures = game.ServerGame.LatestTurnStanding.Territories[fear.TerritoryId].Structures or {};
+		local existingStructures = GetTerritoryStructures(game, structuresByTerritory, fear.TerritoryId);
 
 		-- fear ongoing, RUN AWAY!
 		for affectedTerritoryId, distanceFromSource in pairs(fear.AffectedTerritoryDistances or {}) do
@@ -202,17 +204,11 @@ function ResolveCharmAndFear(game, addNewOrder)
 
 		if(fear.TurnEnd == game.Game.TurnNumber) then
 			-- Fear has expired, decrement the structure count by 1
-			local structures = {};
-
-			-- copy old structures and decrement the targeted structure count
-			for key, value in pairs(existingStructures or {}) do
-				structures[key] = value;
-			end
-			if (structures[fadingStructureID] ~= nil) then
-				structures[fadingStructureID] = math.max(structures[fadingStructureID] - 1, 0);
+			if (existingStructures[fadingStructureID] ~= nil) then
+				existingStructures[fadingStructureID] = math.max(existingStructures[fadingStructureID] - 1, 0);
 			end
 			local territoryModification = WL.TerritoryModification.Create(fear.TerritoryId);
-			territoryModification.SetStructuresOpt = structures;
+			territoryModification.SetStructuresOpt = CopyStructures(existingStructures);
 
 			local event = WL.GameOrderEvent.Create(fear.PlayerOwnerId, "Fear wears off in " .. game.Map.Territories[fear.TerritoryId].Name , {}, {territoryModification});
 			event.TerritoryAnnotationsOpt = { [fear.TerritoryId] = WL.TerritoryAnnotation.Create("Fear wears off", 8, GetColourIntegerFromHex(BUTTON_COLOURS.ElectricPurple)) };
@@ -220,22 +216,16 @@ function ResolveCharmAndFear(game, addNewOrder)
 			table.remove(fears, i);
 		elseif (fear.TurnEnd == game.Game.TurnNumber + 1) then
 			-- convert fear into fading fear
-			local structures = {};
-
-			-- copy old structures and convert one fear instance into a fading fear
-			for key, value in pairs(existingStructures or {}) do
-				structures[key] = value;
+			if (existingStructures[structureID] ~= nil) then
+				existingStructures[structureID] = math.max(existingStructures[structureID] - 1, 0);
 			end
-			if (structures[structureID] ~= nil) then
-				structures[structureID] = math.max(structures[structureID] - 1, 0);
-			end
-			if (structures[fadingStructureID] == nil) then
-				structures[fadingStructureID] = 1;
+			if (existingStructures[fadingStructureID] == nil) then
+				existingStructures[fadingStructureID] = 1;
 			else
-				structures[fadingStructureID] = structures[fadingStructureID] + 1;
+				existingStructures[fadingStructureID] = existingStructures[fadingStructureID] + 1;
 			end
 			local territoryModification = WL.TerritoryModification.Create(fear.TerritoryId);
-			territoryModification.SetStructuresOpt = structures;
+			territoryModification.SetStructuresOpt = CopyStructures(existingStructures);
 
 			local event = WL.GameOrderEvent.Create(fear.PlayerOwnerId, "Fear begins to fade in " .. game.Map.Territories[fear.TerritoryId].Name, {}, {territoryModification});
 			event.TerritoryAnnotationsOpt = { [fear.TerritoryId] = WL.TerritoryAnnotation.Create("Fear fading", 8, GetColourIntegerFromHex(BUTTON_COLOURS.ElectricPurple)) };
@@ -250,7 +240,7 @@ function ResolveCharmAndFear(game, addNewOrder)
 		local charm = charms[i];
 		local fadingStructureID = WL.StructureType.Custom("FadingCharm");
 		local structureID = WL.StructureType.Custom("Charm");
-		local existingStructures = game.ServerGame.LatestTurnStanding.Territories[charm.TerritoryId].Structures or {};
+		local existingStructures = GetTerritoryStructures(game, structuresByTerritory, charm.TerritoryId);
 
 		for affectedTerritoryId, distanceFromSource in pairs(charm.AffectedTerritoryDistances or {}) do
 			local territoryStanding = game.ServerGame.LatestTurnStanding.Territories[affectedTerritoryId];
@@ -308,37 +298,27 @@ function ResolveCharmAndFear(game, addNewOrder)
 		end
 
 		if(charm.TurnEnd == game.Game.TurnNumber) then
-			local structures = {};
-
-			for key, value in pairs(existingStructures or {}) do
-				structures[key] = value;
-			end
-			if (structures[fadingStructureID] ~= nil) then
-				structures[fadingStructureID] = math.max(structures[fadingStructureID] - 1, 0);
+			if (existingStructures[fadingStructureID] ~= nil) then
+				existingStructures[fadingStructureID] = math.max(existingStructures[fadingStructureID] - 1, 0);
 			end
 			local territoryModification = WL.TerritoryModification.Create(charm.TerritoryId);
-			territoryModification.SetStructuresOpt = structures;
+			territoryModification.SetStructuresOpt = CopyStructures(existingStructures);
 
 			local event = WL.GameOrderEvent.Create(charm.PlayerOwnerId, "Charm wears off in " .. game.Map.Territories[charm.TerritoryId].Name , {}, {territoryModification});
 			event.TerritoryAnnotationsOpt = { [charm.TerritoryId] = WL.TerritoryAnnotation.Create("Charm wears off", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Orchid)) };
 			addNewOrder(event);
 			table.remove(charms, i);
 		elseif (charm.TurnEnd == game.Game.TurnNumber + 1) then
-			local structures = {};
-
-			for key, value in pairs(existingStructures or {}) do
-				structures[key] = value;
+			if (existingStructures[structureID] ~= nil) then
+				existingStructures[structureID] = math.max(existingStructures[structureID] - 1, 0);
 			end
-			if (structures[structureID] ~= nil) then
-				structures[structureID] = math.max(structures[structureID] - 1, 0);
-			end
-			if (structures[fadingStructureID] == nil) then
-				structures[fadingStructureID] = 1;
+			if (existingStructures[fadingStructureID] == nil) then
+				existingStructures[fadingStructureID] = 1;
 			else
-				structures[fadingStructureID] = structures[fadingStructureID] + 1;
+				existingStructures[fadingStructureID] = existingStructures[fadingStructureID] + 1;
 			end
 			local territoryModification = WL.TerritoryModification.Create(charm.TerritoryId);
-			territoryModification.SetStructuresOpt = structures;
+			territoryModification.SetStructuresOpt = CopyStructures(existingStructures);
 
 			local event = WL.GameOrderEvent.Create(charm.PlayerOwnerId, "Charm begins to fade in " .. game.Map.Territories[charm.TerritoryId].Name, {}, {territoryModification});
 			event.TerritoryAnnotationsOpt = { [charm.TerritoryId] = WL.TerritoryAnnotation.Create("Charm fading", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Orchid)) };
@@ -391,4 +371,31 @@ function getTerritoriesAndDistance (game, targetTerritoryID, intMaxDistance)
     end
 
     return territoryDistances;
+end
+
+---Returns the (mutable, cached) structures table for a territory, seeded from LatestTurnStanding the first
+---time it's requested for a given structuresByTerritory cache. Callers mutate the returned table in place.
+---@param game GameServerHook
+---@param structuresByTerritory table<TerritoryID, table<EnumStructureType, integer>>
+---@param territoryId TerritoryID
+function GetTerritoryStructures(game, structuresByTerritory, territoryId)
+	local structures = structuresByTerritory[territoryId];
+	if (structures == nil) then
+		structures = {};
+		for key, value in pairs(game.ServerGame.LatestTurnStanding.Territories[territoryId].Structures or {}) do
+			structures[key] = value;
+		end
+		structuresByTerritory[territoryId] = structures;
+	end
+	return structures;
+end
+
+---Returns a shallow copy of a structures table.
+---@param structures table<EnumStructureType, integer>
+function CopyStructures(structures)
+	local copy = {};
+	for key, value in pairs(structures) do
+		copy[key] = value;
+	end
+	return copy;
 end
