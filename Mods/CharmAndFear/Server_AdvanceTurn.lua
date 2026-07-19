@@ -7,10 +7,6 @@ require("Utilities");
 ---@field AffectedTerritoryDistances table<number, number> # territory id: distance from the source territory along the fear/charm path
 ---@field PlayerOwnerId number # id of the player that created the instance
 
--- questions:
--- handle muiltiple fears nearby - we shouldnt run from a lesser fear to a greater fear
--- the % of the troops doesn't appear to be working all the time?
-
 ---Server_AdvanceTurn_Order
 ---@param game GameServerHook
 ---@param order GameOrder
@@ -18,6 +14,15 @@ require("Utilities");
 ---@param skipThisOrder fun(modOrderControl: EnumModOrderControl) # Allows you to skip the current order
 ---@param addNewOrder fun(order: GameOrder) # Adds a game order, will be processed before any of the rest of the orders
 function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrder)
+
+	-- resolve charm/fear the moment the Attacks phase starts: after Deploys/reinforcements have landed,
+	-- but before any Attack/Transfer order this turn has a chance to run
+	if (order.OccursInPhase == WL.TurnPhase.Attacks and Mod.PrivateGameData.ResolvedForTurn ~= game.Game.TurnNumber) then
+		ResolveCharmAndFear(game, addNewOrder);
+		local priv = Mod.PrivateGameData;
+		priv.ResolvedForTurn = game.Game.TurnNumber;
+		Mod.PrivateGameData = priv;
+	end
 
     if (order.proxyType == 'GameOrderPlayCardCustom' and startsWith(order.ModData, "CreateFear_")) then
         local targetTerritoryID = tonumber(string.sub(order.ModData, 12)) or 0
@@ -52,7 +57,7 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
 		---@type CharmFearInstance
 		local fearInstance = {
 			TerritoryId = targetTerritoryID,
-			TurnEnd = game.Game.TurnNumber + Mod.Settings.FearDuration-1, -- 1 turn duration means only this turn. i.e. Will go at the end of the current turn after triggering 
+			TurnEnd = game.Game.TurnNumber + Mod.Settings.FearDuration - 1,
 			AffectedTerritoryDistances = territoryDistances,
 			PlayerOwnerId = tonumber(order.PlayerID) or WL.PlayerID.Neutral
 		}
@@ -64,7 +69,7 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
      if (order.proxyType == 'GameOrderPlayCardCustom' and startsWith(order.ModData, "CreateCharm_")) then
         local targetTerritoryID = tonumber(string.sub(order.ModData, 13)) or 0;
 		local structureID = WL.StructureType.Custom("Charm");
-		if(Mod.Settings.FearDuration == 1) then
+		if(Mod.Settings.CharmDuration == 1) then
 			structureID = WL.StructureType.Custom("FadingCharm");
 		end
 		local structures = game.ServerGame.LatestTurnStanding.Territories[targetTerritoryID].Structures;
@@ -82,7 +87,7 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
 
 		local td = game.Map.Territories[targetTerritoryID];
 		event.JumpToActionSpotOpt = WL.RectangleVM.Create(td.MiddlePointX, td.MiddlePointY, td.MiddlePointX, td.MiddlePointY);
-		event.TerritoryAnnotationsOpt = { [targetTerritoryID] = WL.TerritoryAnnotation.Create("Charm", 8, GetColourIntegerFromHex(BUTTON_COLOURS.ElectricPurple)) };
+		event.TerritoryAnnotationsOpt = { [targetTerritoryID] = WL.TerritoryAnnotation.Create("Charm", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Orchid)) };
 
 		addNewOrder(event);
 
@@ -94,7 +99,7 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
 		---@type CharmFearInstance
 		local charmInstance = {
 			TerritoryId = targetTerritoryID,
-			TurnEnd = game.Game.TurnNumber + Mod.Settings.CharmDuration-1, -- 1 turn duration means only this turn. i.e. Will go at the end of the current turn after triggering 
+			TurnEnd = game.Game.TurnNumber + Mod.Settings.CharmDuration - 1, -- 1 turn duration means only this turn. i.e. Will go at the end of the current turn after triggering 
 			AffectedTerritoryDistances = territoryDistances,
 			PlayerOwnerId = tonumber(order.PlayerID) or WL.PlayerID.Neutral
 		}
@@ -104,10 +109,12 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
     end
 end
 
----Server_AdvanceTurn_End hook
+---Resolves fear/charm army movement and expiry/fading. Called from Server_AdvanceTurn_Order right as the
+---Attacks phase starts (after Deploys, before any Attack/Transfer order this turn), with Server_AdvanceTurn_End
+---as a fallback for turns that have no Attack/Transfer order at all.
 ---@param game GameServerHook
 ---@param addNewOrder fun(order: GameOrder) # Adds a game order, will be processed before any of the rest of the orders
-function Server_AdvanceTurn_End(game, addNewOrder)
+function ResolveCharmAndFear(game, addNewOrder)
 	local priv = Mod.PrivateGameData;
 	---@type [CharmFearInstance]
 	local fears = priv.Fears or {};
@@ -142,7 +149,7 @@ function Server_AdvanceTurn_End(game, addNewOrder)
 						end
 					end
 				else --army runs away from fear or to another of same distance if no better choice
-					local bestNeighbourDistance = nil;
+					local bestNeighbourDistance = 0;
 					for neighbourTerritoryId, _ in pairs(connectedTerritories) do
 						local neighbourDistance = fear.AffectedTerritoryDistances[neighbourTerritoryId];
 						if (neighbourDistance ~= nil and neighbourDistance > normalizedDistance) then
@@ -165,29 +172,24 @@ function Server_AdvanceTurn_End(game, addNewOrder)
 				-- create movement to selectedTerritoryId
 				local territoryOwnerId = territoryStanding.OwnerPlayerID;
 				local falloff = (Mod.Settings.FearFalloff or 0);
-				local fearPercentage = math.floor((falloff ^ (distanceFromSource or 0)) * 100 + 0.5) / 100;
-				local isEntireArmyFeared = fearPercentage >= 1;
-				local areSuImmune = fearPercentage < (Mod.Settings.FearSpecialUnitThreshold or 0);
+				local fearPercentage = math.floor(((1 - falloff) ^ (distanceFromSource or 0)) * 100 + 0.5) / 100;
+				local areSuImmune = fearPercentage <= (Mod.Settings.FearSpecialUnitThreshold or 0);
 
-				local armies = nil;
-				if(isEntireArmyFeared) then
-					armies = WL.Armies.Create(territoryStanding.NumArmies.NumArmies, territoryStanding.NumArmies.SpecialUnits or {});
-				else
-					local selectedSpecialUnits = nil;
-					if (not areSuImmune and territoryStanding.NumArmies.SpecialUnits ~= nil) then
-						selectedSpecialUnits = {};
-						for _, specialUnit in ipairs(territoryStanding.NumArmies.SpecialUnits) do
-							if (math.random() < fearPercentage) then
-								table.insert(selectedSpecialUnits, specialUnit);
-							end
+				local selectedSpecialUnits = nil;
+				if (not areSuImmune and territoryStanding.NumArmies.SpecialUnits ~= nil) then
+					selectedSpecialUnits = {};
+					for _, specialUnit in ipairs(territoryStanding.NumArmies.SpecialUnits) do
+						if (math.random() < fearPercentage) then
+							table.insert(selectedSpecialUnits, specialUnit);
 						end
 					end
-
-					local moveArmiesCount = math.max(0, math.floor(territoryStanding.NumArmies.NumArmies * fearPercentage + 0.5));
-					armies = WL.Armies.Create(moveArmiesCount, selectedSpecialUnits);
 				end
 
-				if (selectedTerritoryId ~= 0 and armies ~= nil) then
+				local moveArmiesCount = math.max(0, math.floor(territoryStanding.NumArmies.NumArmies * fearPercentage + 0.5));
+				armies = WL.Armies.Create(moveArmiesCount, selectedSpecialUnits);
+
+				local isMovingAnything = moveArmiesCount > 0 or (selectedSpecialUnits ~= nil and #selectedSpecialUnits > 0);
+				if (selectedTerritoryId ~= 0 and armies ~= nil and isMovingAnything) then
 					local moveOrder = WL.GameOrderAttackTransfer.Create(territoryOwnerId, affectedTerritoryId, selectedTerritoryId, WL.AttackTransferEnum.AttackTransfer, false, armies, false);
 					local visibleTo = { territoryOwnerId };
 					local event = WL.GameOrderEvent.Create(territoryOwnerId, "Feared", visibleTo, {});
@@ -277,29 +279,24 @@ function Server_AdvanceTurn_End(game, addNewOrder)
 
 				local territoryOwnerId = territoryStanding.OwnerPlayerID;
 				local falloff = (Mod.Settings.CharmFalloff or 0);
-				local charmPercentage = math.floor((falloff ^ (distanceFromSource or 0)) * 100 + 0.5) / 100;
-				local isEntireArmyCharmed = charmPercentage >= 1;
-				local areSuImmune = charmPercentage < (Mod.Settings.CharmSpecialUnitThreshold or 0);
+				local charmPercentage = math.floor(((1 - falloff) ^ (distanceFromSource or 0)) * 100 + 0.5) / 100;
+				local areSuImmune = charmPercentage <= (Mod.Settings.CharmSpecialUnitThreshold or 0);
 
-				local armies = nil;
-				if(isEntireArmyCharmed) then
-					armies = WL.Armies.Create(territoryStanding.NumArmies.NumArmies, territoryStanding.NumArmies.SpecialUnits or {});
-				else
-					local selectedSpecialUnits = nil;
-					if (not areSuImmune and territoryStanding.NumArmies.SpecialUnits ~= nil) then
-						selectedSpecialUnits = {};
-						for _, specialUnit in ipairs(territoryStanding.NumArmies.SpecialUnits) do
-							if (math.random() < charmPercentage) then
-								table.insert(selectedSpecialUnits, specialUnit);
-							end
+				local selectedSpecialUnits = nil;
+				if (not areSuImmune and territoryStanding.NumArmies.SpecialUnits ~= nil) then
+					selectedSpecialUnits = {};
+					for _, specialUnit in ipairs(territoryStanding.NumArmies.SpecialUnits) do
+						if (math.random() < charmPercentage) then
+							table.insert(selectedSpecialUnits, specialUnit);
 						end
 					end
-
-					local moveArmiesCount = math.max(0, math.floor(territoryStanding.NumArmies.NumArmies * charmPercentage + 0.5));
-					armies = WL.Armies.Create(moveArmiesCount, selectedSpecialUnits);
 				end
 
-				if (selectedTerritoryId ~= 0 and armies ~= nil) then
+				local moveArmiesCount = math.max(0, math.floor(territoryStanding.NumArmies.NumArmies * charmPercentage + 0.5));
+				local armies = WL.Armies.Create(moveArmiesCount, selectedSpecialUnits);
+
+				local isMovingAnything = moveArmiesCount > 0 or (selectedSpecialUnits ~= nil and #selectedSpecialUnits > 0);
+				if (selectedTerritoryId ~= 0 and armies ~= nil and isMovingAnything) then
 					local moveOrder = WL.GameOrderAttackTransfer.Create(territoryOwnerId, affectedTerritoryId, selectedTerritoryId, WL.AttackTransferEnum.AttackTransfer, false, armies, false);
 					local visibleTo = { territoryOwnerId };
 					local event = WL.GameOrderEvent.Create(territoryOwnerId, "Charmed", visibleTo, {});
@@ -352,6 +349,21 @@ function Server_AdvanceTurn_End(game, addNewOrder)
 	priv.Fears = fears;
 	priv.Charms = charms;
 	Mod.PrivateGameData = priv;
+end
+
+---Server_AdvanceTurn_End hook
+---@param game GameServerHook
+---@param addNewOrder fun(order: GameOrder) # Adds a game order, will be processed before any of the rest of the orders
+function Server_AdvanceTurn_End(game, addNewOrder)
+	-- fallback for turns with no Attack/Transfer order at all, since Server_AdvanceTurn_Order then never
+	-- sees an Attacks-phase order to trigger ResolveCharmAndFear from
+	local priv = Mod.PrivateGameData;
+	if (priv.ResolvedForTurn ~= game.Game.TurnNumber) then
+		ResolveCharmAndFear(game, addNewOrder);
+		priv = Mod.PrivateGameData;
+		priv.ResolvedForTurn = game.Game.TurnNumber;
+		Mod.PrivateGameData = priv;
+	end
 end
 
 function getTerritoriesAndDistance (game, targetTerritoryID, intMaxDistance)

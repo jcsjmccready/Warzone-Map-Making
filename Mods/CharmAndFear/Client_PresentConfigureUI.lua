@@ -9,6 +9,7 @@ end;
 function Create_UI_Controls(rootParent)
     local mainModUI = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
     UI.CreateLabel(mainModUI).SetText('In team games, if feared or charmed, army movement will attack teammates*');
+    UI.CreateLabel(mainModUI).SetText('Unless immune, special units have a fear/charm % chance of being feared/charmed*');
 
     ---- include cards
     local includeCardsHeading = UI.CreateVerticalLayoutGroup(mainModUI);
@@ -50,7 +51,7 @@ end
 function Create_FearCard_SubOptions_UI(rootParent)
     fearCardVHeading = UI.CreateVerticalLayoutGroup(rootParent);
     UI.CreateLabel(fearCardVHeading).SetText("Creates a structure that 'fears' armies, forcing them to move away from it.");
-    UI.CreateLabel(charmCardVHeading).SetText("All armies on the selected territory are forced to leave*");
+    UI.CreateLabel(fearCardVHeading).SetText("All armies on the selected territory are forced to leave*");
     UI.CreateLabel(fearCardVHeading).SetText("Fear Settings:").SetColor(BUTTON_COLOURS.ElectricPurple);
 
     local horz = UI.CreateHorizontalLayoutGroup(fearCardVHeading);
@@ -83,12 +84,11 @@ function Create_FearCard_SubOptions_UI(rootParent)
         .SetPreferredWidth(150);
 
     refreshExamplesButton.SetOnClick(function()
-        fallOffExamples.SetValue(Determine_Falloff_Examples(fearFalloff.GetValue(), fearDistance.GetValue()), ', ');
+        fallOffExamples.SetText(Determine_Falloff_Examples(fearFalloff.GetValue(), fearDistance.GetValue()));
     end);
 
-    fallOffExamples.SetValue(Determine_Falloff_Examples(fearFalloff.GetValue(), fearDistance.GetValue()), ', ');
+    fallOffExamples.SetText(Determine_Falloff_Examples(fearFalloff.GetValue(), fearDistance.GetValue()), ', ');
 
-        
     local horz = UI.CreateHorizontalLayoutGroup(fearCardVHeading);
     UI.CreateLabel(horz).SetText('Maximum fear % where Special Units Are Immune').SetPreferredWidth(290);
     fearSpecialUnitThreshold = UI.CreateNumberInputField(horz)

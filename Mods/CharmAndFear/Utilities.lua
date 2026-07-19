@@ -4,7 +4,7 @@ function Determine_Falloff_Examples(falloffField, distanceField)
     local examples = {};
 
     for distance = 0, maxDistance do
-        local percentAffected = math.floor((falloff ^ distance) * 100 + 0.5) / 100;
+        local percentAffected = math.floor(((1 - falloff) ^ distance) * 100 + 0.5) / 100;
         table.insert(examples, string.format('D%s=%s%%', distance, percentAffected * 100));
     end
 
