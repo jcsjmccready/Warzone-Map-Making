@@ -1,3 +1,5 @@
+--todo: investigate "Cannot add more than 4 special units" error message
+
 require("Utilities");
 
 ---Server_AdvanceTurn_Start hook
