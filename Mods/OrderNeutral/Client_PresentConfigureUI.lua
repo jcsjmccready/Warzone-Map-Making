@@ -12,11 +12,13 @@ function Create_UI_Controls(rootParent)
 
     UI.CreateLabel(mainModUI).SetText('Mod Settings:').SetColor(SUBHEADING_COLOUR);
     local horz = UI.CreateHorizontalLayoutGroup(mainModUI);
-    UI.CreateLabel(horz).SetText('Number of turns you can issue a neutral order for').SetPreferredWidth(290);
+    UI.CreateLabel(horz).SetText('Card duration:').SetPreferredWidth(290);
     cardDuration = UI.CreateNumberInputField(horz)
         .SetSliderMinValue(1)
         .SetSliderMaxValue(5)
         .SetValue(Mod.Settings.CardDuration or 2);
+    UI.CreateLabel(mainModUI).SetText('Values > 1 give you temporary copy of the card (that discard if unused) each turn beyond the first*').SetColor(BUTTON_COLOURS.DarkGray);
+
 
     local neutralArmyGivesVisionHeading = UI.CreateVerticalLayoutGroup(mainModUI);
     neutralArmyGivesVision = UI.CreateCheckBox(neutralArmyGivesVisionHeading).SetText("Neutral army gives vision")
@@ -64,7 +66,7 @@ function Create_UI_Controls(rootParent)
     initialPieces = UI.CreateNumberInputField(horz)
         .SetSliderMinValue(0)
         .SetSliderMaxValue(5)
-        .SetValue(Mod.Settings.InitialPieces or 5);
+        .SetValue(Mod.Settings.InitialPieces or 0);
 end
 
 function Create_NeutralArmyGivesVision_SubOptions_UI(rootParent)
