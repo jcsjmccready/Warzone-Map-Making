@@ -31,9 +31,9 @@ function Client_SaveConfigureUI(alert, addCard)
     end
 
     local commandNeutralCardID = addCard(
-        "Command Neutral Card",
+        "Order Neutral Card",
         "Play this card to create an attack/transfer order for a neutral territory",
-        "CommandNeutral.png",
+        "OrderNeutral.png",
         Mod.Settings.NumPieces, 
         Mod.Settings.MinPieces,
         Mod.Settings.InitialPieces,
@@ -41,7 +41,7 @@ function Client_SaveConfigureUI(alert, addCard)
 
         
     local temporaryCommandNeutralCardID = addCard(
-        "Temporary Command Neutral Card",
+        "Temporary Order Neutral Card",
         "Play this card to create an attack/transfer order for a neutral territory. Discards at the end of the turn if unused.",
         "TemporaryCommandNeutral.png",
         1, 

@@ -61,7 +61,12 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
             toMod.AddSpecialUnits = specialUnitsMoved;
 
             local message = DescribeArmyMovement(armiesMoved, specialUnitsMoved) .. " transferred to " .. toTerritoryName .. " from " .. fromTerritoryName;
-            addNewOrder(WL.GameOrderEvent.Create(WL.PlayerID.Neutral, message, { order.PlayerID }, { fromMod, toMod }));
+            local event = WL.GameOrderEvent.Create(WL.PlayerID.Neutral, message, { order.PlayerID }, { fromMod, toMod });
+            event.TerritoryAnnotationsOpt = {
+                [fromTerritoryID] = WL.TerritoryAnnotation.Create("Ordered", 8, GetColourIntegerFromHex(BUTTON_COLOURS.DarkGray)),
+                [toTerritoryID] = WL.TerritoryAnnotation.Create("Target", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Red)),
+            };
+            addNewOrder(event);
         else
             -- GameOrderAttackTransfer requires a real (non-neutral) PlayerID, so we can't use it for a neutral-owned
             -- source territory. Instead, manually resolve combat using the same damage calculation the engine uses.
@@ -99,7 +104,12 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
                 message = DescribeArmyMovement(attackingArmies, attackingSpecialUnits) .. " failed to capture " .. toTerritoryName .. " from " .. fromTerritoryName;
             end
 
-            addNewOrder(WL.GameOrderEvent.Create(WL.PlayerID.Neutral, message, { order.PlayerID }, { fromMod, toMod }));
+            local event = WL.GameOrderEvent.Create(WL.PlayerID.Neutral, message, { order.PlayerID }, { fromMod, toMod });
+            event.TerritoryAnnotationsOpt = {
+                [fromTerritoryID] = WL.TerritoryAnnotation.Create("Ordered", 8, GetColourIntegerFromHex(BUTTON_COLOURS.DarkGray)),
+                [toTerritoryID] = WL.TerritoryAnnotation.Create("Target", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Cordovan)),
+            };
+            addNewOrder(event);
         end
     end
 
