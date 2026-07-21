@@ -68,7 +68,7 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
             local event = WL.GameOrderEvent.Create(WL.PlayerID.Neutral, message, { order.PlayerID }, { fromMod, toMod });
             event.TerritoryAnnotationsOpt = {
                 [fromTerritoryID] = WL.TerritoryAnnotation.Create("Ordered", 8, GetColourIntegerFromHex(BUTTON_COLOURS.DarkGray)),
-                [toTerritoryID] = WL.TerritoryAnnotation.Create("Target", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Red)),
+                [toTerritoryID] = WL.TerritoryAnnotation.Create("Target", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Cordovan)),
             };
 
             if (Mod.Settings.NeutralArmyGivesVision and Mod.Settings.VisionMethodManual) then
