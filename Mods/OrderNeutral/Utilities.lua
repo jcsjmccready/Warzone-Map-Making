@@ -458,21 +458,25 @@ function DumpProxy(obj)
     print('type=' .. obj.proxyType .. ' readOnly=' .. tostring(obj.readonly) .. ' readableKeys=' .. table.concat(obj.readableKeys, ',') .. ' writableKeys=' .. table.concat(obj.writableKeys, ','));
 end
 
+--splits str on literal separator pat (not a Lua pattern); uses plain-text find rather than the lazy "(.-)" pattern
+--match, since that recurses once per unmatched character and hits Lua's "pattern too complex" limit on long strings
+--(eg. a comma-separated list of several special unit GUIDs)
 function split(str, pat)
-   local t = {}  -- NOTE: use {n = 0} in Lua-5.0
-   local fpat = "(.-)" .. pat
+   local t = {}
    local last_end = 1
-   local s, e, cap = str:find(fpat, 1)
+   local first = true
+   local s, e = str:find(pat, 1, true)
    while s do
-      if s ~= 1 or cap ~= "" then
-         table.insert(t,cap)
+      local cap = str:sub(last_end, s - 1);
+      if not (first and cap == "") then
+         table.insert(t, cap);
       end
-      last_end = e+1
-      s, e, cap = str:find(fpat, last_end)
+      first = false;
+      last_end = e + 1
+      s, e = str:find(pat, last_end, true)
    end
    if last_end <= #str then
-      cap = str:sub(last_end)
-      table.insert(t, cap)
+      table.insert(t, str:sub(last_end));
    end
    return t
 end
