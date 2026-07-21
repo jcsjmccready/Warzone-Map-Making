@@ -55,11 +55,16 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
         local availableArmies = fromTerritory.NumArmies.NumArmies;
         local armiesToSend = (armyCountStr == nil or armyCountStr == "ALL") and availableArmies or math.max(0, math.min(availableArmies, tonumber(armyCountStr) or 0));
 
-        local chosenSpecialUnitIDs = {};
-        if (specialUnitsStr ~= nil and specialUnitsStr ~= "NONE") then
+        local specialUnitsToSend;
+        if (specialUnitsStr == nil or specialUnitsStr == "ALL") then
+            specialUnitsToSend = fromTerritory.NumArmies.SpecialUnits;
+        elseif (specialUnitsStr == "NONE") then
+            specialUnitsToSend = {};
+        else
+            local chosenSpecialUnitIDs = {};
             for _, unitID in ipairs(split(specialUnitsStr, ",")) do chosenSpecialUnitIDs[unitID] = true; end
+            specialUnitsToSend = filter(fromTerritory.NumArmies.SpecialUnits, function(unit) return chosenSpecialUnitIDs[unit.ID] == true; end);
         end
-        local specialUnitsToSend = filter(fromTerritory.NumArmies.SpecialUnits, function(unit) return chosenSpecialUnitIDs[unit.ID] == true; end);
 
         if (armiesToSend <= 0 and #specialUnitsToSend == 0) then
             -- Nothing was actually selected to send (eg. the territory lost armies/special units earlier this turn)

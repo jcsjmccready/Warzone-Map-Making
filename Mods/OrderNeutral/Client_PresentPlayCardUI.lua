@@ -26,12 +26,11 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
 
     game.CreateDialog(function(rootParent, setMaxSize, setScrollable, game, close)
         Close = close;
-        if (Mod.Settings.ArmyAmountInputTroops) then
-            setMaxSize(400, 400);
-            setScrollable(false, true);
-        else
-            setMaxSize(400, 260);
-        end
+        SetDialogMaxSize = setMaxSize;
+        --always vertically scrollable so toggling the max size below doesn't leave stale space behind when
+        --shrinking back down from a territory with special units to one without
+        setScrollable(false, true);
+        setMaxSize(400, 260);
         local vert = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1); --set flexible width so things don't jump around while we change InstructionLabel
 
         local territoryButtonsHGroup = UI.CreateHorizontalLayoutGroup(vert).SetFlexibleWidth(1);
@@ -73,17 +72,20 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
                     armyCountStr = tostring(ArmyCountInput.GetValue());
                 end
 
-                local chosenSpecialUnitIDs = {};
-                for unitID, checkbox in pairs(SpecialUnitCheckboxes) do
-                    if (checkbox.GetIsChecked()) then
-                        table.insert(chosenSpecialUnitIDs, unitID);
+                local specialUnitsStr = "ALL";
+                if (Mod.Settings.ArmyAmountInputTroops) then
+                    local chosenSpecialUnitIDs = {};
+                    for unitID, checkbox in pairs(SpecialUnitCheckboxes) do
+                        if (checkbox.GetIsChecked()) then
+                            table.insert(chosenSpecialUnitIDs, unitID);
+                        end
                     end
-                end
-                local specialUnitsStr = (#chosenSpecialUnitIDs > 0) and table.concat(chosenSpecialUnitIDs, ",") or "NONE";
+                    specialUnitsStr = (#chosenSpecialUnitIDs > 0) and table.concat(chosenSpecialUnitIDs, ",") or "NONE";
 
-                if (Mod.Settings.ArmyAmountInputTroops and tonumber(armyCountStr) == 0 and #chosenSpecialUnitIDs == 0) then
-                    FirstTerritoryInstructionLabel.SetText("You must send at least 1 army or special unit").SetColor(ERROR_COLOUR);
-                    return;
+                    if (tonumber(armyCountStr) == 0 and #chosenSpecialUnitIDs == 0) then
+                        FirstTerritoryInstructionLabel.SetText("You must send at least 1 army or special unit").SetColor(ERROR_COLOUR);
+                        return;
+                    end
                 end
 
                 local td = game.Map.Territories[FirstTerritoryID];
@@ -108,6 +110,7 @@ function Create_ArmyOptions_UI(territoryID)
     SpecialUnitCheckboxes = {};
 
     local terr = Game.LatestStanding.Territories[territoryID];
+    local hasSpecialUnits = #terr.NumArmies.SpecialUnits > 0;
 
     if (Mod.Settings.ArmyAmountInputTroops) then
         local horz = UI.CreateHorizontalLayoutGroup(ArmyOptionsContent).SetFlexibleWidth(1);
@@ -118,11 +121,19 @@ function Create_ArmyOptions_UI(territoryID)
             .SetValue(terr.NumArmies.NumArmies);
     end
 
-    if (#terr.NumArmies.SpecialUnits > 0) then
+    if (Mod.Settings.ArmyAmountInputTroops and hasSpecialUnits) then
         UI.CreateLabel(ArmyOptionsContent).SetText("Special units to send:");
         for _, unit in pairs(terr.NumArmies.SpecialUnits) do
             SpecialUnitCheckboxes[unit.ID] = UI.CreateCheckBox(ArmyOptionsContent).SetText(GetSpecialUnitName(unit)).SetIsChecked(true);
         end
+    end
+
+    if (not Mod.Settings.ArmyAmountInputTroops) then
+        SetDialogMaxSize(400, 260);
+    elseif (hasSpecialUnits) then
+        SetDialogMaxSize(400, 300);
+    else
+        SetDialogMaxSize(400, 282);
     end
 end
 
@@ -133,6 +144,8 @@ function Destroy_ArmyOptions_UI()
     end
     ArmyCountInput = nil;
     SpecialUnitCheckboxes = {};
+
+    SetDialogMaxSize(400, 260);
 end
 
 function UpdatePlayCardBtnInteractable()

@@ -85,12 +85,12 @@ end
 function Create_NeutralArmyGivesVision_SubOptions_UI(rootParent)
     neutralArmyGivesVisionSubOptionsHeading = UI.CreateVerticalLayoutGroup(rootParent);
     visionMethodGroup = UI.CreateRadioButtonGroup(neutralArmyGivesVisionSubOptionsHeading);
-
-    visionMethodFreeReconCard = UI.CreateRadioButton(neutralArmyGivesVisionSubOptionsHeading).SetGroup(visionMethodGroup)
-    .SetText('Play free recon card')
-    .SetIsChecked(Mod.Settings.VisionMethodFreeReconCard or true);
     
     visionMethodManual = UI.CreateRadioButton(neutralArmyGivesVisionSubOptionsHeading).SetGroup(visionMethodGroup)
     .SetText('Mod gives vision manually')
-    .SetIsChecked(Mod.Settings.VisionMethodManual or false);
+    .SetIsChecked(Mod.Settings.VisionMethodManual or true);
+
+    visionMethodFreeReconCard = UI.CreateRadioButton(neutralArmyGivesVisionSubOptionsHeading).SetGroup(visionMethodGroup)
+    .SetText('Play free recon card')
+    .SetIsChecked(Mod.Settings.VisionMethodFreeReconCard or false);
 end
