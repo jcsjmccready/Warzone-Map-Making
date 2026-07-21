@@ -8,25 +8,30 @@ function Client_SaveConfigureUI(alert, addCard)
     Mod.Settings.MinPieces = minPieces.GetValue();
     Mod.Settings.InitialPieces = initialPieces.GetValue();
     Mod.Settings.CardDuration = cardDuration.GetValue();
+    Mod.Settings.NeutralArmyGivesVision = neutralArmyGivesVision.GetIsChecked();
+    if (Mod.Settings.NeutralArmyGivesVision) then
+        Mod.Settings.VisionMethodFreeReconCard = visionMethodFreeReconCard.GetIsChecked();
+        Mod.Settings.VisionMethodManual = visionMethodManual.GetIsChecked();
+    end
 
     if (Mod.Settings.CardDuration < 1) then
         alert("Number of turns you can issue neutral orders for cannot be less than 1");
         return;
     end
     if (Mod.Settings.NumPieces < 1) then
-        alert("Number of barbed wire pieces cannot be less than 1");
+        alert("Number of card pieces cannot be less than 1");
         return;
     end
     if (Mod.Settings.CardWeight < 0) then
-        alert("Barbed wire card weight cannot be less than 0");
+        alert("Card weight cannot be less than 0");
         return;
     end
     if (Mod.Settings.MinPieces < 0) then
-        alert("Minimum barbed wire pieces cannot be less than 0");
+        alert("Minimum card pieces cannot be less than 0");
         return;
     end
     if (Mod.Settings.InitialPieces < 0) then
-        alert("Initial barbed wire pieces cannot be less than 0");
+        alert("Initial card pieces cannot be less than 0");
         return;
     end
 
@@ -41,7 +46,7 @@ function Client_SaveConfigureUI(alert, addCard)
 
         
     local temporaryCommandNeutralCardID = addCard(
-        "Temporary Order Neutral Card",
+        "Temp. Order Neutral Card",
         "Play this card to create an attack/transfer order for a neutral territory. Discards at the end of the turn if unused.",
         "TemporaryCommandNeutral.png",
         1, 

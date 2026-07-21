@@ -124,6 +124,13 @@ function process_manual_attack (game, AttackingArmies, DefendingTerritory, resul
 	return ({AttackerResult=attackerResult, DefenderResult=defenderResult, IsSuccessful=boolAttackSuccessful, DamageToSpecialUnits=damageToAllSpecialUnits, Result=result, AttackingArmiesKilled=WL.Armies.Create (attackerResult.KilledArmies, attackerResult.KilledSpecialsObjects), DefendingArmiesKilled=WL.Armies.Create (defenderResult.KilledArmies, defenderResult.KilledSpecialsObjects)});
 end
 
+--gives the player a free Reconnaissance card already played on targetTerritoryID, used to grant vision of the outcome of a neutral order
+function GiveFreeReconOfTerritory(playerID, targetTerritoryID, addNewOrder)
+    local instance = WL.NoParameterCardInstance.Create(WL.CardID.Reconnaissance);
+    addNewOrder(WL.GameOrderReceiveCard.Create(playerID, { instance }));
+    addNewOrder(WL.GameOrderPlayCardReconnaissance.Create(instance.ID, playerID, targetTerritoryID));
+end
+
 --builds a "X armies, Special Unit Name, Special Unit Name" style description of a moving force
 function DescribeArmyMovement (numArmies, specialUnits)
 	local parts = { numArmies .. " armies" };

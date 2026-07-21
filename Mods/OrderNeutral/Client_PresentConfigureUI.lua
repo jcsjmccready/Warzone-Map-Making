@@ -18,6 +18,23 @@ function Create_UI_Controls(rootParent)
         .SetSliderMaxValue(5)
         .SetValue(Mod.Settings.CardDuration or 2);
 
+    local neutralArmyGivesVisionHeading = UI.CreateVerticalLayoutGroup(mainModUI);
+    neutralArmyGivesVision = UI.CreateCheckBox(neutralArmyGivesVisionHeading).SetText("Neutral army gives vision")
+    .SetIsChecked(Mod.Settings.NeutralArmyGivesVision or false);
+
+    neutralArmyGivesVision.SetOnValueChanged(function()
+        if (neutralArmyGivesVision.GetIsChecked()) then
+            Create_NeutralArmyGivesVision_SubOptions_UI(neutralArmyGivesVisionHeading);
+        else
+            UI.Destroy(neutralArmyGivesVisionSubOptionsHeading);
+        end
+    end);
+
+    -- one time check for loading up from settings
+    if (neutralArmyGivesVision.GetIsChecked()) then
+        Create_NeutralArmyGivesVision_SubOptions_UI(neutralArmyGivesVisionHeading);
+    end
+
     UI.CreateLabel(mainModUI).SetText('Card Settings:').SetColor(SUBHEADING_COLOUR);
 
     local horz = UI.CreateHorizontalLayoutGroup(mainModUI);
@@ -48,4 +65,17 @@ function Create_UI_Controls(rootParent)
         .SetSliderMinValue(0)
         .SetSliderMaxValue(5)
         .SetValue(Mod.Settings.InitialPieces or 5);
+end
+
+function Create_NeutralArmyGivesVision_SubOptions_UI(rootParent)
+    neutralArmyGivesVisionSubOptionsHeading = UI.CreateVerticalLayoutGroup(rootParent);
+    visionMethodGroup = UI.CreateRadioButtonGroup(neutralArmyGivesVisionSubOptionsHeading);
+
+    visionMethodFreeReconCard = UI.CreateRadioButton(neutralArmyGivesVisionSubOptionsHeading).SetGroup(visionMethodGroup)
+    .SetText('Play free recon card')
+    .SetIsChecked(Mod.Settings.VisionMethodFreeReconCard or true);
+    
+    visionMethodManual = UI.CreateRadioButton(neutralArmyGivesVisionSubOptionsHeading).SetGroup(visionMethodGroup)
+    .SetText('Mod gives vision manually')
+    .SetIsChecked(Mod.Settings.VisionMethodManual or false);
 end

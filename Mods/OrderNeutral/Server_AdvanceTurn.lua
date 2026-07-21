@@ -67,6 +67,10 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
                 [toTerritoryID] = WL.TerritoryAnnotation.Create("Target", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Red)),
             };
             addNewOrder(event);
+
+            if (Mod.Settings.NeutralArmyGivesVision and Mod.Settings.VisionMethodFreeReconCard) then
+                GiveFreeReconOfTerritory(order.PlayerID, toTerritoryID, addNewOrder);
+            end
         else
             -- GameOrderAttackTransfer requires a real (non-neutral) PlayerID, so we can't use it for a neutral-owned
             -- source territory. Instead, manually resolve combat using the same damage calculation the engine uses.
@@ -110,6 +114,10 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
                 [toTerritoryID] = WL.TerritoryAnnotation.Create("Target", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Cordovan)),
             };
             addNewOrder(event);
+
+            if (Mod.Settings.NeutralArmyGivesVision and Mod.Settings.VisionMethodFreeReconCard) then
+                GiveFreeReconOfTerritory(order.PlayerID, attackResult.IsSuccessful and toTerritoryID or fromTerritoryID, addNewOrder);
+            end
         end
     end
 
