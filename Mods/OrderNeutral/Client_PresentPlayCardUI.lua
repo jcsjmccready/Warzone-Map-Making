@@ -100,6 +100,7 @@ function FirstTerritoryHandleClick(terrDetails)
         FirstTerritoryID = nil;
         FirstTerritoryName = nil;
         SecondTerritoryBtn.SetInteractable(false);
+        Game.HighlightTerritories({});
         return;
     end
 
@@ -109,11 +110,17 @@ function FirstTerritoryHandleClick(terrDetails)
 
         FirstTerritoryID = nil;
         FirstTerritoryName = nil;
+        Game.HighlightTerritories({});
     else
 		--Territory was clicked, remember its ID and name
 		FirstTerritoryInstructionLabel.SetText("Selected neutral territory: " .. terrDetails.Name).SetColor(TEXT_DEFAULT_COLOUR);
 		FirstTerritoryID = terrDetails.ID;
         FirstTerritoryName = terrDetails.Name;
+
+        --highlight the adjacent territories so the player can see their options while picking the second territory
+        local adjacentTerritories = GetTerritoriesWithinDistance(Game, FirstTerritoryID, 1);
+        adjacentTerritories = filter(adjacentTerritories, function(terrID) return terrID ~= FirstTerritoryID; end);
+        Game.HighlightTerritories(adjacentTerritories);
 	end
 
     --if the second territory is no longer adjacent to the (possibly new) first territory, clear it out
