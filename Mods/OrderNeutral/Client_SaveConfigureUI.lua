@@ -44,11 +44,10 @@ function Client_SaveConfigureUI(alert, addCard)
         Mod.Settings.InitialPieces,
         Mod.Settings.CardWeight);
 
-        
     local temporaryCommandNeutralCardID = addCard(
         "Temp. Order Neutral Card",
         "Play this card to create an attack/transfer order for a neutral territory. Discards at the end of the turn if unused.",
-        "TemporaryCommandNeutral.png",
+        "TemporaryOrderNeutral.png",
         1, 
         0,
         0,

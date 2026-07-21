@@ -1,5 +1,12 @@
 require("Utilities");
 
+---Server_AdvanceTurn_Start hook
+---@param game GameServerHook
+---@param addNewOrder fun(order: GameOrder)
+function Server_AdvanceTurn_Start(game, addNewOrder)
+    RemoveExpiredVisionFogMods(addNewOrder);
+end
+
 ---Server_AdvanceTurn_Order
 ---@param game GameServerHook
 ---@param order GameOrder
@@ -27,19 +34,16 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
 
         if (fromTerritory.OwnerPlayerID ~= WL.PlayerID.Neutral) then
             -- The territory is no longer neutral (eg. captured earlier this turn), so the order is no longer valid
-            addNewOrder(WL.GameOrderEvent.Create(order.PlayerID, order.Description .. " - failed, territory is no longer neutral", {}, {}));
             return;
         end
 
         if (fromTerritory.NumArmies.NumArmies <= 0) then
             -- No armies left on the neutral territory to issue the order with
-            addNewOrder(WL.GameOrderEvent.Create(order.PlayerID, order.Description .. " - failed, no armies on the territory", {}, {}));
             return;
         end
 
         if (game.Map.Territories[fromTerritoryID].ConnectedTo[toTerritoryID] == nil) then
             -- The client can't be trusted to only send legal orders, so verify adjacency ourselves
-            addNewOrder(WL.GameOrderEvent.Create(order.PlayerID, order.Description .. " - failed, territories are not adjacent", {}, {}));
             return;
         end
 
@@ -66,6 +70,11 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
                 [fromTerritoryID] = WL.TerritoryAnnotation.Create("Ordered", 8, GetColourIntegerFromHex(BUTTON_COLOURS.DarkGray)),
                 [toTerritoryID] = WL.TerritoryAnnotation.Create("Target", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Red)),
             };
+
+            if (Mod.Settings.NeutralArmyGivesVision and Mod.Settings.VisionMethodManual) then
+                GrantManualVisionOfTerritory(game, event, order.PlayerID, toTerritoryID);
+            end
+
             addNewOrder(event);
 
             if (Mod.Settings.NeutralArmyGivesVision and Mod.Settings.VisionMethodFreeReconCard) then
@@ -113,10 +122,17 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
                 [fromTerritoryID] = WL.TerritoryAnnotation.Create("Ordered", 8, GetColourIntegerFromHex(BUTTON_COLOURS.DarkGray)),
                 [toTerritoryID] = WL.TerritoryAnnotation.Create("Target", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Cordovan)),
             };
+
+            local visionTargetTerritoryID = attackResult.IsSuccessful and toTerritoryID or fromTerritoryID;
+
+            if (Mod.Settings.NeutralArmyGivesVision and Mod.Settings.VisionMethodManual) then
+                GrantManualVisionOfTerritory(game, event, order.PlayerID, visionTargetTerritoryID);
+            end
+
             addNewOrder(event);
 
             if (Mod.Settings.NeutralArmyGivesVision and Mod.Settings.VisionMethodFreeReconCard) then
-                GiveFreeReconOfTerritory(order.PlayerID, attackResult.IsSuccessful and toTerritoryID or fromTerritoryID, addNewOrder);
+                GiveFreeReconOfTerritory(order.PlayerID, visionTargetTerritoryID, addNewOrder);
             end
         end
     end

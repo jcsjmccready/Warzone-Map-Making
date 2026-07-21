@@ -11,15 +11,14 @@ function Client_PresentSettingsUI(rootParent)
     UI.CreateVerticalLayoutGroup(rootParent);
 
     local modVGroup = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
-    UI.CreateLabel(modVGroup).SetText("Mod Settings:").SetColor(SUBHEADING_COLOUR);
+    UI.CreateLabel(modVGroup).SetText("Mod Behaviour:").SetColor(SUBHEADING_COLOUR);
     UI.CreateLabel(modVGroup).SetText("Number of turns you can issue a neutral order for: " .. Mod.Settings.CardDuration);
 
     if (Mod.Settings.NeutralArmyGivesVision) then
-        UI.CreateLabel(modVGroup).SetText("Neutral army gives vision:");
         if (Mod.Settings.VisionMethodManual) then
-            UI.CreateLabel(modVGroup).SetText("Vision method: Mod gives vision manually");
+            UI.CreateLabel(modVGroup).SetText("Neutral army gives vision: Mod gives vision manually");
         elseif (Mod.Settings.VisionMethodFreeReconCard)  then
-            UI.CreateLabel(modVGroup).SetText("Vision method: Play free recon card");
+            UI.CreateLabel(modVGroup).SetText("Neutral army gives vision: Play free recon card");
         end
     end
 

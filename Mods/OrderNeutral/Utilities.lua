@@ -131,6 +131,43 @@ function GiveFreeReconOfTerritory(playerID, targetTerritoryID, addNewOrder)
     addNewOrder(WL.GameOrderPlayCardReconnaissance.Create(instance.ID, playerID, targetTerritoryID));
 end
 
+--returns territoryID plus all of its directly connected neighbours, used to mimic the area a recon card reveals
+function GetTerritoryAndAdjacentIDs(game, territoryID)
+    local territories = { territoryID };
+    for neighbourID, _ in pairs(game.Map.Territories[territoryID].ConnectedTo) do
+        table.insert(territories, neighbourID);
+    end
+    return territories;
+end
+
+--manually grants playerID vision of targetTerritoryID and its neighbours for one turn by adding a high priority FogMod
+--to 'event', restricted to that player only; the FogMod is tracked in PrivateGameData so Server_AdvanceTurn_Start can
+--remove it again after that one turn of vision has been shown
+function GrantManualVisionOfTerritory(game, event, playerID, targetTerritoryID)
+    local territories = GetTerritoryAndAdjacentIDs(game, targetTerritoryID);
+    local fogMod = WL.FogMod.Create("Order Neutral - manual vision", WL.StandingFogLevel.Visible, 9000, territories, { playerID });
+    event.FogModsOpt = { fogMod };
+
+    local privateGameData = Mod.PrivateGameData;
+    if (privateGameData.PendingVisionFogModIDs == nil) then privateGameData.PendingVisionFogModIDs = {}; end;
+    table.insert(privateGameData.PendingVisionFogModIDs, fogMod.ID);
+    Mod.PrivateGameData = privateGameData;
+end
+
+--removes any manually granted vision FogMods added last turn, so the vision they grant lasts exactly one turn
+function RemoveExpiredVisionFogMods(addNewOrder)
+    local privateGameData = Mod.PrivateGameData;
+    local pendingIDs = privateGameData.PendingVisionFogModIDs;
+    if (pendingIDs == nil or #pendingIDs == 0) then return; end;
+
+    local event = WL.GameOrderEvent.Create(WL.PlayerID.Neutral, "Order Neutral vision expired", {}, {});
+    event.RemoveFogModsOpt = pendingIDs;
+    addNewOrder(event);
+
+    privateGameData.PendingVisionFogModIDs = nil;
+    Mod.PrivateGameData = privateGameData;
+end
+
 --builds a "X armies, Special Unit Name, Special Unit Name" style description of a moving force
 function DescribeArmyMovement (numArmies, specialUnits)
 	local parts = { numArmies .. " armies" };
