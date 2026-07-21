@@ -1,3 +1,5 @@
+--todo: investigate "Cannot add more than 4 special units" error message
+
 require("Utilities");
 
 ---Server_AdvanceTurn_Start hook
@@ -29,6 +31,8 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
         local ids = split(string.sub(order.ModData, string.len("CreateNeutralAttackTransferOrder_") + 1), "_");
         local fromTerritoryID = tonumber(ids[1]);
         local toTerritoryID = tonumber(ids[2]);
+        local armyCountStr = ids[3];
+        local specialUnitsStr = ids[4];
 
         local fromTerritory = game.ServerGame.LatestTurnStanding.Territories[fromTerritoryID];
 
@@ -47,17 +51,37 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
             return;
         end
 
+        --the client can't be trusted to only request a legal amount, so clamp it to what's actually available
+        local availableArmies = fromTerritory.NumArmies.NumArmies;
+        local armiesToSend = (armyCountStr == nil or armyCountStr == "ALL") and availableArmies or math.max(0, math.min(availableArmies, tonumber(armyCountStr) or 0));
+
+        local specialUnitsToSend;
+        if (specialUnitsStr == nil or specialUnitsStr == "ALL") then
+            specialUnitsToSend = fromTerritory.NumArmies.SpecialUnits;
+        elseif (specialUnitsStr == "NONE") then
+            specialUnitsToSend = {};
+        else
+            local chosenSpecialUnitIDs = {};
+            for _, unitID in ipairs(split(specialUnitsStr, ",")) do chosenSpecialUnitIDs[unitID] = true; end
+            specialUnitsToSend = filter(fromTerritory.NumArmies.SpecialUnits, function(unit) return chosenSpecialUnitIDs[unit.ID] == true; end);
+        end
+
+        if (armiesToSend <= 0 and #specialUnitsToSend == 0) then
+            -- Nothing was actually selected to send (eg. the territory lost armies/special units earlier this turn)
+            return;
+        end
+
         local toTerritory = game.ServerGame.LatestTurnStanding.Territories[toTerritoryID];
         local fromTerritoryName = game.Map.Territories[fromTerritoryID].Name;
         local toTerritoryName = game.Map.Territories[toTerritoryID].Name;
 
         if (toTerritory.OwnerPlayerID == WL.PlayerID.Neutral) then
             -- Transfer into the other neutral territory, no combat involved
-            local armiesMoved = fromTerritory.NumArmies.NumArmies;
-            local specialUnitsMoved = fromTerritory.NumArmies.SpecialUnits;
+            local armiesMoved = armiesToSend;
+            local specialUnitsMoved = specialUnitsToSend;
 
             local fromMod = WL.TerritoryModification.Create(fromTerritoryID);
-            fromMod.SetArmiesTo = 0;
+            fromMod.SetArmiesTo = availableArmies - armiesToSend;
             fromMod.RemoveSpecialUnitsOpt = map(specialUnitsMoved, function(unit) return unit.ID end);
 
             local toMod = WL.TerritoryModification.Create(toTerritoryID);
@@ -84,9 +108,10 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
         else
             -- GameOrderAttackTransfer requires a real (non-neutral) PlayerID, so we can't use it for a neutral-owned
             -- source territory. Instead, manually resolve combat using the same damage calculation the engine uses.
-            local attackingArmies = fromTerritory.NumArmies.NumArmies;
-            local attackingSpecialUnits = fromTerritory.NumArmies.SpecialUnits;
-            local attackResult = process_manual_attack(game, fromTerritory.NumArmies, toTerritory, nil, addNewOrder, false);
+            local attackingArmies = armiesToSend;
+            local attackingSpecialUnits = specialUnitsToSend;
+            local attackingArmiesObj = WL.Armies.Create(attackingArmies, attackingSpecialUnits);
+            local attackResult = process_manual_attack(game, attackingArmiesObj, toTerritory, nil, addNewOrder, false);
 
             local fromMod = WL.TerritoryModification.Create(fromTerritoryID);
             local toMod = WL.TerritoryModification.Create(toTerritoryID);
@@ -97,8 +122,9 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
             if (attackResult.IsSuccessful) then
                 -- attack succeeds, neutral captures the territory. The entire attacking force (whether it died,
                 -- survived undamaged, or survived damaged) leaves the source territory and arrives fresh at the
-                -- destination, so remove all of it from the source rather than just the units that died/were hurt
-                fromMod.SetArmiesTo = 0;
+                -- destination, so remove all of it from the source rather than just the units that died/were hurt;
+                -- armies/special units that weren't sent were never part of the attack and stay behind
+                fromMod.SetArmiesTo = availableArmies - armiesToSend;
                 fromMod.RemoveSpecialUnitsOpt = map(attackingSpecialUnits, function(unit) return unit.ID end);
 
                 toMod.SetOwnerOpt = WL.PlayerID.Neutral;
@@ -109,8 +135,9 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
             else
                 -- attack fails, surviving attackers return home and the defender holds the territory with whatever
                 -- survived. Units that took no damage never left their territory, so only the ones that died or were
-                -- damaged (and were cloned with their new health) need to be removed/re-added
-                fromMod.SetArmiesTo = attackResult.AttackerResult.RemainingArmies;
+                -- damaged (and were cloned with their new health) need to be removed/re-added; armies/special units
+                -- that weren't sent were never part of the attack and stay behind alongside the returning survivors
+                fromMod.SetArmiesTo = (availableArmies - armiesToSend) + attackResult.AttackerResult.RemainingArmies;
                 fromMod.RemoveSpecialUnitsOpt = attackResult.AttackerResult.KilledSpecials;
                 extraFromChunks = AssignAddSpecialUnits(fromMod, attackResult.AttackerResult.ClonedSpecials);
 
