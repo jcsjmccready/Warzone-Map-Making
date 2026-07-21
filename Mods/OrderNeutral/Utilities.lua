@@ -184,6 +184,49 @@ function GetSpecialUnitName (unit)
 	return unit.proxyType; --eg "Commander"
 end
 
+--WZ rejects a single TerritoryModification.AddSpecialUnits with more than 4 entries ("Cannot add more than 4 special
+--units"), so large attacking/transferring forces (eg. 6 tanks) need to be split up. Sets targetMod.AddSpecialUnits to
+--the first chunk (<=4 units) and returns an array of any leftover chunks (each itself an array of <=4 units) that
+--didn't fit; pass those to QueueExtraSpecialUnitEvents once the primary event has been added, so they arrive as
+--their own follow-up events rather than as extra TerritoryModifications on the same event (which don't reliably
+--apply beyond the first one)
+function AssignAddSpecialUnits(targetMod, specialUnits)
+	local MAX_SPECIAL_UNITS_PER_MOD = 4;
+
+	local chunks = {};
+	local chunk = {};
+	for _, unit in pairs(specialUnits) do
+		table.insert(chunk, unit);
+		if (#chunk >= MAX_SPECIAL_UNITS_PER_MOD) then
+			table.insert(chunks, chunk);
+			chunk = {};
+		end
+	end
+	if (#chunk > 0) then
+		table.insert(chunks, chunk);
+	end
+
+	if (#chunks > 0) then
+		targetMod.AddSpecialUnits = chunks[1];
+	end
+
+	local extraChunks = {};
+	for i = 2, #chunks do
+		table.insert(extraChunks, chunks[i]);
+	end
+	return extraChunks;
+end
+
+--queues a follow-up GameOrderEvent per leftover chunk returned by AssignAddSpecialUnits, each just adding that
+--chunk of special units to territoryID; call this after the primary event for the order has already been queued
+function QueueExtraSpecialUnitEvents(territoryID, extraChunks, playerID, addNewOrder)
+	for _, chunk in ipairs(extraChunks) do
+		local extraMod = WL.TerritoryModification.Create(territoryID);
+		extraMod.AddSpecialUnits = chunk;
+		addNewOrder(WL.GameOrderEvent.Create(WL.PlayerID.Neutral, "Managing special units", { playerID }, { extraMod }));
+	end
+end
+
 function territoryHasActiveShield (territory)
 	if not territory then return false; end
 

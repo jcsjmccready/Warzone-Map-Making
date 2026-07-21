@@ -81,7 +81,7 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
 
             local toMod = WL.TerritoryModification.Create(toTerritoryID);
             toMod.AddArmies = armiesMoved;
-            toMod.AddSpecialUnits = specialUnitsMoved;
+            local extraSpecialUnitChunks = AssignAddSpecialUnits(toMod, specialUnitsMoved);
 
             local message = DescribeArmyMovement(armiesMoved, specialUnitsMoved) .. " transferred to " .. toTerritoryName .. " from " .. fromTerritoryName;
             local event = WL.GameOrderEvent.Create(WL.PlayerID.Neutral, message, { order.PlayerID }, { fromMod, toMod });
@@ -95,6 +95,7 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
             end
 
             addNewOrder(event);
+            QueueExtraSpecialUnitEvents(toTerritoryID, extraSpecialUnitChunks, order.PlayerID, addNewOrder);
 
             if (Mod.Settings.NeutralArmyGivesVision and Mod.Settings.VisionMethodFreeReconCard) then
                 GiveFreeReconOfTerritory(order.PlayerID, toTerritoryID, addNewOrder);
@@ -111,6 +112,8 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
             local toMod = WL.TerritoryModification.Create(toTerritoryID);
 
             local message;
+            local extraFromChunks = {};
+            local extraToChunks = {};
             if (attackResult.IsSuccessful) then
                 -- attack succeeds, neutral captures the territory. The entire attacking force (whether it died,
                 -- survived undamaged, or survived damaged) leaves the source territory and arrives fresh at the
@@ -122,7 +125,7 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
                 toMod.SetOwnerOpt = WL.PlayerID.Neutral;
                 toMod.SetArmiesTo = attackResult.AttackerResult.RemainingArmies;
                 toMod.RemoveSpecialUnitsOpt = attackResult.DefenderResult.KilledSpecials;
-                toMod.AddSpecialUnits = attackResult.AttackerResult.SurvivingSpecials;
+                extraToChunks = AssignAddSpecialUnits(toMod, attackResult.AttackerResult.SurvivingSpecials);
                 message = DescribeArmyMovement(attackingArmies, attackingSpecialUnits) .. " captured " .. toTerritoryName .. " from " .. fromTerritoryName;
             else
                 -- attack fails, surviving attackers return home and the defender holds the territory with whatever
@@ -131,11 +134,11 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
                 -- that weren't sent were never part of the attack and stay behind alongside the returning survivors
                 fromMod.SetArmiesTo = (availableArmies - armiesToSend) + attackResult.AttackerResult.RemainingArmies;
                 fromMod.RemoveSpecialUnitsOpt = attackResult.AttackerResult.KilledSpecials;
-                fromMod.AddSpecialUnits = attackResult.AttackerResult.ClonedSpecials;
+                extraFromChunks = AssignAddSpecialUnits(fromMod, attackResult.AttackerResult.ClonedSpecials);
 
                 toMod.SetArmiesTo = attackResult.DefenderResult.RemainingArmies;
                 toMod.RemoveSpecialUnitsOpt = attackResult.DefenderResult.KilledSpecials;
-                toMod.AddSpecialUnits = attackResult.DefenderResult.ClonedSpecials;
+                extraToChunks = AssignAddSpecialUnits(toMod, attackResult.DefenderResult.ClonedSpecials);
                 message = DescribeArmyMovement(attackingArmies, attackingSpecialUnits) .. " failed to capture " .. toTerritoryName .. " from " .. fromTerritoryName;
             end
 
@@ -152,6 +155,8 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
             end
 
             addNewOrder(event);
+            QueueExtraSpecialUnitEvents(fromTerritoryID, extraFromChunks, order.PlayerID, addNewOrder);
+            QueueExtraSpecialUnitEvents(toTerritoryID, extraToChunks, order.PlayerID, addNewOrder);
 
             if (Mod.Settings.NeutralArmyGivesVision and Mod.Settings.VisionMethodFreeReconCard) then
                 GiveFreeReconOfTerritory(order.PlayerID, visionTargetTerritoryID, addNewOrder);
