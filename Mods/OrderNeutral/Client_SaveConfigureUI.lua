@@ -35,9 +35,14 @@ function Client_SaveConfigureUI(alert, addCard)
         return;
     end
 
+    local commandNeutralCardDescription = "Play this card to create an attack/transfer order for a neutral territory";
+    if (Mod.Settings.CardDuration > 1) then
+        commandNeutralCardDescription = commandNeutralCardDescription .. ". Playing this card will also give you a temporary copy of it for the next " .. (Mod.Settings.CardDuration - 1) .. " turn(s)";
+    end
+
     local commandNeutralCardID = addCard(
         "Order Neutral Card",
-        "Play this card to create an attack/transfer order for a neutral territory",
+        commandNeutralCardDescription,
         "OrderNeutral.png",
         Mod.Settings.NumPieces, 
         Mod.Settings.MinPieces,
