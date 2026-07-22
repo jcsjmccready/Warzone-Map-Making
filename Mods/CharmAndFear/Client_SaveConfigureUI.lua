@@ -65,7 +65,8 @@ function Client_SaveConfigureUI(alert, addCard)
             Mod.Settings.FearNumPieces, 
             Mod.Settings.FearMinPieces,
             Mod.Settings.FearInitialPieces,
-            Mod.Settings.FearCardWeight);
+            Mod.Settings.FearCardWeight,
+            Mod.Settings.FearDuration);
 
             Mod.Settings.FearCardID = fearCardId;
     end
@@ -132,7 +133,8 @@ function Client_SaveConfigureUI(alert, addCard)
             Mod.Settings.CharmNumPieces, 
             Mod.Settings.CharmMinPieces,
             Mod.Settings.CharmInitialPieces, 
-            Mod.Settings.CharmCardWeight);
+            Mod.Settings.CharmCardWeight,
+            Mod.Settings.CharmDuration);
 
             Mod.Settings.CharmCardID = charmCardId;
     end

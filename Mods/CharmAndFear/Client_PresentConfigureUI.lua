@@ -105,7 +105,7 @@ function Create_FearCard_SubOptions_UI(rootParent)
     UI.CreateLabel(fearCardVHeading).SetText("Card Settings:").SetColor(BUTTON_COLOURS.ElectricPurple);
 
     local horz = UI.CreateHorizontalLayoutGroup(fearCardVHeading);
-    UI.CreateLabel(horz).SetText('Number of Pieces to divide the card into').SetFlexibleWidth(290);
+    UI.CreateLabel(horz).SetText('Number of pieces to divide the card into').SetPreferredWidth(290);
     fearNumPieces = UI.CreateNumberInputField(horz)
         .SetSliderMinValue(1)
         .SetSliderMaxValue(11)
@@ -131,7 +131,7 @@ function Create_FearCard_SubOptions_UI(rootParent)
     fearInitialPieces = UI.CreateNumberInputField(horz)
         .SetSliderMinValue(0)
         .SetSliderMaxValue(5)
-        .SetValue(Mod.Settings.FearInitialPieces or 1);
+        .SetValue(Mod.Settings.FearInitialPieces or 0);
 end
 
 function Create_CharmCard_SubOptions_UI(rootParent)
@@ -190,7 +190,7 @@ function Create_CharmCard_SubOptions_UI(rootParent)
     UI.CreateLabel(charmCardVHeading).SetText("Card Settings:").SetColor(BUTTON_COLOURS.Orchid);
 
     local horz = UI.CreateHorizontalLayoutGroup(charmCardVHeading);
-    UI.CreateLabel(horz).SetText('Number of Pieces to divide the card into').SetFlexibleWidth(290);
+    UI.CreateLabel(horz).SetText('Number of pieces to divide the card into').SetPreferredWidth(290);
     charmNumPieces = UI.CreateNumberInputField(horz)
         .SetSliderMinValue(1)
         .SetSliderMaxValue(11)
@@ -216,5 +216,5 @@ function Create_CharmCard_SubOptions_UI(rootParent)
     charmInitialPieces = UI.CreateNumberInputField(horz)
         .SetSliderMinValue(0)
         .SetSliderMaxValue(5)
-        .SetValue(Mod.Settings.CharmInitialPieces or 1);
+        .SetValue(Mod.Settings.CharmInitialPieces or 0);
 end

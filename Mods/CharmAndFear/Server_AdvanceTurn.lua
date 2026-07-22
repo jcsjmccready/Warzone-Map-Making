@@ -1,5 +1,7 @@
 require("Utilities");
 
+-- change what phase this mod fear/charms in
+-- new art for feature
 
 ---@class CharmFearInstance # Active card expire behaviour enums
 ---@field TerritoryId number # TerritoryId of where the charm/fear is
