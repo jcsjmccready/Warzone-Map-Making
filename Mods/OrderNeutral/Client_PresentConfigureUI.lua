@@ -10,8 +10,21 @@ end;
 function Create_UI_Controls(rootParent)
     local mainModUI = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
 
-    UI.CreateLabel(mainModUI).SetText('Mod Settings:').SetColor(SUBHEADING_COLOUR);
+    UI.CreateLabel(mainModUI).SetText('Mod Behaviour:').SetColor(SUBHEADING_COLOUR);
     local horz = UI.CreateHorizontalLayoutGroup(mainModUI);
+
+    local armyAmountHeading = UI.CreateVerticalLayoutGroup(mainModUI);
+    UI.CreateLabel(armyAmountHeading).SetText('Army to order:');
+    local armyAmountGroup = UI.CreateRadioButtonGroup(armyAmountHeading);
+
+    armyAmountEntireArmy = UI.CreateRadioButton(armyAmountHeading).SetGroup(armyAmountGroup)
+    .SetText('Entire Army')
+    .SetIsChecked(Mod.Settings.ArmyAmountEntireArmy or true);
+
+    armyAmountInputTroops = UI.CreateRadioButton(armyAmountHeading).SetGroup(armyAmountGroup)
+    .SetText('Input number of troops')
+    .SetIsChecked(Mod.Settings.ArmyAmountInputTroops or false);
+
     UI.CreateLabel(horz).SetText('Card duration:').SetPreferredWidth(290);
     cardDuration = UI.CreateNumberInputField(horz)
         .SetSliderMinValue(1)
@@ -72,12 +85,12 @@ end
 function Create_NeutralArmyGivesVision_SubOptions_UI(rootParent)
     neutralArmyGivesVisionSubOptionsHeading = UI.CreateVerticalLayoutGroup(rootParent);
     visionMethodGroup = UI.CreateRadioButtonGroup(neutralArmyGivesVisionSubOptionsHeading);
-
-    visionMethodFreeReconCard = UI.CreateRadioButton(neutralArmyGivesVisionSubOptionsHeading).SetGroup(visionMethodGroup)
-    .SetText('Play free recon card')
-    .SetIsChecked(Mod.Settings.VisionMethodFreeReconCard or true);
     
     visionMethodManual = UI.CreateRadioButton(neutralArmyGivesVisionSubOptionsHeading).SetGroup(visionMethodGroup)
     .SetText('Mod gives vision manually')
-    .SetIsChecked(Mod.Settings.VisionMethodManual or false);
+    .SetIsChecked(Mod.Settings.VisionMethodManual or true);
+
+    visionMethodFreeReconCard = UI.CreateRadioButton(neutralArmyGivesVisionSubOptionsHeading).SetGroup(visionMethodGroup)
+    .SetText('Play free recon card')
+    .SetIsChecked(Mod.Settings.VisionMethodFreeReconCard or false);
 end

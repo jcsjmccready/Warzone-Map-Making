@@ -13,6 +13,8 @@ function Client_SaveConfigureUI(alert, addCard)
         Mod.Settings.VisionMethodFreeReconCard = visionMethodFreeReconCard.GetIsChecked();
         Mod.Settings.VisionMethodManual = visionMethodManual.GetIsChecked();
     end
+    Mod.Settings.ArmyAmountEntireArmy = armyAmountEntireArmy.GetIsChecked();
+    Mod.Settings.ArmyAmountInputTroops = armyAmountInputTroops.GetIsChecked();
 
     if (Mod.Settings.CardDuration < 1) then
         alert("Number of turns you can issue neutral orders for cannot be less than 1");

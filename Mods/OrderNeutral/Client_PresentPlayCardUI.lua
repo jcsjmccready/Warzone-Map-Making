@@ -20,9 +20,16 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
     FirstTerritoryName = nil;
     SecondTerritoryID = nil;
     SecondTerritoryName = nil;
+    ArmyCountInput = nil;
+    SpecialUnitCheckboxes = nil;
+    ArmyOptionsContent = nil;
 
     game.CreateDialog(function(rootParent, setMaxSize, setScrollable, game, close)
         Close = close;
+        SetDialogMaxSize = setMaxSize;
+        --always vertically scrollable so toggling the max size below doesn't leave stale space behind when
+        --shrinking back down from a territory with special units to one without
+        setScrollable(false, true);
         setMaxSize(400, 260);
         local vert = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1); --set flexible width so things don't jump around while we change InstructionLabel
 
@@ -41,6 +48,8 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
         FirstTerritoryInstructionLabel = UI.CreateLabel(vert).SetText("");
         SecondTerritoryInstructionLabel = UI.CreateLabel(vert).SetText("");
 
+        ArmyOptionsHeading = UI.CreateVerticalLayoutGroup(vert).SetFlexibleWidth(1);
+
         local playButtonsHGroup = UI.CreateHorizontalLayoutGroup(vert).SetFlexibleWidth(1);
         PlayCardBtn = UI.CreateButton(playButtonsHGroup)
             .SetText("Play Card")
@@ -58,15 +67,85 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
                     return;
                 end
 
+                local armyCountStr = "ALL";
+                if (Mod.Settings.ArmyAmountInputTroops) then
+                    armyCountStr = tostring(ArmyCountInput.GetValue());
+                end
+
+                local specialUnitsStr = "ALL";
+                if (Mod.Settings.ArmyAmountInputTroops) then
+                    local chosenSpecialUnitIDs = {};
+                    for unitID, checkbox in pairs(SpecialUnitCheckboxes) do
+                        if (checkbox.GetIsChecked()) then
+                            table.insert(chosenSpecialUnitIDs, unitID);
+                        end
+                    end
+                    specialUnitsStr = (#chosenSpecialUnitIDs > 0) and table.concat(chosenSpecialUnitIDs, ",") or "NONE";
+
+                    if (tonumber(armyCountStr) == 0 and #chosenSpecialUnitIDs == 0) then
+                        FirstTerritoryInstructionLabel.SetText("You must send at least 1 army or special unit").SetColor(ERROR_COLOUR);
+                        return;
+                    end
+                end
+
                 local td = game.Map.Territories[FirstTerritoryID];
 
                 local jumpToSpot = WL.RectangleVM.Create(td.MiddlePointX, td.MiddlePointY, td.MiddlePointX, td.MiddlePointY);
 
-                if (playCard("Issue neutral attack/transfer order from " .. FirstTerritoryName .. " towards " .. SecondTerritoryName, "CreateNeutralAttackTransferOrder_" .. FirstTerritoryID .. "_" .. SecondTerritoryID, WL.TurnPhase.Attacks, {}, jumpToSpot)) then
+                local modData = "CreateNeutralAttackTransferOrder_" .. FirstTerritoryID .. "_" .. SecondTerritoryID .. "_" .. armyCountStr .. "_" .. specialUnitsStr;
+
+                if (playCard("Issue neutral attack/transfer order from " .. FirstTerritoryName .. " towards " .. SecondTerritoryName, modData, WL.TurnPhase.Attacks, {}, jumpToSpot)) then
                     close();
                 end
             end);
     end);
+end
+
+--(re)builds the army count input (if enabled) and one checkbox per special unit present on territoryID, letting the
+--player choose exactly what accompanies the order rather than always sending the entire stack
+function Create_ArmyOptions_UI(territoryID)
+    Destroy_ArmyOptions_UI();
+
+    ArmyOptionsContent = UI.CreateVerticalLayoutGroup(ArmyOptionsHeading).SetFlexibleWidth(1);
+    SpecialUnitCheckboxes = {};
+
+    local terr = Game.LatestStanding.Territories[territoryID];
+    local hasSpecialUnits = #terr.NumArmies.SpecialUnits > 0;
+
+    if (Mod.Settings.ArmyAmountInputTroops) then
+        local horz = UI.CreateHorizontalLayoutGroup(ArmyOptionsContent).SetFlexibleWidth(1);
+        UI.CreateLabel(horz).SetText("Armies to send").SetPreferredWidth(150);
+        ArmyCountInput = UI.CreateNumberInputField(horz)
+            .SetSliderMinValue(0)
+            .SetSliderMaxValue(terr.NumArmies.NumArmies)
+            .SetValue(terr.NumArmies.NumArmies);
+    end
+
+    if (Mod.Settings.ArmyAmountInputTroops and hasSpecialUnits) then
+        UI.CreateLabel(ArmyOptionsContent).SetText("Special units to send:");
+        for _, unit in pairs(terr.NumArmies.SpecialUnits) do
+            SpecialUnitCheckboxes[unit.ID] = UI.CreateCheckBox(ArmyOptionsContent).SetText(GetSpecialUnitName(unit)).SetIsChecked(true);
+        end
+    end
+
+    if (not Mod.Settings.ArmyAmountInputTroops) then
+        SetDialogMaxSize(400, 260);
+    elseif (hasSpecialUnits) then
+        SetDialogMaxSize(400, 300);
+    else
+        SetDialogMaxSize(400, 282);
+    end
+end
+
+function Destroy_ArmyOptions_UI()
+    if (ArmyOptionsContent ~= nil) then
+        UI.Destroy(ArmyOptionsContent);
+        ArmyOptionsContent = nil;
+    end
+    ArmyCountInput = nil;
+    SpecialUnitCheckboxes = {};
+
+    SetDialogMaxSize(400, 260);
 end
 
 function UpdatePlayCardBtnInteractable()
@@ -84,6 +163,7 @@ function FirstTerritoryClicked()
     SecondTerritoryID = nil;
     SecondTerritoryName = nil;
     SecondTerritoryInstructionLabel.SetText("");
+    Destroy_ArmyOptions_UI();
     UpdatePlayCardBtnInteractable();
 end
 
@@ -101,6 +181,7 @@ function FirstTerritoryHandleClick(terrDetails)
         FirstTerritoryName = nil;
         SecondTerritoryBtn.SetInteractable(false);
         Game.HighlightTerritories({});
+        Destroy_ArmyOptions_UI();
         return;
     end
 
@@ -111,6 +192,7 @@ function FirstTerritoryHandleClick(terrDetails)
         FirstTerritoryID = nil;
         FirstTerritoryName = nil;
         Game.HighlightTerritories({});
+        Destroy_ArmyOptions_UI();
     else
 		--Territory was clicked, remember its ID and name
 		FirstTerritoryInstructionLabel.SetText("Selected neutral territory: " .. terrDetails.Name).SetColor(TEXT_DEFAULT_COLOUR);
@@ -121,6 +203,8 @@ function FirstTerritoryHandleClick(terrDetails)
         local adjacentTerritories = GetTerritoriesWithinDistance(Game, FirstTerritoryID, 1);
         adjacentTerritories = filter(adjacentTerritories, function(terrID) return terrID ~= FirstTerritoryID; end);
         Game.HighlightTerritories(adjacentTerritories);
+
+        Create_ArmyOptions_UI(FirstTerritoryID);
 	end
 
     --if the second territory is no longer adjacent to the (possibly new) first territory, clear it out
