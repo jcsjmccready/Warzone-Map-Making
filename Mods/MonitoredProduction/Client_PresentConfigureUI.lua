@@ -39,53 +39,79 @@ function Create_UI_Controls(rootParent)
 
     monitorCities.SetOnValueChanged(function()
         if (monitorCities.GetIsChecked()) then
-            Refresh_Monitor_SubOptions_UI(monitorSubOptionsHeading);
+            monitorCities.SetInteractable(false);
+            Create_CityIncomeMode_SubOptions_UI(monitorSubOptionsHeading);
+        else
+            monitorCities.SetInteractable(true);
+            UI.Destroy(cityIncomeModeHeading);
         end
     end);
 
     monitorTerritories.SetOnValueChanged(function()
         if (monitorTerritories.GetIsChecked()) then
-            Refresh_Monitor_SubOptions_UI(monitorSubOptionsHeading);
+            monitorTerritories.SetInteractable(false);
+            Create_TerritoryIncomeMode_SubOptions_UI(monitorSubOptionsHeading);
+        else
+            monitorTerritories.SetInteractable(true);
+            UI.Destroy(territoryIncomeModeHeading);
         end
     end);
 
     -- one time build up from settings
-    Refresh_Monitor_SubOptions_UI(monitorSubOptionsHeading);
-end
-
---(re)builds the sub options for whichever of Cities/Territories is currently selected
-function Refresh_Monitor_SubOptions_UI(rootParent)
-    Destroy_Monitor_SubOptions_UI();
-
-    monitorSubOptionsContent = UI.CreateVerticalLayoutGroup(rootParent);
-
     if (monitorCities.GetIsChecked()) then
-        UI.CreateLabel(monitorSubOptionsContent).SetText('Increased gold per').SetColor(SUBHEADING_COLOUR2);
-        local cityIncomeModeGroup = UI.CreateRadioButtonGroup(monitorSubOptionsContent);
-
-        cityIncomeModePerCity = UI.CreateRadioButton(monitorSubOptionsContent).SetGroup(cityIncomeModeGroup)
-        .SetText('City')
-        .SetIsChecked(Mod.Settings.CityIncomeModePerCity or true);
-
-        cityIncomeModePerTerritoryWithCity = UI.CreateRadioButton(monitorSubOptionsContent).SetGroup(cityIncomeModeGroup)
-        .SetText('Territory with a city')
-        .SetIsChecked(Mod.Settings.CityIncomeModePerTerritoryWithCity or false);
+        monitorCities.SetInteractable(false);
+        Create_CityIncomeMode_SubOptions_UI(monitorSubOptionsHeading);
     else
-        UI.CreateLabel(monitorSubOptionsContent).SetText('Increased gold/troops per').SetColor(SUBHEADING_COLOUR2);
-        local territoryIncomeModeGroup = UI.CreateRadioButtonGroup(monitorSubOptionsContent);
-
-        territoryIncomeModePerTerritory = UI.CreateRadioButton(monitorSubOptionsContent).SetGroup(territoryIncomeModeGroup)
-        .SetText('Territory')
-        .SetIsChecked(true);
+        monitorTerritories.SetInteractable(false);
+        Create_TerritoryIncomeMode_SubOptions_UI(monitorSubOptionsHeading);
     end
 end
 
-function Destroy_Monitor_SubOptions_UI()
-    if (monitorSubOptionsContent ~= nil) then
-        UI.Destroy(monitorSubOptionsContent);
-        monitorSubOptionsContent = nil;
+function Create_CityIncomeMode_SubOptions_UI(rootParent)
+    cityIncomeModeHeading = UI.CreateVerticalLayoutGroup(rootParent);
+    UI.CreateLabel(cityIncomeModeHeading).SetText('Increased gold per').SetColor(SUBHEADING_COLOUR2);
+    local cityIncomeModeGroup = UI.CreateRadioButtonGroup(cityIncomeModeHeading);
+
+    cityIncomeModePerCity = UI.CreateRadioButton(cityIncomeModeHeading).SetGroup(cityIncomeModeGroup)
+    .SetText('City')
+    .SetIsChecked(Mod.Settings.CityIncomeModePerCity or true);
+
+    cityIncomeModePerTerritoryWithCity = UI.CreateRadioButton(cityIncomeModeHeading).SetGroup(cityIncomeModeGroup)
+    .SetText('Territory with a city')
+    .SetIsChecked(Mod.Settings.CityIncomeModePerTerritoryWithCity or false);
+
+    cityIncomeModePerCity.SetOnValueChanged(function()
+        if (cityIncomeModePerCity.GetIsChecked()) then
+            cityIncomeModePerCity.SetInteractable(false);
+        else
+            cityIncomeModePerCity.SetInteractable(true);
+        end
+    end);
+
+    cityIncomeModePerTerritoryWithCity.SetOnValueChanged(function()
+        if (cityIncomeModePerTerritoryWithCity.GetIsChecked()) then
+            cityIncomeModePerTerritoryWithCity.SetInteractable(false);
+        else
+            cityIncomeModePerTerritoryWithCity.SetInteractable(true);
+        end
+    end);
+
+    if (cityIncomeModePerCity.GetIsChecked()) then
+        cityIncomeModePerCity.SetInteractable(false);
+    else
+        cityIncomeModePerTerritoryWithCity.SetInteractable(false);
     end
-    cityIncomeModePerCity = nil;
-    cityIncomeModePerTerritoryWithCity = nil;
-    territoryIncomeModePerTerritory = nil;
+end
+
+function Create_TerritoryIncomeMode_SubOptions_UI(rootParent)
+    territoryIncomeModeHeading = UI.CreateVerticalLayoutGroup(rootParent);
+    UI.CreateLabel(territoryIncomeModeHeading).SetText('Increased gold/troops per').SetColor(SUBHEADING_COLOUR2);
+    local territoryIncomeModeGroup = UI.CreateRadioButtonGroup(territoryIncomeModeHeading);
+
+    --only one option currently exists, so it's permanently checked and non-interactable, same as BarbedWire's
+    --single-option "Acquiring type: Card" radio
+    territoryIncomeModePerTerritory = UI.CreateRadioButton(territoryIncomeModeHeading).SetGroup(territoryIncomeModeGroup)
+    .SetText('Territory')
+    .SetIsChecked(true)
+    .SetInteractable(false);
 end

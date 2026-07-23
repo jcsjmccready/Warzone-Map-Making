@@ -9,7 +9,7 @@ function Client_SaveConfigureUI(alert, addCard)
     if (Mod.Settings.MonitorCities) then
         Mod.Settings.CityIncomeModePerCity = cityIncomeModePerCity.GetIsChecked();
         Mod.Settings.CityIncomeModePerTerritoryWithCity = cityIncomeModePerTerritoryWithCity.GetIsChecked();
-    else
+    elseif(Mod.Settings.MonitorTerritories) then
         Mod.Settings.TerritoryIncomeModePerTerritory = territoryIncomeModePerTerritory.GetIsChecked();
     end
 
