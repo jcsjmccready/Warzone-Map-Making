@@ -69,7 +69,7 @@ end
 
 function Create_CityIncomeMode_SubOptions_UI(rootParent)
     cityIncomeModeHeading = UI.CreateVerticalLayoutGroup(rootParent);
-    UI.CreateLabel(cityIncomeModeHeading).SetText('Increased gold per').SetColor(SUBHEADING_COLOUR2);
+    UI.CreateLabel(cityIncomeModeHeading).SetText('Increased gold per');
     local cityIncomeModeGroup = UI.CreateRadioButtonGroup(cityIncomeModeHeading);
 
     cityIncomeModePerCity = UI.CreateRadioButton(cityIncomeModeHeading).SetGroup(cityIncomeModeGroup)
