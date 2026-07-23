@@ -52,7 +52,7 @@ end
 function Create_FearCard_SubOptions_UI(rootParent)
     fearCardVHeading = UI.CreateVerticalLayoutGroup(rootParent);
     UI.CreateLabel(fearCardVHeading).SetText("Creates a structure that 'fears' armies, forcing them to move away from it.");
-    UI.CreateLabel(fearCardVHeading).SetText("All armies on the selected territory are forced to leave*");
+    UI.CreateLabel(fearCardVHeading).SetText("All armies (excluding immune special units) on the selected territory are forced to leave*");
     UI.CreateLabel(fearCardVHeading).SetText("Fear Settings:").SetColor(BUTTON_COLOURS.ElectricPurple);
 
     local horz = UI.CreateHorizontalLayoutGroup(fearCardVHeading);
@@ -137,6 +137,7 @@ end
 function Create_CharmCard_SubOptions_UI(rootParent)
     charmCardVHeading = UI.CreateVerticalLayoutGroup(rootParent);
     UI.CreateLabel(charmCardVHeading).SetText("Creates a structure that forces armies to move towards it.");
+    UI.CreateLabel(charmCardVHeading).SetText("All armies (excl. immune special units) on the selected territory are unable to leave*");
     UI.CreateLabel(charmCardVHeading).SetText("Charm Settings:").SetColor(BUTTON_COLOURS.Orchid);
 
     local horz = UI.CreateHorizontalLayoutGroup(charmCardVHeading);

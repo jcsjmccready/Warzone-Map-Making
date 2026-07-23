@@ -18,8 +18,20 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
 	-- resolve charm/fear the moment the Attacks phase starts: after Deploys/reinforcements have landed,
 	-- but before any Attack/Transfer order this turn has a chance to run
 	if (order.OccursInPhase == WL.TurnPhase.Attacks and Mod.PrivateGameData.ResolvedForTurn ~= game.Game.TurnNumber) then
-		ResolveCharmAndFear(game, addNewOrder);
 		local priv = Mod.PrivateGameData;
+
+		-- snapshot which territories are charmed *before* ResolveCharmAndFear removes any charms whose final
+		-- turn is this turn - otherwise HandleAttackTransferBlockedByCharm would never see (and so never block)
+		-- a charm on its own last turn, since by the time it runs the charm would have already been removed
+		local charmedTerritoriesThisTurn = {};
+		for _, charm in ipairs(priv.Charms or {}) do
+			charmedTerritoriesThisTurn[charm.TerritoryId] = true;
+		end
+		priv.CharmedTerritoriesThisTurn = charmedTerritoriesThisTurn;
+
+		ResolveCharmAndFear(game, addNewOrder);
+		priv = Mod.PrivateGameData;
+		priv.CharmedTerritoriesThisTurn = charmedTerritoriesThisTurn;
 		priv.ResolvedForTurn = game.Game.TurnNumber;
 		Mod.PrivateGameData = priv;
 	end
@@ -107,6 +119,56 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
 		priv.Charms = charms;
 		Mod.PrivateGameData = priv;
     end
+
+	HandleAttackTransferBlockedByCharm(game, order, skipThisOrder, addNewOrder);
+end
+
+---Blocks Attack/Transfer orders leaving a territory that's 100% charmed (ie. the territory the Charm structure is
+---actually on, which is always distance 0 from itself and therefore always fully charmed), since the territory's
+---armies belong to the charm effect rather than the player at that point. Skips the order and tells the player why.
+---If CharmSpecialUnitThreshold makes special units immune at that percentage, the order's special units are still
+---allowed through via a brand new Attack/Transfer order containing just them (0 armies), since only the regular
+---armies belong to the charm effect.
+---@param game GameServerHook
+---@param order GameOrder
+---@param skipThisOrder fun(modOrderControl: EnumModOrderControl) # Allows you to skip the current order
+---@param addNewOrder fun(order: GameOrder) # Adds a game order, will be processed before any of the rest of the orders
+function HandleAttackTransferBlockedByCharm(game, order, skipThisOrder, addNewOrder)
+	if (order.proxyType ~= 'GameOrderAttackTransfer') then
+		return;
+	end
+
+	local charmedTerritoriesThisTurn = Mod.PrivateGameData.CharmedTerritoriesThisTurn or {};
+	if (not charmedTerritoriesThisTurn[order.From]) then
+		return;
+	end
+
+	local areSuImmune = 1 <= (Mod.Settings.CharmSpecialUnitThreshold or 0);
+	local armiesCount = (order.NumArmies ~= nil) and order.NumArmies.NumArmies or 0;
+	local specialUnits = (order.NumArmies ~= nil) and order.NumArmies.SpecialUnits or nil;
+	local hasSpecialUnits = specialUnits ~= nil and #specialUnits > 0;
+	local hasImmuneSpecialUnits = areSuImmune and hasSpecialUnits;
+
+	-- nothing needs blocking here: no armies are trying to leave, and any special units present are immune
+	-- (this is also what lets the replacement order created below pass through untouched instead of being
+	-- blocked-and-replaced again forever)
+	local needsBlocking = armiesCount > 0 or (hasSpecialUnits and not areSuImmune);
+	if (not needsBlocking) then
+		return;
+	end
+
+	skipThisOrder(WL.ModOrderControl.SkipAndSupressSkippedMessage); --suppress the meaningless/detailless 'Mod skipped order' message, since the above message provides the details
+
+	local verb = hasImmuneSpecialUnits and "modified" or "skipped";
+	local message = "Attack/transfer order out of " .. game.Map.Territories[order.From].Name .. " was " .. verb .. " because the territory is charmed";
+	local event = WL.GameOrderEvent.Create(order.PlayerID, message, {}, {});
+	event.TerritoryAnnotationsOpt = { [order.From] = WL.TerritoryAnnotation.Create("Charmed - order " .. verb, 8, GetColourIntegerFromHex(BUTTON_COLOURS.Orchid)) };
+	addNewOrder(event);
+
+	if (hasImmuneSpecialUnits) then
+		local specialUnitsOnlyArmies = WL.Armies.Create(0, specialUnits);
+		addNewOrder(WL.GameOrderAttackTransfer.Create(order.PlayerID, order.From, order.To, order.AttackTransfer, false, specialUnitsOnlyArmies, order.AttackTeammates));
+	end
 end
 
 ---Resolves fear/charm army movement and expiry/fading. Called from Server_AdvanceTurn_Order right as the
