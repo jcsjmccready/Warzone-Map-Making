@@ -1,4 +1,71 @@
 
+--returns the set of territoryIDs within intMaxDistance hops of targetTerritoryID (inclusive of targetTerritoryID)
+function GetTerritoriesWithinDistance (game, targetTerritoryID, intMaxDistance)
+    local arrTerrProcessed = {}; --list of terrs already processed
+    local arrTerrResults = {}; --resultant list of terrs within specified distance
+    local arrTerrListToProcess = {}; --terrs remaining to be processed
+
+	local intDepth = 0;
+    arrTerrProcessed [targetTerritoryID] = true;
+    table.insert (arrTerrResults, targetTerritoryID);
+    table.insert (arrTerrListToProcess, targetTerritoryID);
+
+    while (intDepth < intMaxDistance and #arrTerrListToProcess > 0) do
+        local intNextTerrID = {};
+        for _, terrID in ipairs(arrTerrListToProcess) do
+            for neighbourTerrID, _ in pairs (game.Map.Territories [terrID].ConnectedTo) do
+                if not arrTerrProcessed [neighbourTerrID] then
+                    arrTerrProcessed [neighbourTerrID] = true;
+                    table.insert(arrTerrResults, neighbourTerrID);
+                    table.insert(intNextTerrID, neighbourTerrID);
+                end
+            end
+        end
+        arrTerrListToProcess = intNextTerrID;
+        intDepth = intDepth + 1;
+    end
+    return (arrTerrResults);
+end
+
+--returns a table<TerritoryID, distance> for every territory within intMaxDistance hops of targetTerritoryID
+--(targetTerritoryID itself included at distance 0), so callers can find territories at an exact distance rather
+--than just "within" a radius
+function GetTerritoryDistances(game, targetTerritoryID, intMaxDistance)
+    local territoryDistances = { [targetTerritoryID] = 0 };
+    local arrTerrProcessed = { [targetTerritoryID] = true };
+    local arrTerrListToProcess = { targetTerritoryID };
+
+    local intDepth = 0;
+    while (intDepth < intMaxDistance and #arrTerrListToProcess > 0) do
+        local intNextTerrID = {};
+        for _, terrID in ipairs(arrTerrListToProcess) do
+            for neighbourTerrID, _ in pairs (game.Map.Territories[terrID].ConnectedTo or {}) do
+                if not arrTerrProcessed[neighbourTerrID] then
+                    arrTerrProcessed[neighbourTerrID] = true;
+                    territoryDistances[neighbourTerrID] = intDepth + 1;
+                    table.insert(intNextTerrID, neighbourTerrID);
+                end
+            end
+        end
+        arrTerrListToProcess = intNextTerrID;
+        intDepth = intDepth + 1;
+    end
+
+    return territoryDistances;
+end
+
+--returns the territoryIDs owned by playerID; territories is a table<TerritoryID, TerritoryStanding> - either
+--Game.LatestStanding.Territories (client) or game.ServerGame.LatestTurnStanding.Territories (server)
+function GetPlayerTerritoryIDs(territories, playerID)
+    local ids = {};
+    for territoryID, territory in pairs(territories) do
+        if (territory.OwnerPlayerID == playerID) then
+            table.insert(ids, territoryID);
+        end
+    end
+    return ids;
+end
+
 function NewIdentity()
 	local data = Mod.PublicGameData;
 	local ret = data.Identity or 1;
