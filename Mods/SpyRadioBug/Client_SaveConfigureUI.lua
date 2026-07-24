@@ -60,7 +60,7 @@ function Client_SaveConfigureUI(alert, addCard)
         local bugCardID = addCard(
             "Spy Radio Bug Card",
             "Play this card to place a hidden Spy Radio Bug on a territory controlled by an enemy. While undiscovered, " .. visibilityMessage .. " Your enemy will be given Temporary Sweeper cards to search for it.",
-            "CardImages/Bug.png",
+            "Bug.png",
             Mod.Settings.NumPieces,
             Mod.Settings.MinPieces,
             Mod.Settings.InitialPieces,
@@ -72,7 +72,7 @@ function Client_SaveConfigureUI(alert, addCard)
         local tempSweeperCardID = addCard(
             "Temporary Sweeper Card",
             "Play this card on one of your own territories to search it for a hidden Spy Radio Bug. Discards at the end of the turn if unused.",
-            "CardImages/TempSweeper.png",
+            "TempSweeper.png",
             1,
             0,
             0,
