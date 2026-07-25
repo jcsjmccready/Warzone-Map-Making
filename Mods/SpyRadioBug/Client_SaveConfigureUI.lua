@@ -17,6 +17,12 @@ function Client_SaveConfigureUI(alert, addCard)
         return;
     end
 
+    Mod.Settings.RecaptureCardPieces = recaptureCardPieces.GetValue();
+    if (Mod.Settings.RecaptureCardPieces < 0) then
+        alert("Card pieces awarded on recapture cannot be less than 0");
+        return;
+    end
+
     local visibilityMessage = "ERROR";
     Mod.Settings.VisibilityGainedAutoplaySpyCard = visibilityGainedAutoplaySpyCard.GetIsChecked();
     if(Mod.Settings.VisibilityGainedAutoplaySpyCard) then

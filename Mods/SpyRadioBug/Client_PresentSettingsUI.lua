@@ -26,6 +26,7 @@ function Client_PresentSettingsUI(rootParent)
     if(Mod.Settings.VisibilityGainedCustomVision) then
         UI.CreateLabel(modVGroup).SetText("Radio Detection Radius: " .. Mod.Settings.RadioDetectionRadius);
     end
+    UI.CreateLabel(modVGroup).SetText("Card pieces awarded on recapture: " .. Mod.Settings.RecaptureCardPieces);
 
     UI.CreateVerticalLayoutGroup(rootParent);
 

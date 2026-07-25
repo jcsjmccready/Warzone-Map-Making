@@ -147,13 +147,22 @@ function HandleSearchForBug(game, order, targetTerritoryID, addNewOrder)
     local territoryName = game.Map.Territories[targetTerritoryID].Name;
 
     if (#foundBugs == 0) then
-        addNewOrder(WL.GameOrderEvent.Create(order.PlayerID, "Your sweep of " .. territoryName .. " found nothing", { order.PlayerID }, {}));
+        local nothingFoundEvent = WL.GameOrderEvent.Create(order.PlayerID, "Your sweep of " .. territoryName .. " found nothing", { order.PlayerID }, {});
+        nothingFoundEvent.TerritoryAnnotationsOpt = { [targetTerritoryID] = WL.TerritoryAnnotation.Create("Swept - Nothing Found", 8, GetColourIntegerFromHex(BUTTON_COLOURS.DarkGray)) };
+        addNewOrder(nothingFoundEvent);
         return;
     end
 
     for _, bug in ipairs(foundBugs) do
-        addNewOrder(WL.GameOrderEvent.Create(order.PlayerID, "Your sweep of " .. territoryName .. " found and destroyed a Spy Radio Bug!", { order.PlayerID }, {}));
-        addNewOrder(WL.GameOrderEvent.Create(bug.CreatorId, "Your Spy Radio Bug on " .. game.Map.Territories[bug.TerritoryId].Name .. " was discovered and destroyed", { bug.CreatorId }, {}));
+        local bugColour = GetColourIntegerFromHex(bug.Colour);
+
+        local foundEvent = WL.GameOrderEvent.Create(order.PlayerID, "Your sweep of " .. territoryName .. " found and destroyed a Spy Radio Bug!", { order.PlayerID }, {});
+        foundEvent.TerritoryAnnotationsOpt = { [bug.TerritoryId] = WL.TerritoryAnnotation.Create("Bug Found!", 8, bugColour) };
+        addNewOrder(foundEvent);
+
+        local destroyedEvent = WL.GameOrderEvent.Create(bug.CreatorId, "Your Spy Radio Bug on " .. game.Map.Territories[bug.TerritoryId].Name .. " was discovered and destroyed", { bug.CreatorId }, {});
+        destroyedEvent.TerritoryAnnotationsOpt = { [bug.TerritoryId] = WL.TerritoryAnnotation.Create("Bug Destroyed", 8, bugColour) };
+        addNewOrder(destroyedEvent);
     end
 end
 
@@ -183,7 +192,7 @@ end
 ---@param game GameServerHook
 ---@param addNewOrder fun(order: GameOrder)
 function Server_AdvanceTurn_End(game, addNewOrder)
-    UpdateBugOwnership(game);
+    UpdateBugOwnership(game, addNewOrder);
 
     GrantBugOwnerVisibility(game, addNewOrder);
     GrantBugCreatorVisionOfTargets(game, addNewOrder);
@@ -280,25 +289,50 @@ end
 --claims the territory again. If a bug was marked as belonging to Neutral and the territory has since been
 --claimed by a real player, it resumes belonging to whoever claimed it. Whenever a bug changes hands to a real
 --player, its colour is re-checked against that player's other bugs and reassigned if it now collides.
-function UpdateBugOwnership(game)
+--If the new owner is the bug's own creator (they recaptured the territory they'd hidden it on), the bug is
+--removed entirely instead - there's no point spying on your own territory - and they're compensated with
+--RecaptureCardPieces pieces towards a future Spy Radio Bug Card.
+---@param game GameServerHook
+---@param addNewOrder fun(order: GameOrder)
+function UpdateBugOwnership(game, addNewOrder)
     local privateGameData = Mod.PrivateGameData;
     local bugs = privateGameData.Bugs or {};
+    local remainingBugs = {};
 
     for _, bug in ipairs(bugs) do
         local territory = game.ServerGame.LatestTurnStanding.Territories[bug.TerritoryId];
-        if (territory ~= nil) then
+        if (territory == nil) then
+            table.insert(remainingBugs, bug);
+        else
             local newOwnerId = territory.OwnerPlayerID;
-            if (newOwnerId ~= bug.OwnerId) then
-                bug.OwnerId = newOwnerId;
-                if (newOwnerId ~= WL.PlayerID.Neutral) then
-                    bug.Colour = GetBugColourForOwner(bugs, newOwnerId, bug);
+            if (newOwnerId == bug.CreatorId) then
+                AwardRecaptureCardPieces(bug.CreatorId, addNewOrder);
+                -- bug is not added back to remainingBugs, so it's removed
+            else
+                if (newOwnerId ~= bug.OwnerId) then
+                    bug.OwnerId = newOwnerId;
+                    if (newOwnerId ~= WL.PlayerID.Neutral) then
+                        bug.Colour = GetBugColourForOwner(bugs, newOwnerId, bug);
+                    end
                 end
+                table.insert(remainingBugs, bug);
             end
         end
     end
 
-    privateGameData.Bugs = bugs;
+    privateGameData.Bugs = remainingBugs;
     Mod.PrivateGameData = privateGameData;
+end
+
+--awards RecaptureCardPieces pieces of the Spy Radio Bug Card to playerID, since a bug they'd planted was just
+--removed because they recaptured its territory themselves
+function AwardRecaptureCardPieces(playerID, addNewOrder)
+    local pieces = Mod.Settings.RecaptureCardPieces or 0;
+    if (pieces <= 0) then return; end
+
+    local event = WL.GameOrderEvent.Create(playerID, "Recovered " .. pieces .. " Spy Radio Bug card piece(s) from your reclaimed bug", { playerID }, {});
+    event.AddCardPiecesOpt = { [playerID] = { [Mod.Settings.BugCardID] = pieces } };
+    addNewOrder(event);
 end
 
 --lets each bugged player know something's nearby without giving away exactly where: picks a random territory

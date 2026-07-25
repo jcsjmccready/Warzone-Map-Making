@@ -52,6 +52,13 @@ function Create_UI_Controls(rootParent)
         .SetSliderMaxValue(10)
         .SetValue(Mod.Settings.RadioDetectionRadius or 3);
 
+    local horz = UI.CreateHorizontalLayoutGroup(modBehaviourHeading);
+    UI.CreateLabel(horz).SetText('Card pieces awarded on recapture').SetPreferredWidth(290);
+    recaptureCardPieces = UI.CreateNumberInputField(horz)
+        .SetSliderMinValue(0)
+        .SetSliderMaxValue(15)
+        .SetValue(Mod.Settings.RecaptureCardPieces or 1);
+
     UI.CreateLabel(modBehaviourHeading).SetText('Visibility gained:');
     local visibilityGained = UI.CreateRadioButtonGroup(modBehaviourHeading);
 
