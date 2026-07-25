@@ -13,6 +13,13 @@ function Create_UI_Controls(rootParent)
     UI.CreateLabel(mainModUI).SetText('Mod Behaviour:').SetColor(SUBHEADING_COLOUR);
     local horz = UI.CreateHorizontalLayoutGroup(mainModUI);
 
+    UI.CreateLabel(horz).SetText('Card duration:').SetPreferredWidth(290);
+    cardDuration = UI.CreateNumberInputField(horz)
+        .SetSliderMinValue(1)
+        .SetSliderMaxValue(5)
+        .SetValue(Mod.Settings.CardDuration or 2);
+    UI.CreateLabel(mainModUI).SetText('Values > 1 give you temporary copy of the card (that discard if unused) each turn beyond the first*').SetColor(BUTTON_COLOURS.DarkGray);
+    
     local armyAmountHeading = UI.CreateVerticalLayoutGroup(mainModUI);
     UI.CreateLabel(armyAmountHeading).SetText('Army to order:');
     local armyAmountGroup = UI.CreateRadioButtonGroup(armyAmountHeading);
@@ -25,12 +32,6 @@ function Create_UI_Controls(rootParent)
     .SetText('Input number of troops')
     .SetIsChecked(Mod.Settings.ArmyAmountInputTroops or false);
 
-    UI.CreateLabel(horz).SetText('Card duration:').SetPreferredWidth(290);
-    cardDuration = UI.CreateNumberInputField(horz)
-        .SetSliderMinValue(1)
-        .SetSliderMaxValue(5)
-        .SetValue(Mod.Settings.CardDuration or 2);
-    UI.CreateLabel(horz).SetText('Values > 1 give you temporary copy of the card (that discard if unused) each turn beyond the first*').SetColor(BUTTON_COLOURS.DarkGray);
 
 
     local neutralArmyGivesVisionHeading = UI.CreateVerticalLayoutGroup(mainModUI);
