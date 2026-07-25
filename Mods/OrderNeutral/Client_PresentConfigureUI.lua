@@ -30,7 +30,7 @@ function Create_UI_Controls(rootParent)
         .SetSliderMinValue(1)
         .SetSliderMaxValue(5)
         .SetValue(Mod.Settings.CardDuration or 2);
-    UI.CreateLabel(mainModUI).SetText('Values > 1 give you temporary copy of the card (that discard if unused) each turn beyond the first*').SetColor(BUTTON_COLOURS.DarkGray);
+    UI.CreateLabel(horz).SetText('Values > 1 give you temporary copy of the card (that discard if unused) each turn beyond the first*').SetColor(BUTTON_COLOURS.DarkGray);
 
 
     local neutralArmyGivesVisionHeading = UI.CreateVerticalLayoutGroup(mainModUI);
