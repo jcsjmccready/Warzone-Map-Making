@@ -6,7 +6,7 @@ function Client_PresentSettingsUI(rootParent)
 
     local descriptionVGroup = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
 
-    UI.CreateLabel(descriptionVGroup).SetText("Playing a Reconnaissance card on a friendly territory grants additional income from the cities/territories under its effect, while the effect lasts.");
+    UI.CreateLabel(descriptionVGroup).SetText("At the end of the turn, your territories or cities provide a configurable amount of income while under the effect of a Reconnaissance Card.");
 
     UI.CreateVerticalLayoutGroup(rootParent);
 
@@ -20,6 +20,6 @@ function Client_PresentSettingsUI(rootParent)
             UI.CreateLabel(modVGroup).SetText(Mod.Settings.EffectStrength .. " increased gold per territory with a city");
         end
     elseif (Mod.Settings.MonitorTerritories) then
-        UI.CreateLabel(modVGroup).SetText(Mod.Settings.EffectStrength .. " increased gold/troops per territory");
+        UI.CreateLabel(modVGroup).SetText(Mod.Settings.EffectStrength .. " increased gold/reinforcements per territory");
     end
 end

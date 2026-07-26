@@ -29,7 +29,7 @@ function Create_UI_Controls(rootParent)
     .SetIsChecked(Mod.Settings.ArmyAmountEntireArmy or true);
 
     armyAmountInputTroops = UI.CreateRadioButton(armyAmountHeading).SetGroup(armyAmountGroup)
-    .SetText('Input number of troops')
+    .SetText('Input number of armies')
     .SetIsChecked(Mod.Settings.ArmyAmountInputTroops or false);
 
 

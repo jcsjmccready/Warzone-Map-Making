@@ -23,7 +23,7 @@ function Client_PresentSettingsUI(rootParent)
     end
 
     if (Mod.Settings.ArmyAmountInputTroops) then
-        UI.CreateLabel(modVGroup).SetText("You can specify the number of troops sent in the attack/transfer");
+        UI.CreateLabel(modVGroup).SetText("You can specify the number of armies sent in the attack/transfer");
     end
     if (Mod.Settings.ArmyAmountEntireArmy) then
         UI.CreateLabel(modVGroup).SetText("The entire army is sent on attack/transfers");
