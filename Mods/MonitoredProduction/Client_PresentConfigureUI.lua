@@ -10,12 +10,12 @@ end;
 function Create_UI_Controls(rootParent)
     local mainModUI = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
 
-    UI.CreateLabel(mainModUI).SetText('Grants gold if this is a Commerce game, otherwise reinforcements*').SetColor(BUTTON_COLOURS.DarkGray);
+    UI.CreateLabel(mainModUI).SetText('Grants gold if this is a Commerce game, otherwise armies*').SetColor(BUTTON_COLOURS.DarkGray);
 
     UI.CreateLabel(mainModUI).SetText('Mod Behaviour:').SetColor(SUBHEADING_COLOUR);
 
     local horz = UI.CreateHorizontalLayoutGroup(mainModUI);
-    UI.CreateLabel(horz).SetText('Reinforcements/gold gained per instance of friendly reconned item:').SetPreferredWidth(290);
+    UI.CreateLabel(horz).SetText('Temporary income gained per instance of friendly reconned item:').SetPreferredWidth(290);
     effectStrength = UI.CreateNumberInputField(horz)
         .SetSliderMinValue(1)
         .SetSliderMaxValue(20)
@@ -105,7 +105,7 @@ end
 
 function Create_TerritoryIncomeMode_SubOptions_UI(rootParent)
     territoryIncomeModeHeading = UI.CreateVerticalLayoutGroup(rootParent);
-    UI.CreateLabel(territoryIncomeModeHeading).SetText('Increased gold/reinforcements per reconned:');
+    UI.CreateLabel(territoryIncomeModeHeading).SetText('Increased income per reconned:');
     local territoryIncomeModeGroup = UI.CreateRadioButtonGroup(territoryIncomeModeHeading);
 
     --only one option currently exists, so it's permanently checked and non-interactable, same as BarbedWire's

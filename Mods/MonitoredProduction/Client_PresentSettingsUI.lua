@@ -20,6 +20,6 @@ function Client_PresentSettingsUI(rootParent)
             UI.CreateLabel(modVGroup).SetText(Mod.Settings.EffectStrength .. " increased gold per territory with a city");
         end
     elseif (Mod.Settings.MonitorTerritories) then
-        UI.CreateLabel(modVGroup).SetText(Mod.Settings.EffectStrength .. " increased gold/reinforcements per territory");
+        UI.CreateLabel(modVGroup).SetText(Mod.Settings.EffectStrength .. " increased income per territory");
     end
 end
