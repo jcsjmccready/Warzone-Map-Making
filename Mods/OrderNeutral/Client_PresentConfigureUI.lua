@@ -18,21 +18,19 @@ function Create_UI_Controls(rootParent)
         .SetSliderMinValue(1)
         .SetSliderMaxValue(5)
         .SetValue(Mod.Settings.CardDuration or 2);
-    UI.CreateLabel(mainModUI).SetText('Values > 1 give you temporary (discards if unused) copy of the card each turn beyond the first*').SetColor(BUTTON_COLOURS.DarkGray);
+    UI.CreateLabel(mainModUI).SetText('Values > 1 give you temporary (discards if unused) copies of the card at the start of each turn to achieve the duration*').SetColor(BUTTON_COLOURS.DarkGray);
     
     local armyAmountHeading = UI.CreateVerticalLayoutGroup(mainModUI);
     UI.CreateLabel(armyAmountHeading).SetText('Army to order:');
     local armyAmountGroup = UI.CreateRadioButtonGroup(armyAmountHeading);
 
     armyAmountEntireArmy = UI.CreateRadioButton(armyAmountHeading).SetGroup(armyAmountGroup)
-    .SetText('Entire Army')
+    .SetText('Entire army')
     .SetIsChecked(Mod.Settings.ArmyAmountEntireArmy or true);
 
     armyAmountInputTroops = UI.CreateRadioButton(armyAmountHeading).SetGroup(armyAmountGroup)
     .SetText('Input number of armies')
     .SetIsChecked(Mod.Settings.ArmyAmountInputTroops or false);
-
-
 
     local neutralArmyGivesVisionHeading = UI.CreateVerticalLayoutGroup(mainModUI);
     neutralArmyGivesVision = UI.CreateCheckBox(neutralArmyGivesVisionHeading).SetText("Neutral army gives vision")
