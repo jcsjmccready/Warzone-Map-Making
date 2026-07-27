@@ -18,7 +18,7 @@ function Create_UI_Controls(rootParent)
         .SetSliderMinValue(1)
         .SetSliderMaxValue(5)
         .SetValue(Mod.Settings.CardDuration or 2);
-    UI.CreateLabel(mainModUI).SetText('Values > 1 give you temporary copy of the card (that discard if unused) each turn beyond the first*').SetColor(BUTTON_COLOURS.DarkGray);
+    UI.CreateLabel(mainModUI).SetText('Values > 1 give you temporary (discards if unused) copy of the card each turn beyond the first*').SetColor(BUTTON_COLOURS.DarkGray);
     
     local armyAmountHeading = UI.CreateVerticalLayoutGroup(mainModUI);
     UI.CreateLabel(armyAmountHeading).SetText('Army to order:');

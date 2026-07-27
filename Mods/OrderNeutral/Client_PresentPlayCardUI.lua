@@ -94,7 +94,23 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
 
                 local modData = "CreateNeutralAttackTransferOrder_" .. FirstTerritoryID .. "_" .. SecondTerritoryID .. "_" .. armyCountStr .. "_" .. specialUnitsStr;
 
-                if (playCard("Issue neutral attack/transfer order from " .. FirstTerritoryName .. " towards " .. SecondTerritoryName, modData, WL.TurnPhase.Attacks, {}, jumpToSpot)) then
+                --describe exactly what's being sent, matching WZ's own attack/transfer order message style
+                local terr = Game.LatestStanding.Territories[FirstTerritoryID];
+                local armiesSent = terr.NumArmies.NumArmies;
+                local specialUnitsSent = terr.NumArmies.SpecialUnits;
+                if (Mod.Settings.ArmyAmountInputTroops) then
+                    armiesSent = ArmyCountInput.GetValue();
+                    specialUnitsSent = {};
+                    for _, unit in pairs(terr.NumArmies.SpecialUnits) do
+                        local checkbox = SpecialUnitCheckboxes[unit.ID];
+                        if (checkbox ~= nil and checkbox.GetIsChecked()) then
+                            table.insert(specialUnitsSent, unit);
+                        end
+                    end
+                end
+                local movementDescription = DescribeArmyMovementForOrderMessage(armiesSent, specialUnitsSent);
+
+                if (playCard(movementDescription .. " from neutral territory " .. FirstTerritoryName .. " will attack/transfer " .. SecondTerritoryName, modData, WL.TurnPhase.Attacks, {}, jumpToSpot)) then
                     close();
                 end
             end);

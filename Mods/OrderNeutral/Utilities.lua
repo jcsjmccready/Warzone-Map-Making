@@ -177,6 +177,27 @@ function DescribeArmyMovement (numArmies, specialUnits)
 	return table.concat (parts, ", ");
 end
 
+--builds a "X armies plus a Name, a Name, and a Name" style description of a moving force, matching the phrasing
+--WZ itself uses for standard attack/transfer order messages
+function DescribeArmyMovementForOrderMessage(numArmies, specialUnits)
+	local message = numArmies .. " armies";
+
+	local names = {};
+	for _, unit in pairs(specialUnits) do
+		table.insert(names, "a " .. GetSpecialUnitName(unit));
+	end
+
+	if (#names == 1) then
+		message = message .. " plus " .. names[1];
+	elseif (#names == 2) then
+		message = message .. " plus " .. names[1] .. " and " .. names[2];
+	elseif (#names > 2) then
+		message = message .. " plus " .. table.concat(names, ", ", 1, #names - 1) .. ", and " .. names[#names];
+	end
+
+	return message;
+end
+
 function GetSpecialUnitName (unit)
 	if (unit.proxyType == "CustomSpecialUnit") then
 		return unit.Name;
