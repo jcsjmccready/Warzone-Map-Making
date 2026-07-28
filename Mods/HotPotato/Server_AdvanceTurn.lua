@@ -168,7 +168,14 @@ function Server_AdvanceTurn_End(game, addNewOrder)
 
 	priv.TurnsHeld = priv.TurnsHeld + 1;
 
-	-- another turn survived without being passed on - hand the holder one more piece of the Hot Potato card
+	-- this is the one-turn "primed and about to go off" state described above - worth a lobby-wide heads up
+	-- since it's the last chance for anyone else to try and pass it off before it detonates
+	if (priv.TurnsHeld >= Mod.Settings.FuseLength) then
+		local holderName = game.Game.Players[priv.CurrentHolder].DisplayName(nil, false);
+		addNewOrder(WL.GameOrderEvent.Create(priv.CurrentHolder, "The Hot Potato is primed in " .. holderName .. "'s hands - it will explode next turn.", {}, {}));
+	end
+
+	-- hand the holder one more piece of the Hot Potato card
 	local pieceEvent = WL.GameOrderEvent.Create(priv.CurrentHolder, "The Hot Potato ticks over another turn", { priv.CurrentHolder }, {});
 	pieceEvent.AddCardPiecesOpt = { [priv.CurrentHolder] = { [Mod.Settings.CardID] = 1 } };
 	addNewOrder(pieceEvent);
