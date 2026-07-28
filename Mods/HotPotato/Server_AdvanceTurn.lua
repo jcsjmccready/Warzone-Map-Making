@@ -1,14 +1,14 @@
 require("Utilities");
 
 -- PrivateGameData layout used by this mod:
---   TurnsUntilStart        integer      turns remaining before the clock starts and a holder is picked
---   CurrentHolder          PlayerID|nil the player currently holding the Hot Potato, nil if it isn't active
---   PriorHolder            PlayerID|nil the player who held it immediately before CurrentHolder, can't receive it back
---   TurnsHeld              integer      cumulative turns the potato has been held (survives being passed around)
---   TerritoryOwners        table        this turn's running TerritoryID -> OwnerPlayerID map, seeded at turn start
---   TransferCheckedThisTurn boolean     true once this turn's one-and-only transfer attempt has been resolved
---   Dormant                boolean      true this turn if too few players remain for the mod to do anything
+--   TurnsUntilStart        	integer      turns remaining before the clock starts and a holder is picked
+--   CurrentHolder          	PlayerID|nil the player currently holding the Hot Potato, nil if it isn't active
+--   PriorHolder            	PlayerID|nil the player who held it immediately before CurrentHolder, can't receive it back
+--   TurnsHeld              	integer      cumulative turns the potato has been held (survives being passed around)
+--   PotatoTransferredThisTurn  boolean      true once this turn's one-and-only transfer has been resolved
+--   Dormant                	boolean      true this turn if too few players remain for the mod to do anything
 
+-- TODO: REMOVE THE HUMAN PREFERENCE CODE - TESTING ONLY
 --Picks who the Hot Potato goes to out of candidateIDs. Prefers human (non-AI) players over AI ones - only
 --falls back to including AI players if no human candidates are available - then applies the configured
 --random-vs-biggest selection strategy within whichever pool was used.
@@ -24,21 +24,12 @@ end
 function Server_AdvanceTurn_Start(game, addNewOrder)
 	local priv = Mod.PrivateGameData;
 
-	-- seed this turn's ownership snapshot; Server_AdvanceTurn_Order updates it as attacks succeed so it can
-	-- always tell who owned a territory immediately before the order that just captured it
-	local owners = {};
-	for territoryID, territory in pairs(game.ServerGame.LatestTurnStanding.Territories) do
-		owners[territoryID] = territory.OwnerPlayerID;
-	end
-	priv.TerritoryOwners = owners;
-	priv.TransferCheckedThisTurn = false;
-
 	local playingIDs = GetPlayingPlayerIDs(game);
 	priv.Dormant = (#playingIDs <= Mod.Settings.MinPlayersRemaining);
 
 	if (priv.Dormant) then
 		if (priv.CurrentHolder ~= nil) then
-			local event = WL.GameOrderEvent.Create(WL.PlayerID.Neutral, "Too few players remain - the Hot Potato fizzles out", {}, {});
+			local event = WL.GameOrderEvent.Create(WL.PlayerID.Neutral, "Too few players remain - the Hot Potato fizzles out", { priv.CurrentHolder }, {});
 			if (game.Game.PlayingPlayers[priv.CurrentHolder] ~= nil) then
 				event.AddCardPiecesOpt = { [priv.CurrentHolder] = { [Mod.Settings.CardID] = -priv.TurnsHeld } };
 			end
@@ -50,6 +41,8 @@ function Server_AdvanceTurn_Start(game, addNewOrder)
 		Mod.PrivateGameData = priv;
 		return;
 	end
+	
+	priv.PotatoTransferredThisTurn = false;
 
 	-- if the holder is gone (eliminated/booted/surrendered) the potato immediately falls to someone else -
 	-- the fuse keeps burning, it just isn't reset, since disappearing shouldn't be a way to stall it out
@@ -62,9 +55,12 @@ function Server_AdvanceTurn_Start(game, addNewOrder)
 			priv.PriorHolder = priv.CurrentHolder;
 			priv.CurrentHolder = newHolder;
 
+			-- this counts as this turn's one hand-change, so a fight later this same turn can't pass it again - noone gets to skip owning the potato >:(
+			priv.PotatoTransferredThisTurn = true;
+
 			-- the old holder's cards (and pieces) are gone along with them on elimination, so only the new
 			-- holder needs to be given the pieces representing the fuse progress so far
-			local event = WL.GameOrderEvent.Create(newHolder, "The previous Hot Potato holder is gone, and it has fallen into your hands", {}, {});
+			local event = WL.GameOrderEvent.Create(newHolder, "The previous Hot Potato holder is gone, and it has fallen into your hands", { newHolder }, {});
 			event.AddCardPiecesOpt = { [newHolder] = { [Mod.Settings.CardID] = priv.TurnsHeld } };
 			addNewOrder(event);
 		end
@@ -84,47 +80,40 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
 	if (result.ActualArmies ~= nil and result.ActualArmies.IsEmpty) then return; end -- ignore skipped/empty attacks
 
 	local priv = Mod.PrivateGameData;
-	local owners = priv.TerritoryOwners or {};
-	local previousOwner = owners[order.To];
+	if (priv.CurrentHolder == nil or priv.PotatoTransferredThisTurn) then return; end
 
-	-- keep the running ownership snapshot accurate for the rest of this turn's orders, regardless of whether
-	-- the Hot Potato is even active right now
-	if (result.IsSuccessful) then
-		owners[order.To] = order.PlayerID;
-		priv.TerritoryOwners = owners;
-		Mod.PrivateGameData = priv;
-	end
+	local potatoHolder = priv.CurrentHolder;
+	local targetPlayerID = game.ServerGame.LatestTurnStanding.Territories[order.To].OwnerPlayerID;
+	local loserPlayerID = nil;
 
-	if (priv.CurrentHolder == nil or priv.TransferCheckedThisTurn) then return; end
-
-	local holder = priv.CurrentHolder;
-	local loser = nil;
-
-	if (result.IsSuccessful and order.PlayerID == holder and previousOwner ~= nil
-		and previousOwner ~= WL.PlayerID.Neutral and previousOwner ~= holder) then
-		loser = previousOwner; -- the holder attacked and captured another player's territory
+	-- if successful attack by potato holder
+	if (result.IsSuccessful and order.PlayerID == potatoHolder
+		and targetPlayerID ~= nil and targetPlayerID ~= WL.PlayerID.Neutral and targetPlayerID ~= potatoHolder) then
+		loserPlayerID = targetPlayerID; -- the holder attacked and captured another player's territory
 	elseif (not Mod.Settings.OnlyAttackWins and not result.IsSuccessful
-		and previousOwner == holder and order.PlayerID ~= holder) then
-		loser = order.PlayerID; -- the holder successfully defended against an attacker
+		and targetPlayerID == potatoHolder and order.PlayerID ~= potatoHolder) then
+		loserPlayerID = order.PlayerID; -- the holder successfully defended against an attacker
 	end
 
-	if (loser == nil) then return; end
+	-- safety check for good measure, exit early
+	if (loserPlayerID == nil) then return; end
 
-	-- this is the first (and only) fight this turn that decides the Hot Potato's fate, win or block
-	priv.TransferCheckedThisTurn = true;
 
-	if (loser == priv.PriorHolder) then
-		addNewOrder(WL.GameOrderEvent.Create(holder, "Won a fight, but the Hot Potato can't be passed back to who you got it from - it stays put", {}, {}));
+	if (loserPlayerID == priv.PriorHolder) then
+		addNewOrder(WL.GameOrderEvent.Create(potatoHolder, "Won a fight, but no potato pass-backs!", { potatoHolder }, {}));
 	else
-		priv.PriorHolder = holder;
-		priv.CurrentHolder = loser;
+		priv.PotatoTransferredThisTurn = true;
+		priv.PriorHolder = potatoHolder;
+		priv.CurrentHolder = loserPlayerID;
 
 		-- the pieces (ie. the fuse progress) move with the potato - take them all from the old holder and
 		-- give the same amount to the new one, rather than resetting the count
-		local event = WL.GameOrderEvent.Create(loser, "Lost a fight against the Hot Potato holder, and now holds it yourself!", {}, {});
+		local holderName = game.Game.Players[potatoHolder].DisplayName(nil, false);
+		local loserName = game.Game.Players[loserPlayerID].DisplayName(nil, false);
+		local event = WL.GameOrderEvent.Create(loserPlayerID, holderName .. " passed the potato to " .. loserName, { potatoHolder, loserPlayerID }, {});
 		event.AddCardPiecesOpt = {
-			[holder] = { [Mod.Settings.CardID] = -priv.TurnsHeld },
-			[loser] = { [Mod.Settings.CardID] = priv.TurnsHeld },
+			[potatoHolder] = { [Mod.Settings.CardID] = -priv.TurnsHeld },
+			[loserPlayerID] = { [Mod.Settings.CardID] = priv.TurnsHeld },
 		};
 		addNewOrder(event);
 	end
@@ -180,7 +169,7 @@ function Server_AdvanceTurn_End(game, addNewOrder)
 	priv.TurnsHeld = priv.TurnsHeld + 1;
 
 	-- another turn survived without being passed on - hand the holder one more piece of the Hot Potato card
-	local pieceEvent = WL.GameOrderEvent.Create(priv.CurrentHolder, "The Hot Potato ticks over another turn", {}, {});
+	local pieceEvent = WL.GameOrderEvent.Create(priv.CurrentHolder, "The Hot Potato ticks over another turn", { priv.CurrentHolder }, {});
 	pieceEvent.AddCardPiecesOpt = { [priv.CurrentHolder] = { [Mod.Settings.CardID] = 1 } };
 	addNewOrder(pieceEvent);
 
@@ -201,7 +190,7 @@ function ApplyMinorPenalty(game, addNewOrder, holderID)
 	local income = player.Income(0, game.ServerGame.LatestTurnStanding, false, false).Total;
 	local penalty = math.max(1, math.floor(income * percent + 0.5));
 
-	local event = WL.GameOrderEvent.Create(holderID, "The Hot Potato weighs on your economy (-" .. penalty .. " income next turn)", {}, {});
+	local event = WL.GameOrderEvent.Create(holderID, "The Hot Potato weighs on your economy (-" .. penalty .. " income next turn)", { holderID }, {});
 	event.IncomeMods = { WL.IncomeMod.Create(holderID, -penalty, "Holding the Hot Potato") };
 	addNewOrder(event);
 end
@@ -224,7 +213,7 @@ function Explode(game, addNewOrder, holderID, piecesHeld)
 			local territoryModification = WL.TerritoryModification.Create(territoryID);
 			territoryModification.SetArmiesTo = newArmies;
 			table.insert(mods, territoryModification);
-			annotations[territoryID] = WL.TerritoryAnnotation.Create("Boom!", 10, GetColourIntegerFromHex(BUTTON_COLOURS.Red));
+			annotations[territoryID] = WL.TerritoryAnnotation.Create("Hot Potato Explodes", 10, GetColourIntegerFromHex(BUTTON_COLOURS.Red));
 		end
 	end
 
