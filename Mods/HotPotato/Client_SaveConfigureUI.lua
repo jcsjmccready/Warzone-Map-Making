@@ -42,5 +42,11 @@ function Client_SaveConfigureUI(alert, addCard)
 		return;
 	end
 
-	Mod.Settings.CardID = addCard("Hot Potato", "You're going to want to get rid of this... \n[Can't be Played]", "HotPotato.png", Mod.Settings.FuseLength + 1, 0, 0, 0);
+	local winMessage = "ERROR";
+	if(Mod.Settings.OnlyAttackWins) then
+		winMessage = "Succeed in an attack order you initiate to pass it to the loser"
+	else
+		winMessage = "Succeed in an attack/defence to pass it to the loser"
+	end
+	Mod.Settings.CardID = addCard("Hot Potato", "You're going to want to get rid of this... \n".. winMessage .. "\n [Can not be returned to last holder]", "HotPotato.png", Mod.Settings.FuseLength + 1, 0, 0, 0, Mod.Settings.FuseLength + 1);
 end
