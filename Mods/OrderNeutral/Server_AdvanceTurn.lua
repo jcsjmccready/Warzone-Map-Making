@@ -48,7 +48,8 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
 
         --the client can't be trusted to only request a legal amount, so clamp it to what's actually available
         local availableArmies = fromTerritory.NumArmies.NumArmies;
-        local armiesToSend = (armyCountStr == nil or armyCountStr == "ALL") and availableArmies or math.max(0, math.min(availableArmies, tonumber(armyCountStr) or 0));
+        local maxSendableArmies = game.Settings.OneArmyStandsGuard and math.max(0, availableArmies - 1) or availableArmies;
+        local armiesToSend = (armyCountStr == nil or armyCountStr == "ALL") and maxSendableArmies or math.max(0, math.min(maxSendableArmies, tonumber(armyCountStr) or 0));
 
         local specialUnitsToSend;
         if (specialUnitsStr == nil or specialUnitsStr == "ALL") then
