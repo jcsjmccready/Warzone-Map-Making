@@ -202,6 +202,12 @@ function Create_FlakGunCard_SubOptions_UI(rootParent)
         .SetValue(Mod.Settings.FlakGunRounds or 1);
     UI.CreateLabel(flakGunCardVHeading).SetText('Values greater than 1 will provide temporary copies of the card each turn').SetColor(BUTTON_COLOURS.DarkGray);
 
+    flakGunFriendlyFire = UI.CreateCheckBox(flakGunCardVHeading)
+        .SetText('Enable friendly fire')
+        .SetIsChecked(Mod.Settings.FlakGunFriendlyFire or false);
+
+    UI.CreateLabel(flakGunCardVHeading).SetText('Damage Type:');
+
     flakGunTargetingSpyPlaneDestroys = UI.CreateCheckBox(flakGunCardVHeading)
         .SetText('Targeting spy plane destroys it')
         .SetIsChecked(Mod.Settings.FlakGunTargetingSpyPlaneDestroys or false);

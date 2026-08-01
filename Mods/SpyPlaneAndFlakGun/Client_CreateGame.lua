@@ -5,6 +5,13 @@ function Client_CreateGame(settings, alert)
     local includesAirlift = settings.Cards ~= nil and settings.Cards[WL.CardID.Airlift] ~= nil;
 
     if (not includesAirlift and not Mod.Settings.IncludeSpyPlaneCard) then
-        alert("You must either include the Airlift card or the Spy Plane card for this mod to work.");
+        alert("You must either include the Airlift card or the Spy Plane card for the Flak Gun card mod to work.");
+    end
+
+    if (Mod.Settings.IncludeFlakGunCard
+        and not Mod.Settings.FlakGunTargetingSpyPlaneDestroys
+        and not Mod.Settings.FlakGunTargetingAirliftSourceCancels
+        and not Mod.Settings.FlakGunTargetingAirliftDestinationHurts) then
+        alert("The Flak Gun card must have at least one of its damage options enabled.");
     end
 end
