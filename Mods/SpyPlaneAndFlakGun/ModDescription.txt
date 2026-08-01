@@ -1,0 +1,2 @@
+This mod adds a Spy Plane card and a Flak Gun card.
+Spy Plane and Flak Gun can each be independently included or excluded.
