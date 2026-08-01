@@ -53,7 +53,7 @@ function HandleAttackTransferInTriggeredBarbedWire(game, order, result, skipThis
 	if (Mod.Settings.BarbedWireTanksIgnore and result.ActualArmies ~= nil and result.ActualArmies.SpecialUnits ~= nil) then
 		local hasTank = false;
 		for _, specialUnit in ipairs(result.ActualArmies.SpecialUnits) do
-			if specialUnit ~= nil and specialUnit.Name == "Tank" then
+			if specialUnit ~= nil and specialUnit.proxyType == "CustomSpecialUnit" and specialUnit.Name == "Tank" then
 				hasTank = true;
 				break;
 			end
@@ -102,7 +102,7 @@ function HandleAttackTransferToBarbedWire(game, order, result, addNewOrder)
 	if (Mod.Settings.BarbedWireTanksDestroy and result.ActualArmies ~= nil and result.ActualArmies.SpecialUnits ~= nil) then
 		local hasTank = false;
 		for _, specialUnit in ipairs(result.ActualArmies.SpecialUnits) do
-			if specialUnit ~= nil and specialUnit.Name == "Tank" then
+			if specialUnit ~= nil and specialUnit.proxyType == "CustomSpecialUnit" and specialUnit.Name == "Tank" then
 				hasTank = true;
 				break;
 			end
