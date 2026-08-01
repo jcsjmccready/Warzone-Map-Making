@@ -26,6 +26,29 @@ function Client_SaveConfigureUI(alert, addCard)
             return;
         end
 
+        Mod.Settings.SpyPlaneInclusionGenerosity = spyPlaneInclusionGenerosity.GetValue();
+        Mod.Settings.SpyPlaneMaxFlightDistance = spyPlaneMaxFlightDistance.GetValue();
+        Mod.Settings.SpyPlaneFlightStyleInstant = spyPlaneFlightStyleInstant.GetIsChecked();
+        Mod.Settings.SpyPlaneFlightStyleSteps = spyPlaneFlightStyleSteps.GetIsChecked();
+
+        if (Mod.Settings.SpyPlaneInclusionGenerosity < 25) then
+            alert("Spy Plane inclusion generosity cannot be less than 25");
+            return;
+        end
+        if (Mod.Settings.SpyPlaneMaxFlightDistance < 25) then
+            alert("Spy Plane maximum flight distance cannot be less than 25");
+            return;
+        end
+
+        if(Mod.Settings.SpyPlaneFlightStyleSteps) then
+            Mod.Settings.SpyPlaneFlightSteps = spyPlaneFlightSteps.GetValue();
+
+            if (Mod.Settings.SpyPlaneFlightSteps < 1) then
+                alert("Spy Plane flight steps cannot be less than 1");
+                return;
+            end
+        end
+
         local spyPlaneCardId = addCard(
             "Spy Plane",
             "Play this card to send a spy plane over enemy territory.",
@@ -44,6 +67,8 @@ function Client_SaveConfigureUI(alert, addCard)
         Mod.Settings.FlakGunCardWeight = flakGunCardWeight.GetValue();
         Mod.Settings.FlakGunMinPieces = flakGunMinPieces.GetValue();
         Mod.Settings.FlakGunInitialPieces = flakGunInitialPieces.GetValue();
+        Mod.Settings.FlakGunAreaOfEffect = flakGunAreaOfEffect.GetValue();
+        Mod.Settings.FlakGunRounds = flakGunRounds.GetValue();
 
         if (Mod.Settings.FlakGunNumPieces < 1) then
             alert("Number of Flak Gun card pieces cannot be less than 1");
@@ -60,6 +85,31 @@ function Client_SaveConfigureUI(alert, addCard)
         if (Mod.Settings.FlakGunInitialPieces < 0) then
             alert("Initial Flak Gun card pieces cannot be less than 0");
             return;
+        end
+        if (Mod.Settings.FlakGunAreaOfEffect < 0) then
+            alert("Flak Gun area of effect cannot be less than 0");
+            return;
+        end
+        if (Mod.Settings.FlakGunRounds < 1) then
+            alert("Flak Gun rounds cannot be less than 1");
+            return;
+        end
+
+        Mod.Settings.FlakGunTargetingSpyPlaneDestroys = flakGunTargetingSpyPlaneDestroys.GetIsChecked();
+        Mod.Settings.FlakGunTargetingAirliftSourceCancels = flakGunTargetingAirliftSourceCancels.GetIsChecked();
+        Mod.Settings.FlakGunTargetingAirliftDestinationHurts = flakGunTargetingAirliftDestinationHurts.GetIsChecked();
+        if(Mod.Settings.FlakGunTargetingAirliftDestinationHurts) then
+            Mod.Settings.FlakGunAirliftDamagePercent = flakGunAirliftDamagePercent.GetValue();
+            Mod.Settings.FlakGunAirliftMinDamage = flakGunAirliftMinDamage.GetValue();
+
+            if (Mod.Settings.FlakGunAirliftDamagePercent < 0) then
+                alert("Flak Gun airlift damage percent cannot be less than 0");
+                return;
+            end
+            if (Mod.Settings.FlakGunAirliftMinDamage < 0) then
+                alert("Flak Gun airlift minimum damage cannot be less than 0");
+                return;
+            end
         end
 
         local flakGunCardId = addCard(

@@ -81,6 +81,75 @@ function Create_SpyPlaneCard_SubOptions_UI(rootParent)
         .SetSliderMinValue(0)
         .SetSliderMaxValue(5)
         .SetValue(Mod.Settings.SpyPlaneInitialPieces or 0);
+
+    UI.CreateLabel(spyPlaneCardVHeading).SetText('Mod Behaviour:').SetColor(SUBHEADING_COLOUR);
+
+    local horz = UI.CreateHorizontalLayoutGroup(spyPlaneCardVHeading);
+    UI.CreateLabel(horz).SetText('Inclusion generosity').SetPreferredWidth(290);
+    spyPlaneInclusionGenerosity = UI.CreateNumberInputField(horz)
+        .SetSliderMinValue(25)
+        .SetSliderMaxValue(300)
+        .SetValue(Mod.Settings.SpyPlaneInclusionGenerosity or 100);
+    UI.CreateLabel(spyPlaneCardVHeading).SetText('Territories are included based on the distance from their centerpoint to the latest step of the plane as it moves. Experiment with how this number feels for your chosen map.').SetColor(BUTTON_COLOURS.DarkGray);
+
+    local horz = UI.CreateHorizontalLayoutGroup(spyPlaneCardVHeading);
+    UI.CreateLabel(horz).SetText('Maximum flight distance').SetPreferredWidth(290);
+    spyPlaneMaxFlightDistance = UI.CreateNumberInputField(horz)
+        .SetSliderMinValue(25)
+        .SetSliderMaxValue(2000)
+        .SetValue(Mod.Settings.SpyPlaneMaxFlightDistance or 500);
+
+    local flightStyleHeading = UI.CreateVerticalLayoutGroup(spyPlaneCardVHeading);
+    UI.CreateLabel(flightStyleHeading).SetText('Flight style:');
+    local flightStyleGroup = UI.CreateRadioButtonGroup(flightStyleHeading);
+
+    spyPlaneFlightStyleInstant = UI.CreateRadioButton(flightStyleHeading)
+    .SetGroup(flightStyleGroup)
+    .SetText('Instant - all territories from A-B are shown')
+    .SetIsChecked(Mod.Settings.SpyPlaneFlightStyleInstant or true);
+
+    spyPlaneFlightStyleSteps = UI.CreateRadioButton(flightStyleHeading)
+    .SetGroup(flightStyleGroup)
+    .SetText('Steps - territories are shown as the plane moves')
+    .SetIsChecked(Mod.Settings.SpyPlaneFlightStyleSteps or false);
+
+    local flightStyleSubOptionsHeading = UI.CreateVerticalLayoutGroup(spyPlaneCardVHeading);
+
+    spyPlaneFlightStyleInstant.SetOnValueChanged(function()
+        if (spyPlaneFlightStyleInstant.GetIsChecked()) then
+            spyPlaneFlightStyleInstant.SetInteractable(false);
+            UI.Destroy(spyPlaneFlightStepsVHeading);
+        else
+            spyPlaneFlightStyleInstant.SetInteractable(true);
+        end
+    end);
+
+    spyPlaneFlightStyleSteps.SetOnValueChanged(function()
+        if (spyPlaneFlightStyleSteps.GetIsChecked()) then
+            spyPlaneFlightStyleSteps.SetInteractable(false);
+            Create_SpyPlaneFlightSteps_SubOptions_UI(flightStyleSubOptionsHeading);
+        else
+            spyPlaneFlightStyleSteps.SetInteractable(true);
+        end
+    end);
+
+    if (spyPlaneFlightStyleSteps.GetIsChecked()) then
+        spyPlaneFlightStyleSteps.SetInteractable(false);
+        Create_SpyPlaneFlightSteps_SubOptions_UI(flightStyleSubOptionsHeading);
+    else
+        spyPlaneFlightStyleInstant.SetInteractable(false);
+    end
+end
+
+function Create_SpyPlaneFlightSteps_SubOptions_UI(rootParent)
+    spyPlaneFlightStepsVHeading = UI.CreateVerticalLayoutGroup(rootParent);
+
+    local horz = UI.CreateHorizontalLayoutGroup(spyPlaneFlightStepsVHeading);
+    UI.CreateLabel(horz).SetText('Flight steps').SetPreferredWidth(290);
+    spyPlaneFlightSteps = UI.CreateNumberInputField(horz)
+        .SetSliderMinValue(1)
+        .SetSliderMaxValue(20)
+        .SetValue(Mod.Settings.SpyPlaneFlightSteps or 5);
 end
 
 function Create_FlakGunCard_SubOptions_UI(rootParent)
@@ -115,4 +184,65 @@ function Create_FlakGunCard_SubOptions_UI(rootParent)
         .SetSliderMinValue(0)
         .SetSliderMaxValue(5)
         .SetValue(Mod.Settings.FlakGunInitialPieces or 0);
+
+    UI.CreateLabel(flakGunCardVHeading).SetText('Mod Behaviour:').SetColor(SUBHEADING_COLOUR);
+
+    local horz = UI.CreateHorizontalLayoutGroup(flakGunCardVHeading);
+    UI.CreateLabel(horz).SetText('Area of effect').SetPreferredWidth(290);
+    flakGunAreaOfEffect = UI.CreateNumberInputField(horz)
+        .SetSliderMinValue(0)
+        .SetSliderMaxValue(5)
+        .SetValue(Mod.Settings.FlakGunAreaOfEffect or 0);
+
+    local horz = UI.CreateHorizontalLayoutGroup(flakGunCardVHeading);
+    UI.CreateLabel(horz).SetText('Flak gun rounds').SetPreferredWidth(290);
+    flakGunRounds = UI.CreateNumberInputField(horz)
+        .SetSliderMinValue(1)
+        .SetSliderMaxValue(5)
+        .SetValue(Mod.Settings.FlakGunRounds or 1);
+    UI.CreateLabel(flakGunCardVHeading).SetText('Values greater than 1 will provide temporary copies of the card each turn').SetColor(BUTTON_COLOURS.DarkGray);
+
+    flakGunTargetingSpyPlaneDestroys = UI.CreateCheckBox(flakGunCardVHeading)
+        .SetText('Targeting spy plane destroys it')
+        .SetIsChecked(Mod.Settings.FlakGunTargetingSpyPlaneDestroys or false);
+
+    flakGunTargetingAirliftSourceCancels = UI.CreateCheckBox(flakGunCardVHeading)
+        .SetText('Targeting airlift source cancels airlift')
+        .SetIsChecked(Mod.Settings.FlakGunTargetingAirliftSourceCancels or false);
+
+    flakGunTargetingAirliftDestinationHurts = UI.CreateCheckBox(flakGunCardVHeading)
+        .SetText('Targeting airlift destination hurts transported armies')
+        .SetIsChecked(Mod.Settings.FlakGunTargetingAirliftDestinationHurts or false);
+    local airliftDestinationHurtsSubOptionsHeading = UI.CreateVerticalLayoutGroup(flakGunCardVHeading);
+
+    flakGunTargetingAirliftDestinationHurts.SetOnValueChanged(function()
+        if(flakGunTargetingAirliftDestinationHurts.GetIsChecked()) then
+            Create_FlakGunAirliftDestinationHurts_SubOptions_UI(airliftDestinationHurtsSubOptionsHeading);
+        else
+            UI.Destroy(flakGunAirliftDestinationHurtsVHeading);
+        end
+    end);
+
+    if(flakGunTargetingAirliftDestinationHurts.GetIsChecked()) then
+        Create_FlakGunAirliftDestinationHurts_SubOptions_UI(airliftDestinationHurtsSubOptionsHeading);
+    end
+end
+
+function Create_FlakGunAirliftDestinationHurts_SubOptions_UI(rootParent)
+    flakGunAirliftDestinationHurtsVHeading = UI.CreateVerticalLayoutGroup(rootParent);
+
+    local horz = UI.CreateHorizontalLayoutGroup(flakGunAirliftDestinationHurtsVHeading);
+    UI.CreateLabel(horz).SetText('% damage dealt to transported armies').SetPreferredWidth(290);
+    flakGunAirliftDamagePercent = UI.CreateNumberInputField(horz)
+        .SetWholeNumbers(false)
+        .SetSliderMinValue(0)
+        .SetSliderMaxValue(1)
+        .SetValue(Mod.Settings.FlakGunAirliftDamagePercent or 0.5);
+
+    local horz = UI.CreateHorizontalLayoutGroup(flakGunAirliftDestinationHurtsVHeading);
+    UI.CreateLabel(horz).SetText('Minimum damage dealt to transported armies').SetPreferredWidth(290);
+    flakGunAirliftMinDamage = UI.CreateNumberInputField(horz)
+        .SetSliderMinValue(0)
+        .SetSliderMaxValue(5)
+        .SetValue(Mod.Settings.FlakGunAirliftMinDamage or 0);
 end

@@ -1,2 +1,3 @@
-This mod adds a Spy Plane card and a Flak Gun card.
-Spy Plane and Flak Gun can each be independently included or excluded.
+The Flak Gun Card allows a player to shoot at airlifts and spy planes that target your chosen location, dealing damage or destroying them dependant on configuration.
+The Spy Plane Card allows a player to create a line-based area of vision. This vision can appear all at once or in chunks across a number of turns as the plane moves from A-B in a direct line.
+Territories are included based on proximity to the line that can be drawn between the centerpoints of the start and end territories of the plane. Configuration options are provided to suit your chosen map.
