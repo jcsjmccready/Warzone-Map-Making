@@ -17,7 +17,7 @@ function Client_PresentSettingsUI(rootParent)
 
     if(Mod.Settings.IncludeFlakGunCard) then
         local flakGunCardVGroup = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
-        UI.CreateLabel(flakGunCardVGroup).SetText("Flak Gun Card:").SetColor(BUTTON_COLOURS.LightBlue);
+        UI.CreateLabel(flakGunCardVGroup).SetText("Flak Gun Card:").SetColor(BUTTON_COLOURS.L);
 
         UI.CreateLabel(flakGunCardVGroup).SetText("Number of Pieces: " .. Mod.Settings.FlakGunNumPieces);
         UI.CreateLabel(flakGunCardVGroup).SetText("Card Weight: " .. Mod.Settings.FlakGunCardWeight);
