@@ -38,6 +38,7 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
     TargetTerritoryName = nil;
     TargetPlayerID = nil;
     TargetPlayerName = nil;
+    playerListContent = nil;
 
     game.CreateDialog(function(rootParent, setMaxSize, setScrollable, game, close)
         Close = close;
@@ -198,10 +199,10 @@ function Create_PlayerList_UI(rootParent)
 end
 
 function Destroy_PlayerList_UI()
-    if (playerListContent ~= nil) then
+    if (playerListContent ~= nil and not UI.IsDestroyed(playerListContent)) then
         UI.Destroy(playerListContent);
-        playerListContent = nil;
     end
+    playerListContent = nil;
 end
 
 function PlayerListItemClicked(playerID, playerName)
