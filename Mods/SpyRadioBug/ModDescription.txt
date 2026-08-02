@@ -1,0 +1,1 @@
+Create a Spy Radio Bug on an enemy territory. While undiscovered, gain vision of your enemy. Your enemy is given temporary sweeper cards to search for your bug. If they find it, it is removed.
