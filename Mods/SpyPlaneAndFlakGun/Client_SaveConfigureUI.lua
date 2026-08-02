@@ -62,7 +62,7 @@ function Client_SaveConfigureUI(alert, addCard)
 
         local spyPlaneCardId = addCard(
             "Spy Plane",
-            "Play this card to send a spy plane over enemy territory.",
+            "Send a spy plane over enemy territory.",
             "SpyPlaneCard.png",
             Mod.Settings.SpyPlaneNumPieces,
             Mod.Settings.SpyPlaneMinPieces,
@@ -135,10 +135,12 @@ function Client_SaveConfigureUI(alert, addCard)
             table.insert(flakGunEffects, "destroy spy planes");
         end
 
-        local flakGunDescription = "Play this card to shoot a flak gun at a chosen territory.";
+        local flakGunBaseDescription = "Shoot a flak gun at a chosen territory.";
         if (#flakGunEffects > 0) then
-            flakGunDescription = flakGunDescription .. " It will " .. JoinWithAnd(flakGunEffects) .. ".";
+            flakGunBaseDescription = flakGunBaseDescription .. " It will " .. JoinWithAnd(flakGunEffects) .. ".";
         end
+
+        local flakGunDescription = flakGunBaseDescription;
         if (Mod.Settings.FlakGunRounds > 1) then
             flakGunDescription = flakGunDescription .. " Playing this card will also give you a temporary copy of it for the next " .. (Mod.Settings.FlakGunRounds - 1) .. " turn(s)";
         end
@@ -155,9 +157,11 @@ function Client_SaveConfigureUI(alert, addCard)
         Mod.Settings.FlakGunCardID = flakGunCardId;
 
         if (Mod.Settings.FlakGunRounds > 1) then
+            local temporaryFlakGunDescription = flakGunBaseDescription .. " Discards at the end of the turn if unused.";
+
             local temporaryFlakGunCardId = addCard(
                 "Temp. Flak Gun",
-                "Play this card to shoot a flak gun at a chosen territory. Discards at the end of the turn if unused.",
+                temporaryFlakGunDescription,
                 "TempFlakGunCard.png",
                 1,
                 0,

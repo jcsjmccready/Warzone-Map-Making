@@ -153,6 +153,17 @@ function ParseCommaDelimitedString(str)
     return result
 end
 
+--true if playerAID and playerBID are the same player, or are on the same (non-neutral) team
+function ArePlayersFriendly(game, playerAID, playerBID)
+	if (playerAID == playerBID) then return true; end
+
+	local playerA = game.Game.Players[playerAID];
+	local playerB = game.Game.Players[playerBID];
+	if (playerA == nil or playerB == nil) then return false; end
+
+	return playerA.Team ~= -1 and playerA.Team == playerB.Team;
+end
+
 function GetTerritoriesWithinDistance (game, targetTerritoryID, intMaxDistance)
     local arrTerrProcessed = {}; --list of terrs already processed
     local arrTerrResults = {}; --resultant list of terrs within specified distance

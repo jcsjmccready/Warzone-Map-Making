@@ -249,6 +249,6 @@ function Create_FlakGunAirliftDestinationHurts_SubOptions_UI(rootParent)
     UI.CreateLabel(horz).SetText('Minimum damage dealt to transported armies').SetPreferredWidth(290);
     flakGunAirliftMinDamage = UI.CreateNumberInputField(horz)
         .SetSliderMinValue(0)
-        .SetSliderMaxValue(5)
+        .SetSliderMaxValue(15)
         .SetValue(Mod.Settings.FlakGunAirliftMinDamage or 0);
 end

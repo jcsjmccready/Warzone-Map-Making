@@ -9,7 +9,7 @@ require('Utilities')
 function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog)
     Game = game;
 
-    if (cardInstance.CardID == Mod.Settings.FlakGunCardID) then
+    if (cardInstance.CardID == Mod.Settings.FlakGunCardID or cardInstance.CardID == Mod.Settings.FlakGunTemporaryCardID) then
         Present_FlakGunPlayCardUI(game, playCard, closeCardsDialog);
     end
 end
@@ -93,10 +93,6 @@ function FlakGunTerritoryClicked(terrDetails)
     PlayCardBtn.SetInteractable(true);
 
     local areaOfEffect = Mod.Settings.FlakGunAreaOfEffect or 0;
-    if (areaOfEffect > 0) then
-        local affectedTerritories = GetTerritoriesWithinDistance(Game, terrDetails.ID, areaOfEffect); --get resultant set of territories that this will effect
-        Game.HighlightTerritories(affectedTerritories); --highlight the impacted terrs
-    else
-        Game.HighlightTerritories({});
-    end
+    local affectedTerritories = GetTerritoriesWithinDistance(Game, terrDetails.ID, areaOfEffect); --get resultant set of territories that this will effect, always includes the selected territory itself
+    Game.HighlightTerritories(affectedTerritories); --highlight the impacted terrs
 end
