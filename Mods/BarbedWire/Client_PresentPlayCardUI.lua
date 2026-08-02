@@ -44,6 +44,7 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
                 local jumpToSpot = WL.RectangleVM.Create(td.MiddlePointX, td.MiddlePointY, td.MiddlePointX, td.MiddlePointY);
 
                 if (playCard("Build a Barbed Wire on " .. TargetTerritoryName, "CreateBarbedWire_" .. TargetTerritoryID, WL.TurnPhase.Attacks, {}, jumpToSpot)) then
+                    Game.HighlightTerritories({});
                     close();
                 end
             end);
@@ -51,6 +52,7 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
 end
 
 function TargetTerritoryClicked()
+	Game.HighlightTerritories({}); --clear any territories highlighted from a previous failed territory selection
 	UI.InterceptNextTerritoryClick(TerritoryClicked);
 	TargetTerritoryInstructionLabel.SetText("Please click on the territory you wish to create the Barbed Wire on.").SetColor(TEXT_DEFAULT_COLOUR);
 	TargetTerritoryBtn.SetInteractable(false);
@@ -71,22 +73,25 @@ function TerritoryClicked(terrDetails)
         TargetTerritoryID = nil;
         TargetTerritoryName = nil;
         PlayCardBtn.SetInteractable(false);
+        Game.HighlightTerritories({});
         return;
     end
-        
-    local terr = Game.LatestStanding.Territories[terrDetails.ID];        
+
+    local terr = Game.LatestStanding.Territories[terrDetails.ID];
     if (terr.OwnerPlayerID ~= Game.Us.ID) then
         TargetTerritoryInstructionLabel.SetText("You may only select territories you control").SetColor(ERROR_COLOUR);
 
         TargetTerritoryID = nil;
         TargetTerritoryName = nil;
         PlayCardBtn.SetInteractable(false);
+        Game.HighlightTerritories({});
     else
 		--Territory was clicked, remember its ID
 		TargetTerritoryInstructionLabel.SetText("Selected territory: " .. terrDetails.Name).SetColor(TEXT_DEFAULT_COLOUR);
 		TargetTerritoryID = terrDetails.ID;
         TargetTerritoryName = terrDetails.Name;
         PlayCardBtn.SetInteractable(true);
+        Game.HighlightTerritories({TargetTerritoryID});
 	end
 end
 

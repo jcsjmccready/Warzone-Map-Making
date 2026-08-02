@@ -275,10 +275,10 @@ function SecondTerritoryHandleClick(terrDetails)
         Game.HighlightTerritories(adjacentTerritories);
     else
 		--Territory was clicked, remember its ID and name
-		Game.HighlightTerritories({}); --clear any territories highlighted from a previous failed adjacent territory selection
 		SecondTerritoryInstructionLabel.SetText("Selected adjacent territory: " .. terrDetails.Name).SetColor(TEXT_DEFAULT_COLOUR);
 		SecondTerritoryID = terrDetails.ID;
         SecondTerritoryName = terrDetails.Name;
+        Game.HighlightTerritories({FirstTerritoryID, SecondTerritoryID});
 	end
 
     UpdatePlayCardBtnInteractable();
