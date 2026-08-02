@@ -1,1 +1,4 @@
-This mod allows players to create attack/transfer orders for armies on neutral territories by playing a card.
+This mod allows players to create attack/transfer orders for armies on neutral territories to adjacent territories by playing a card.
+Neutrals transfer to other neutrals but attack players.
+Neutral orders cards are played in the attacks phase.
+Supports special units if "Special Units live in Blockades" mod is also used.

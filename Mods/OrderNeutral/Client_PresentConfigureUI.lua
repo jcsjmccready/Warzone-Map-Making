@@ -13,25 +13,24 @@ function Create_UI_Controls(rootParent)
     UI.CreateLabel(mainModUI).SetText('Mod Behaviour:').SetColor(SUBHEADING_COLOUR);
     local horz = UI.CreateHorizontalLayoutGroup(mainModUI);
 
-    local armyAmountHeading = UI.CreateVerticalLayoutGroup(mainModUI);
-    UI.CreateLabel(armyAmountHeading).SetText('Army to order:');
-    local armyAmountGroup = UI.CreateRadioButtonGroup(armyAmountHeading);
-
-    armyAmountEntireArmy = UI.CreateRadioButton(armyAmountHeading).SetGroup(armyAmountGroup)
-    .SetText('Entire Army')
-    .SetIsChecked(Mod.Settings.ArmyAmountEntireArmy or true);
-
-    armyAmountInputTroops = UI.CreateRadioButton(armyAmountHeading).SetGroup(armyAmountGroup)
-    .SetText('Input number of troops')
-    .SetIsChecked(Mod.Settings.ArmyAmountInputTroops or false);
-
     UI.CreateLabel(horz).SetText('Card duration:').SetPreferredWidth(290);
     cardDuration = UI.CreateNumberInputField(horz)
         .SetSliderMinValue(1)
         .SetSliderMaxValue(5)
         .SetValue(Mod.Settings.CardDuration or 2);
-    UI.CreateLabel(horz).SetText('Values > 1 give you temporary copy of the card (that discard if unused) each turn beyond the first*').SetColor(BUTTON_COLOURS.DarkGray);
+    UI.CreateLabel(mainModUI).SetText('Values > 1 give you temporary (discards if unused) copies of the card at the start of each turn to achieve the duration*').SetColor(BUTTON_COLOURS.DarkGray);
+    
+    local armyAmountHeading = UI.CreateVerticalLayoutGroup(mainModUI);
+    UI.CreateLabel(armyAmountHeading).SetText('Army to order:');
+    local armyAmountGroup = UI.CreateRadioButtonGroup(armyAmountHeading);
 
+    armyAmountEntireArmy = UI.CreateRadioButton(armyAmountHeading).SetGroup(armyAmountGroup)
+    .SetText('Entire army')
+    .SetIsChecked(Mod.Settings.ArmyAmountEntireArmy or true);
+
+    armyAmountInputTroops = UI.CreateRadioButton(armyAmountHeading).SetGroup(armyAmountGroup)
+    .SetText('Input number of armies')
+    .SetIsChecked(Mod.Settings.ArmyAmountInputTroops or false);
 
     local neutralArmyGivesVisionHeading = UI.CreateVerticalLayoutGroup(mainModUI);
     neutralArmyGivesVision = UI.CreateCheckBox(neutralArmyGivesVisionHeading).SetText("Neutral army gives vision")

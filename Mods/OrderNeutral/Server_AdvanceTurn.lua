@@ -41,11 +41,6 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
             return;
         end
 
-        if (fromTerritory.NumArmies.NumArmies <= 0) then
-            -- No armies left on the neutral territory to issue the order with
-            return;
-        end
-
         if (game.Map.Territories[fromTerritoryID].ConnectedTo[toTerritoryID] == nil) then
             -- The client can't be trusted to only send legal orders, so verify adjacency ourselves
             return;
@@ -53,7 +48,8 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
 
         --the client can't be trusted to only request a legal amount, so clamp it to what's actually available
         local availableArmies = fromTerritory.NumArmies.NumArmies;
-        local armiesToSend = (armyCountStr == nil or armyCountStr == "ALL") and availableArmies or math.max(0, math.min(availableArmies, tonumber(armyCountStr) or 0));
+        local maxSendableArmies = game.Settings.OneArmyStandsGuard and math.max(0, availableArmies - 1) or availableArmies;
+        local armiesToSend = (armyCountStr == nil or armyCountStr == "ALL") and maxSendableArmies or math.max(0, math.min(maxSendableArmies, tonumber(armyCountStr) or 0));
 
         local specialUnitsToSend;
         if (specialUnitsStr == nil or specialUnitsStr == "ALL") then
@@ -68,6 +64,7 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
 
         if (armiesToSend <= 0 and #specialUnitsToSend == 0) then
             -- Nothing was actually selected to send (eg. the territory lost armies/special units earlier this turn)
+            addNewOrder(WL.GameOrderEvent.Create(order.PlayerID, order.Description .. " - failed, no armies were left to send", { order.PlayerID }, {}));
             return;
         end
 
