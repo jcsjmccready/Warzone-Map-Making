@@ -89,15 +89,15 @@ function Create_SpyPlaneCard_SubOptions_UI(rootParent)
     spyPlaneInclusionGenerosity = UI.CreateNumberInputField(horz)
         .SetSliderMinValue(25)
         .SetSliderMaxValue(300)
-        .SetValue(Mod.Settings.SpyPlaneInclusionGenerosity or 100);
+        .SetValue(Mod.Settings.SpyPlaneInclusionGenerosity or 50);
     UI.CreateLabel(spyPlaneCardVHeading).SetText('Territories are included based on the distance from their centerpoint to the latest step of the plane as it moves. Experiment with how this number feels for your chosen map.').SetColor(BUTTON_COLOURS.DarkGray);
 
     local horz = UI.CreateHorizontalLayoutGroup(spyPlaneCardVHeading);
     UI.CreateLabel(horz).SetText('Maximum flight distance').SetPreferredWidth(290);
     spyPlaneMaxFlightDistance = UI.CreateNumberInputField(horz)
-        .SetSliderMinValue(25)
+        .SetSliderMinValue(200)
         .SetSliderMaxValue(2000)
-        .SetValue(Mod.Settings.SpyPlaneMaxFlightDistance or 500);
+        .SetValue(Mod.Settings.SpyPlaneMaxFlightDistance or 300);
 
     local flightStyleHeading = UI.CreateVerticalLayoutGroup(spyPlaneCardVHeading);
     UI.CreateLabel(flightStyleHeading).SetText('Flight style:');

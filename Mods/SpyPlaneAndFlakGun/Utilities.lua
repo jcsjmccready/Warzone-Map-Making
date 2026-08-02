@@ -164,6 +164,54 @@ function ArePlayersFriendly(game, playerAID, playerBID)
 	return playerA.Team ~= -1 and playerA.Team == playerB.Team;
 end
 
+--Returns the TerritoryIDs of every territory on the map whose centerpoint falls within maxDistanceFromLine of the
+--line segment drawn between startTerritoryID and endTerritoryID's centerpoints (a "thick line" from a birds eye
+--view - adjacency is not considered at all, only literal on-map distance to the segment). If maxSegmentLengthOpt
+--is given and the start/end territories are further apart than that, the segment's end is pulled in along the
+--same direction to maxSegmentLengthOpt, so territories past that point along the line are never included
+function GetTerritoriesNearLine(game, startTerritoryID, endTerritoryID, maxDistanceFromLine, maxSegmentLengthOpt)
+	local startTd = game.Map.Territories[startTerritoryID];
+	local endTd = game.Map.Territories[endTerritoryID];
+
+	local ax, ay = startTd.MiddlePointX, startTd.MiddlePointY;
+	local bx, by = endTd.MiddlePointX, endTd.MiddlePointY;
+	local abx, aby = bx - ax, by - ay;
+
+	if (maxSegmentLengthOpt ~= nil) then
+		local actualLength = math.sqrt(abx * abx + aby * aby);
+		if (actualLength > maxSegmentLengthOpt) then
+			local scale = maxSegmentLengthOpt / actualLength;
+			abx, aby = abx * scale, aby * scale;
+		end
+	end
+
+	local abLengthSquared = abx * abx + aby * aby;
+
+	local result = {};
+	for territoryID, territoryDetails in pairs(game.Map.Territories) do
+		local px, py = territoryDetails.MiddlePointX, territoryDetails.MiddlePointY;
+		local apx, apy = px - ax, py - ay;
+
+		--project the territory's centerpoint onto the segment, clamped to the segment itself (not the infinite
+		--line) since the plane only flies from start to end, not beyond either end
+		local t = 0;
+		if (abLengthSquared > 0) then
+			t = math.max(0, math.min(1, (apx * abx + apy * aby) / abLengthSquared));
+		end
+
+		local closestX = ax + t * abx;
+		local closestY = ay + t * aby;
+		local dx, dy = px - closestX, py - closestY;
+		local distanceFromLine = math.sqrt(dx * dx + dy * dy);
+
+		if (distanceFromLine <= maxDistanceFromLine) then
+			table.insert(result, territoryID);
+		end
+	end
+
+	return result;
+end
+
 function GetTerritoriesWithinDistance (game, targetTerritoryID, intMaxDistance)
     local arrTerrProcessed = {}; --list of terrs already processed
     local arrTerrResults = {}; --resultant list of terrs within specified distance

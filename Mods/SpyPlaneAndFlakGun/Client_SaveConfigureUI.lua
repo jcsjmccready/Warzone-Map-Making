@@ -46,8 +46,8 @@ function Client_SaveConfigureUI(alert, addCard)
             alert("Spy Plane inclusion generosity cannot be less than 25");
             return;
         end
-        if (Mod.Settings.SpyPlaneMaxFlightDistance < 25) then
-            alert("Spy Plane maximum flight distance cannot be less than 25");
+        if (Mod.Settings.SpyPlaneMaxFlightDistance < 200) then
+            alert("Spy Plane maximum flight distance cannot be less than 200");
             return;
         end
 

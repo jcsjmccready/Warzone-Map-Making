@@ -14,11 +14,13 @@ function Server_AdvanceTurn_Start(game, addNewOrder)
 	local priv = Mod.PrivateGameData;
 	priv.ActiveFlakGuns = {};
 	Mod.PrivateGameData = priv;
+
+	RemoveExpiredSpyPlaneVisionFogMods(addNewOrder);
 end
 
 ---Server_AdvanceTurn_Order hook
----TODO: Spy Plane gameplay effect not yet implemented, and Flak Gun's "destroy spy plane" targeting option has no
----effect until it is
+---TODO: Spy Plane's Steps flight style not yet implemented (vision is only ever granted all at once), and Flak
+---Gun's "destroy spy plane" targeting option has no effect until Spy Plane orders exist for it to detect
 ---@param game GameServerHook
 ---@param order GameOrder
 ---@param result GameOrderResult
@@ -32,6 +34,61 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
 	if (order.proxyType == 'GameOrderPlayCardAirlift') then
 		HandleAirliftTargetedByFlakGun(game, order, result, skipThisOrder, addNewOrder);
 	end
+
+	if (order.proxyType == 'GameOrderPlayCardCustom' and startsWith(order.ModData, "FlySpyPlane_")) then
+		HandleFlySpyPlane(game, order, addNewOrder);
+	end
+end
+
+---Parses the start/end territories back out of a FlySpyPlane_ order, recalculates (never trusts the client's
+---copy of) the territories covered by the flight line, and - if Instant flight style is configured - grants the
+---player vision of all of them for this turn via a FogMod, same as GrantManualVisionOfTerritory in OrderNeutral.
+---@param game GameServerHook
+---@param order GameOrder
+---@param addNewOrder fun(order: GameOrder)
+function HandleFlySpyPlane(game, order, addNewOrder)
+	local ids = split(string.sub(order.ModData, string.len("FlySpyPlane_") + 1), "_");
+	local startTerritoryID = tonumber(ids[1]);
+	local endTerritoryID = tonumber(ids[2]);
+
+	local coveredTerritories = GetTerritoriesNearLine(game, startTerritoryID, endTerritoryID, Mod.Settings.SpyPlaneInclusionGenerosity or 50, Mod.Settings.SpyPlaneMaxFlightDistance or 300);
+
+	local startTd = game.Map.Territories[startTerritoryID];
+	local endTd = game.Map.Territories[endTerritoryID];
+	local event = WL.GameOrderEvent.Create(order.PlayerID, order.Description, {}, {});
+	event.JumpToActionSpotOpt = WL.RectangleVM.Create(startTd.MiddlePointX, startTd.MiddlePointY, endTd.MiddlePointX, endTd.MiddlePointY);
+	event.TerritoryAnnotationsOpt = {
+		[startTerritoryID] = WL.TerritoryAnnotation.Create("Spy Plane Start", 8, GetColourIntegerFromHex(BUTTON_COLOURS.LightBlue)),
+		[endTerritoryID] = WL.TerritoryAnnotation.Create("Spy Plane End", 8, GetColourIntegerFromHex(BUTTON_COLOURS.LightBlue)),
+	};
+
+	if (Mod.Settings.SpyPlaneFlightStyleInstant) then
+		local fogMod = WL.FogMod.Create("Spy Plane vision", WL.StandingFogLevel.Visible, 9000, coveredTerritories, { order.PlayerID });
+		event.FogModsOpt = { fogMod };
+
+		local priv = Mod.PrivateGameData;
+		if (priv.PendingSpyPlaneVisionFogModIDs == nil) then priv.PendingSpyPlaneVisionFogModIDs = {}; end;
+		table.insert(priv.PendingSpyPlaneVisionFogModIDs, fogMod.ID);
+		Mod.PrivateGameData = priv;
+	end
+
+	addNewOrder(event);
+end
+
+---Removes any Spy Plane vision FogMods granted last turn, so Instant vision lasts exactly one turn - mirrors
+---OrderNeutral's RemoveExpiredVisionFogMods.
+---@param addNewOrder fun(order: GameOrder)
+function RemoveExpiredSpyPlaneVisionFogMods(addNewOrder)
+	local priv = Mod.PrivateGameData;
+	local pendingIDs = priv.PendingSpyPlaneVisionFogModIDs;
+	if (pendingIDs == nil or #pendingIDs == 0) then return; end;
+
+	local event = WL.GameOrderEvent.Create(WL.PlayerID.Neutral, "Spy Plane vision expired", {}, {});
+	event.RemoveFogModsOpt = pendingIDs;
+	addNewOrder(event);
+
+	priv.PendingSpyPlaneVisionFogModIDs = nil;
+	Mod.PrivateGameData = priv;
 end
 
 ---Registers a newly fired Flak Gun for the remainder of this turn, and starts a temporary-card streak if this was
