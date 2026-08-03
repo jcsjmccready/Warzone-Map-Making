@@ -80,8 +80,8 @@ function HandleAttackTransferInTriggeredBarbedWire(game, order, result, skipThis
 	--If no barbed wire here, abort.
 	if (numberOfTriggeredBarbedWire == 0) then return; end;
 
-	-- block this attack by skipping
-	skipThisOrder(WL.ModOrderControl.SkipAndSupressSkippedMessage); --suppress the meaningless/detailless 'Mod skipped order' message, since the above message provides the details
+	-- block this attack
+	result.ActualArmies = WL.Armies.Create(0);
 	local event = WL.GameOrderEvent.Create(order.PlayerID, 'Movement blocked by barbed wire', {}, {});
 	event.TerritoryAnnotationsOpt = { [order.From] = WL.TerritoryAnnotation.Create("Armies stuck", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany)) };
 	addNewOrder(event);
