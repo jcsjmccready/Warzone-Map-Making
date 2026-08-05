@@ -10,7 +10,7 @@ function Client_SaveConfigureUI(alert, addCard)
         Mod.Settings.CityIncomeModePerCity = cityIncomeModePerCity.GetIsChecked();
         Mod.Settings.CityIncomeModePerTerritoryWithCity = cityIncomeModePerTerritoryWithCity.GetIsChecked();
     elseif(Mod.Settings.MonitorTerritories) then
-        Mod.Settings.TerritoryIncomeModePerTerritory = territoryIncomeModePerTerritory.GetIsChecked();
+        Mod.Settings.TerritoryIncomeModePerTerritory = true; -- replace this logic if we ever extend the territory income mode to have more than one option
     end
 
     Mod.Settings.EffectStrength = effectStrength.GetValue();
