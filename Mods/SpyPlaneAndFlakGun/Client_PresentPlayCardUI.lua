@@ -194,6 +194,10 @@ function SpyPlaneStartTerritoryHandleClick(terrDetails)
         SpyPlaneStartTerritoryInstructionLabel.SetText("");
         SpyPlaneStartTerritoryID = nil;
         SpyPlaneStartTerritoryName = nil;
+    elseif (terrDetails.ID == SpyPlaneEndTerritoryID) then
+        SpyPlaneStartTerritoryInstructionLabel.SetText("Start territory can't be the same as the end territory").SetColor(ERROR_COLOUR);
+        SpyPlaneStartTerritoryID = nil;
+        SpyPlaneStartTerritoryName = nil;
     else
         SpyPlaneStartTerritoryInstructionLabel.SetText("Selected start: " .. terrDetails.Name).SetColor(TEXT_DEFAULT_COLOUR);
         SpyPlaneStartTerritoryID = terrDetails.ID;
@@ -203,6 +207,7 @@ function SpyPlaneStartTerritoryHandleClick(terrDetails)
     SpyPlanePlayCardBtn.SetInteractable(SpyPlaneStartTerritoryID ~= nil and SpyPlaneEndTerritoryID ~= nil);
     UpdateSpyPlaneFlightDistanceLabel();
     UpdateSpyPlaneHighlight();
+    UpdateSpyPlanePlayCardButtonText();
 end
 
 function SpyPlaneEndTerritoryClicked()
@@ -226,6 +231,10 @@ function SpyPlaneEndTerritoryHandleClick(terrDetails)
         SpyPlaneEndTerritoryInstructionLabel.SetText("");
         SpyPlaneEndTerritoryID = nil;
         SpyPlaneEndTerritoryName = nil;
+    elseif (terrDetails.ID == SpyPlaneStartTerritoryID) then
+        SpyPlaneEndTerritoryInstructionLabel.SetText("End territory can't be the same as the start territory").SetColor(ERROR_COLOUR);
+        SpyPlaneEndTerritoryID = nil;
+        SpyPlaneEndTerritoryName = nil;
     else
         SpyPlaneEndTerritoryID = terrDetails.ID;
         SpyPlaneEndTerritoryName = terrDetails.Name;
@@ -234,6 +243,19 @@ function SpyPlaneEndTerritoryHandleClick(terrDetails)
     SpyPlanePlayCardBtn.SetInteractable(SpyPlaneStartTerritoryID ~= nil and SpyPlaneEndTerritoryID ~= nil);
     UpdateSpyPlaneFlightDistanceLabel();
     UpdateSpyPlaneHighlight();
+    UpdateSpyPlanePlayCardButtonText();
+end
+
+---Refreshes the "Send Spy Plane" button's text with how many steps the flight will take, provided both a start
+---and end territory are currently selected and the flight is within the maximum distance. Recalculated whenever
+---either selection changes, same as UpdateSpyPlaneFlightDistanceLabel.
+function UpdateSpyPlanePlayCardButtonText()
+    local stepCountSuffix = "";
+    if (SpyPlaneStartTerritoryID ~= nil and SpyPlaneEndTerritoryID ~= nil and GetSpyPlanePercentOverMaxFlightDistance(SpyPlaneStartTerritoryID, SpyPlaneEndTerritoryID) == nil) then
+        stepCountSuffix = GetSpyPlaneStepCountSuffix(SpyPlaneStartTerritoryID, SpyPlaneEndTerritoryID);
+    end
+
+    SpyPlanePlayCardBtn.SetText("Send Spy Plane" .. stepCountSuffix);
 end
 
 ---Refreshes the end-territory label with the flight distance check, provided both a start and end territory are
@@ -250,6 +272,25 @@ function UpdateSpyPlaneFlightDistanceLabel()
     else
         SpyPlaneEndTerritoryInstructionLabel.SetText("Selected end: " .. SpyPlaneEndTerritoryName).SetColor(TEXT_DEFAULT_COLOUR);
     end
+end
+
+---Returns " (N steps)" describing how many turns a Distance-based Steps flight between the given territories will
+---take, or "" if Steps/Distance mode isn't the configured flight style (Instant and Segment-based Steps don't have
+---a meaningful "number of steps" to report here). Always at least 2, matching HandleFlySpyPlane's server-side step
+---count so the start and end territories are never collapsed into a single step.
+---@param startTerritoryID TerritoryID
+---@param endTerritoryID TerritoryID
+function GetSpyPlaneStepCountSuffix(startTerritoryID, endTerritoryID)
+    if (not (Mod.Settings.SpyPlaneFlightStyleSteps and Mod.Settings.SpyPlaneStepModeDistance)) then
+        return "";
+    end
+
+    local maxFlightDistance = Mod.Settings.SpyPlaneMaxFlightDistance or 300;
+    local maxDistancePerStep = Mod.Settings.SpyPlaneMaxDistancePerStep or 200;
+    local _, _, _, _, totalDistance = GetClampedLineSegment(Game, startTerritoryID, endTerritoryID, maxFlightDistance);
+    local stepCount = math.max(2, math.ceil(totalDistance / maxDistancePerStep));
+
+    return " (" .. stepCount .. " steps)";
 end
 
 ---Returns how far (in whole percent) the flight from startTerritoryID to endTerritoryID exceeds

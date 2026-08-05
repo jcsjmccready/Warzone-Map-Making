@@ -191,12 +191,14 @@ end
 
 ---Determines the minimum number of steps needed to cover the given total distance without any step exceeding
 ---maxDistancePerStep, which also keeps each step's actual distance at least 75% of maxDistancePerStep (since using
----any fewer steps would push at least one step's distance over the maximum).
+---any fewer steps would push at least one step's distance over the maximum). Always at least 2, matching
+---HandleFlySpyPlane's server-side step count, so the flight's start and end territories are never collapsed into
+---a single step.
 ---@param totalDistance number
 ---@param maxDistancePerStep number
 function Calculate_SpyPlaneSteps(totalDistance, maxDistancePerStep)
-    if (maxDistancePerStep <= 0) then return 1; end
-    return math.max(1, math.ceil(totalDistance / maxDistancePerStep));
+    if (maxDistancePerStep <= 0) then return 2; end
+    return math.max(2, math.ceil(totalDistance / maxDistancePerStep));
 end
 
 function Create_SpyPlaneStepModeDistance_SubOptions_UI(rootParent)
@@ -238,7 +240,7 @@ function Create_SpyPlaneStepModeSegment_SubOptions_UI(rootParent)
     local horz = UI.CreateHorizontalLayoutGroup(spyPlaneFlightSegmentsVHeading);
     UI.CreateLabel(horz).SetText('Flight segments').SetPreferredWidth(290);
     spyPlaneFlightSteps = UI.CreateNumberInputField(horz)
-        .SetSliderMinValue(1)
+        .SetSliderMinValue(2)
         .SetSliderMaxValue(20)
         .SetValue(Mod.Settings.SpyPlaneFlightSteps or 5);
 

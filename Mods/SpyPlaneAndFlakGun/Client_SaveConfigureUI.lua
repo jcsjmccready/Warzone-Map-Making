@@ -65,8 +65,8 @@ function Client_SaveConfigureUI(alert, addCard)
             elseif (Mod.Settings.SpyPlaneStepModeSegment) then
                 Mod.Settings.SpyPlaneFlightSteps = spyPlaneFlightSteps.GetValue();
 
-                if (Mod.Settings.SpyPlaneFlightSteps < 1) then
-                    alert("Spy Plane flight segments cannot be less than 1");
+                if (Mod.Settings.SpyPlaneFlightSteps < 2) then
+                    alert("Spy Plane flight segments cannot be less than 2");
                     return;
                 end
             end
