@@ -17,7 +17,11 @@ function Client_PresentSettingsUI(rootParent)
         UI.CreateLabel(spyPlaneCardVGroup).SetText("Maximum Flight Distance: " .. Mod.Settings.SpyPlaneMaxFlightDistance);
 
         if(Mod.Settings.SpyPlaneFlightStyleSteps) then
-            UI.CreateLabel(spyPlaneCardVGroup).SetText("Flight Style: Steps (" .. Mod.Settings.SpyPlaneFlightSteps .. " steps)");
+            if(Mod.Settings.SpyPlaneStepModeDistance) then
+                UI.CreateLabel(spyPlaneCardVGroup).SetText("Flight Style: Steps (Distance-based, max " .. Mod.Settings.SpyPlaneMaxDistancePerStep .. " per step)");
+            else
+                UI.CreateLabel(spyPlaneCardVGroup).SetText("Flight Style: Steps (Segment-based, " .. Mod.Settings.SpyPlaneFlightSteps .. " segments)");
+            end
         else
             UI.CreateLabel(spyPlaneCardVGroup).SetText("Flight Style: Instant");
         end

@@ -144,12 +144,116 @@ end
 function Create_SpyPlaneFlightSteps_SubOptions_UI(rootParent)
     spyPlaneFlightStepsVHeading = UI.CreateVerticalLayoutGroup(rootParent);
 
-    local horz = UI.CreateHorizontalLayoutGroup(spyPlaneFlightStepsVHeading);
-    UI.CreateLabel(horz).SetText('Flight steps').SetPreferredWidth(290);
+    local stepModeHeading = UI.CreateVerticalLayoutGroup(spyPlaneFlightStepsVHeading);
+    UI.CreateLabel(stepModeHeading).SetText('Step mode:');
+    local stepModeGroup = UI.CreateRadioButtonGroup(stepModeHeading);
+
+    spyPlaneStepModeDistance = UI.CreateRadioButton(stepModeHeading)
+    .SetGroup(stepModeGroup)
+    .SetText('Distance-based')
+    .SetIsChecked(Mod.Settings.SpyPlaneStepModeSegment ~= true);
+
+    spyPlaneStepModeSegment = UI.CreateRadioButton(stepModeHeading)
+    .SetGroup(stepModeGroup)
+    .SetText('Segment-based')
+    .SetIsChecked(Mod.Settings.SpyPlaneStepModeSegment or false);
+
+    local stepModeSubOptionsHeading = UI.CreateVerticalLayoutGroup(spyPlaneFlightStepsVHeading);
+
+    spyPlaneStepModeDistance.SetOnValueChanged(function()
+        if (spyPlaneStepModeDistance.GetIsChecked()) then
+            spyPlaneStepModeDistance.SetInteractable(false);
+            UI.Destroy(spyPlaneFlightSegmentsVHeading);
+            Create_SpyPlaneStepModeDistance_SubOptions_UI(stepModeSubOptionsHeading);
+        else
+            spyPlaneStepModeDistance.SetInteractable(true);
+        end
+    end);
+
+    spyPlaneStepModeSegment.SetOnValueChanged(function()
+        if (spyPlaneStepModeSegment.GetIsChecked()) then
+            spyPlaneStepModeSegment.SetInteractable(false);
+            UI.Destroy(spyPlaneMaxDistancePerStepVHeading);
+            Create_SpyPlaneStepModeSegment_SubOptions_UI(stepModeSubOptionsHeading);
+        else
+            spyPlaneStepModeSegment.SetInteractable(true);
+        end
+    end);
+
+    if (spyPlaneStepModeSegment.GetIsChecked()) then
+        spyPlaneStepModeSegment.SetInteractable(false);
+        Create_SpyPlaneStepModeSegment_SubOptions_UI(stepModeSubOptionsHeading);
+    else
+        spyPlaneStepModeDistance.SetInteractable(false);
+        Create_SpyPlaneStepModeDistance_SubOptions_UI(stepModeSubOptionsHeading);
+    end
+end
+
+---Determines the minimum number of steps needed to cover the given total distance without any step exceeding
+---maxDistancePerStep, which also keeps each step's actual distance at least 75% of maxDistancePerStep (since using
+---any fewer steps would push at least one step's distance over the maximum).
+---@param totalDistance number
+---@param maxDistancePerStep number
+function Calculate_SpyPlaneSteps(totalDistance, maxDistancePerStep)
+    if (maxDistancePerStep <= 0) then return 1; end
+    return math.max(1, math.ceil(totalDistance / maxDistancePerStep));
+end
+
+function Create_SpyPlaneStepModeDistance_SubOptions_UI(rootParent)
+    spyPlaneMaxDistancePerStepVHeading = UI.CreateVerticalLayoutGroup(rootParent);
+
+    local horz = UI.CreateHorizontalLayoutGroup(spyPlaneMaxDistancePerStepVHeading);
+    UI.CreateLabel(horz).SetText('Maximum distance per step').SetPreferredWidth(290);
+    spyPlaneMaxDistancePerStep = UI.CreateNumberInputField(horz)
+        .SetSliderMinValue(50)
+        .SetSliderMaxValue(1000)
+        .SetValue(Mod.Settings.SpyPlaneMaxDistancePerStep or 200);
+
+    local horz = UI.CreateHorizontalLayoutGroup(spyPlaneMaxDistancePerStepVHeading);
+    local spyPlaneCalculatedStepsLabel = UI.CreateLabel(horz).SetPreferredWidth(290).SetColor(BUTTON_COLOURS.DarkGray);
+
+    local recalculateStepsButton = UI.CreateButton(horz)
+        .SetText('Refresh')
+        .SetPreferredWidth(150);
+
+    recalculateStepsButton.SetOnClick(function()
+        spyPlaneCalculatedStepsLabel.SetText('Example: Steps for maximum flight distance: ' .. Calculate_SpyPlaneSteps(spyPlaneMaxFlightDistance.GetValue(), spyPlaneMaxDistancePerStep.GetValue()));
+    end);
+
+    spyPlaneCalculatedStepsLabel.SetText('Example: Steps for maximum flight distance: ' .. Calculate_SpyPlaneSteps(spyPlaneMaxFlightDistance.GetValue(), spyPlaneMaxDistancePerStep.GetValue()));
+end
+
+---Determines the distance covered by each segment when the configured maximum flight distance is split evenly
+---across the given number of flight segments.
+---@param totalDistance number
+---@param flightSteps number
+function Calculate_SpyPlaneDistancePerSegment(totalDistance, flightSteps)
+    if (flightSteps <= 0) then return math.floor(totalDistance + 0.5); end
+    return math.floor((totalDistance / flightSteps) + 0.5);
+end
+
+function Create_SpyPlaneStepModeSegment_SubOptions_UI(rootParent)
+    spyPlaneFlightSegmentsVHeading = UI.CreateVerticalLayoutGroup(rootParent);
+
+    local horz = UI.CreateHorizontalLayoutGroup(spyPlaneFlightSegmentsVHeading);
+    UI.CreateLabel(horz).SetText('Flight segments').SetPreferredWidth(290);
     spyPlaneFlightSteps = UI.CreateNumberInputField(horz)
         .SetSliderMinValue(1)
         .SetSliderMaxValue(20)
         .SetValue(Mod.Settings.SpyPlaneFlightSteps or 5);
+
+    local horz = UI.CreateHorizontalLayoutGroup(spyPlaneFlightSegmentsVHeading);
+    local spyPlaneCalculatedDistancePerSegmentLabel = UI.CreateLabel(horz).SetPreferredWidth(290).SetColor(BUTTON_COLOURS.DarkGray);
+
+    local refreshDistancePerSegmentButton = UI.CreateButton(horz)
+        .SetText('Refresh')
+        .SetPreferredWidth(150);
+
+    refreshDistancePerSegmentButton.SetOnClick(function()
+        spyPlaneCalculatedDistancePerSegmentLabel.SetText('Example: Distance per segment for maximum flight distance: ' .. Calculate_SpyPlaneDistancePerSegment(spyPlaneMaxFlightDistance.GetValue(), spyPlaneFlightSteps.GetValue()));
+    end);
+
+    spyPlaneCalculatedDistancePerSegmentLabel.SetText('Example: Distance per segment for maximum flight distance: ' .. Calculate_SpyPlaneDistancePerSegment(spyPlaneMaxFlightDistance.GetValue(), spyPlaneFlightSteps.GetValue()));
 end
 
 function Create_FlakGunCard_SubOptions_UI(rootParent)

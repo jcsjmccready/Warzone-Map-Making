@@ -165,26 +165,10 @@ function ArePlayersFriendly(game, playerAID, playerBID)
 end
 
 --Returns the TerritoryIDs of every territory on the map whose centerpoint falls within maxDistanceFromLine of the
---line segment drawn between startTerritoryID and endTerritoryID's centerpoints (a "thick line" from a birds eye
---view - adjacency is not considered at all, only literal on-map distance to the segment). If maxSegmentLengthOpt
---is given and the start/end territories are further apart than that, the segment's end is pulled in along the
---same direction to maxSegmentLengthOpt, so territories past that point along the line are never included
-function GetTerritoriesNearLine(game, startTerritoryID, endTerritoryID, maxDistanceFromLine, maxSegmentLengthOpt)
-	local startTd = game.Map.Territories[startTerritoryID];
-	local endTd = game.Map.Territories[endTerritoryID];
-
-	local ax, ay = startTd.MiddlePointX, startTd.MiddlePointY;
-	local bx, by = endTd.MiddlePointX, endTd.MiddlePointY;
+--line segment drawn between (ax, ay) and (bx, by) (a "thick line" from a birds eye view - adjacency is not
+--considered at all, only literal on-map distance to the segment)
+function GetTerritoriesNearLineSegment(game, ax, ay, bx, by, maxDistanceFromLine)
 	local abx, aby = bx - ax, by - ay;
-
-	if (maxSegmentLengthOpt ~= nil) then
-		local actualLength = math.sqrt(abx * abx + aby * aby);
-		if (actualLength > maxSegmentLengthOpt) then
-			local scale = maxSegmentLengthOpt / actualLength;
-			abx, aby = abx * scale, aby * scale;
-		end
-	end
-
 	local abLengthSquared = abx * abx + aby * aby;
 
 	local result = {};
@@ -210,6 +194,57 @@ function GetTerritoriesNearLine(game, startTerritoryID, endTerritoryID, maxDista
 	end
 
 	return result;
+end
+
+--Returns the TerritoryID of whichever territory on the map has its centerpoint closest to (x, y)
+function FindNearestTerritory(game, x, y)
+	local nearestTerritoryID = nil;
+	local nearestDistanceSquared = nil;
+
+	for territoryID, territoryDetails in pairs(game.Map.Territories) do
+		local dx, dy = territoryDetails.MiddlePointX - x, territoryDetails.MiddlePointY - y;
+		local distanceSquared = dx * dx + dy * dy;
+
+		if (nearestDistanceSquared == nil or distanceSquared < nearestDistanceSquared) then
+			nearestTerritoryID = territoryID;
+			nearestDistanceSquared = distanceSquared;
+		end
+	end
+
+	return nearestTerritoryID;
+end
+
+--Returns the TerritoryIDs of every territory on the map whose centerpoint falls within maxDistanceFromLine of the
+--line segment drawn between startTerritoryID and endTerritoryID's centerpoints. If maxSegmentLengthOpt is given and
+--the start/end territories are further apart than that, the segment's end is pulled in along the same direction to
+--maxSegmentLengthOpt, so territories past that point along the line are never included
+function GetTerritoriesNearLine(game, startTerritoryID, endTerritoryID, maxDistanceFromLine, maxSegmentLengthOpt)
+	local ax, ay, bx, by = GetClampedLineSegment(game, startTerritoryID, endTerritoryID, maxSegmentLengthOpt);
+	return GetTerritoriesNearLineSegment(game, ax, ay, bx, by, maxDistanceFromLine);
+end
+
+--Returns the (ax, ay, bx, by) coordinates of the line segment between startTerritoryID and endTerritoryID's
+--centerpoints, and its length. If maxLengthOpt is given and the territories are further apart than that, the
+--segment's end (bx, by) is pulled in along the same direction to maxLengthOpt, and the returned length is
+--maxLengthOpt instead of the actual distance between the territories
+function GetClampedLineSegment(game, startTerritoryID, endTerritoryID, maxLengthOpt)
+	local startTd = game.Map.Territories[startTerritoryID];
+	local endTd = game.Map.Territories[endTerritoryID];
+
+	local ax, ay = startTd.MiddlePointX, startTd.MiddlePointY;
+	local bx, by = endTd.MiddlePointX, endTd.MiddlePointY;
+	local abx, aby = bx - ax, by - ay;
+
+	local actualLength = math.sqrt(abx * abx + aby * aby);
+	local length = actualLength;
+
+	if (maxLengthOpt ~= nil and actualLength > maxLengthOpt) then
+		local scale = maxLengthOpt / actualLength;
+		abx, aby = abx * scale, aby * scale;
+		length = maxLengthOpt;
+	end
+
+	return ax, ay, ax + abx, ay + aby, length;
 end
 
 function GetTerritoriesWithinDistance (game, targetTerritoryID, intMaxDistance)

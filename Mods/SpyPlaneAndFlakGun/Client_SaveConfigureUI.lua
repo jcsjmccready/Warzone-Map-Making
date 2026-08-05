@@ -51,18 +51,39 @@ function Client_SaveConfigureUI(alert, addCard)
             return;
         end
 
-        if(Mod.Settings.SpyPlaneFlightStyleSteps) then
-            Mod.Settings.SpyPlaneFlightSteps = spyPlaneFlightSteps.GetValue();
+        if (Mod.Settings.SpyPlaneFlightStyleSteps) then
+            Mod.Settings.SpyPlaneStepModeDistance = spyPlaneStepModeDistance.GetIsChecked();
+            Mod.Settings.SpyPlaneStepModeSegment = spyPlaneStepModeSegment.GetIsChecked();
 
-            if (Mod.Settings.SpyPlaneFlightSteps < 1) then
-                alert("Spy Plane flight steps cannot be less than 1");
-                return;
+            if (Mod.Settings.SpyPlaneStepModeDistance) then
+                Mod.Settings.SpyPlaneMaxDistancePerStep = spyPlaneMaxDistancePerStep.GetValue();
+
+                if (Mod.Settings.SpyPlaneMaxDistancePerStep < 25) then
+                    alert("Spy Plane maximum distance per step cannot be less than 25");
+                    return;
+                end
+            elseif (Mod.Settings.SpyPlaneStepModeSegment) then
+                Mod.Settings.SpyPlaneFlightSteps = spyPlaneFlightSteps.GetValue();
+
+                if (Mod.Settings.SpyPlaneFlightSteps < 1) then
+                    alert("Spy Plane flight segments cannot be less than 1");
+                    return;
+                end
+            end
+        end
+
+        local spyPlaneDescription = "Send a spy plane between two territories, revealing territories beneath its path.";
+        if (Mod.Settings.SpyPlaneFlightStyleSteps) then
+            if (Mod.Settings.SpyPlaneStepModeDistance) then
+                spyPlaneDescription = "Send a spy plane between two territories over multiple turns, revealing territories beneath its path.";
+            elseif (Mod.Settings.SpyPlaneStepModeSegment) then
+                spyPlaneDescription = "Send a spy plane between two territories over " .. Mod.Settings.SpyPlaneFlightSteps .. " turns, revealing territories beneath its path.";
             end
         end
 
         local spyPlaneCardId = addCard(
             "Spy Plane",
-            "Send a spy plane over enemy territory.",
+            spyPlaneDescription,
             "SpyPlaneCard.png",
             Mod.Settings.SpyPlaneNumPieces,
             Mod.Settings.SpyPlaneMinPieces,
