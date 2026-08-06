@@ -1,0 +1,1 @@
+Play the Bribed Spy card and choose a player to bribe. Every player in the game is given a Spy card, automatically played against the bribed player, revealing their territories and income. In exchange, the bribed player receives boosted income for as long as the bribe lasts.
