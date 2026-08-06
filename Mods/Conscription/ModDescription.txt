@@ -1,0 +1,3 @@
+This mod adds the Conscription Card. Play it and choose a bonus you fully control (either by clicking it on the map or picking it from a list).
+If you still fully control that bonus at the end of the turn, its value is permanently reduced (representing the population being conscripted into your army) and you receive a one-time boost to your income for that turn only.
+Each subsequent Conscription Card played against the same bonus reduces its (already-reduced) remaining value further, so a bonus can eventually be fully conscripted down to nothing.
