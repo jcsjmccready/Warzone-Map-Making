@@ -1,0 +1,7 @@
+This mod adds the Corrupt Hand card. Play it and secretly select an enemy player to begin corrupting their hand.
+
+The target is given a Budding Corruption card. After a configurable number of turns it matures into a Corruption card (or they receive Corruption immediately if that number is set to 0). While a player holds a Corruption card, one of their other cards is corrupted at the end of every turn - replaced with a Corrupted card - for as long as that Corruption card remains in their hand. A player can be corrupted by multiple sources at once, and each active Corruption card corrupts cards independently.
+
+Discarding a Budding Corruption or Corruption card stops any further corruption from that source, but any Corrupted cards already received must still be played to recover what was lost.
+
+Playing a Corrupted card returns either a full random card from that player's own pool of corrupted cards, or a configurable percentage of pieces towards one, depending on mod configuration.
