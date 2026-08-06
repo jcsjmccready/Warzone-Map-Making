@@ -5,7 +5,7 @@ require('Utilities')
 function Client_PresentSettingsUI(rootParent)
     local descriptionVGroup = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
 
-    UI.CreateLabel(descriptionVGroup).SetText("Play the Bribed Spy card to select a player. Every player is given a Spy card, automatically played against them, and they gain increased income for " .. Mod.Settings.BribeDuration .. " turn(s).");
+    UI.CreateLabel(descriptionVGroup).SetText("Play the Bribed Spy card on a target player, granting them additional income but all other players play a free spy card against them while the card is in effect.");
     if (Mod.Settings.AllowTargetingSelf) then
         UI.CreateLabel(descriptionVGroup).SetText("Players are allowed to bribe themselves.");
     end

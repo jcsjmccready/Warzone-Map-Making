@@ -24,28 +24,28 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
 
     game.CreateDialog(function(rootParent, setMaxSize, setScrollable, game, close)
         Close = close;
-        setMaxSize(400, 320);
-        setScrollable(false, true);
-        local vert = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
-
-        UI.CreateLabel(vert).SetText("Select a player to bribe. Everyone will be given a Spy card to play against them, and they'll gain increased income while the bribe lasts.");
+        setMaxSize(400, 200);
+        local vert = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1); --set flexible width so things don't jump around while we change InstructionLabel
+        local buttonsHGroup = UI.CreateHorizontalLayoutGroup(vert).SetFlexibleWidth(1);
+        TargetPlayerBtn = UI.CreateButton(buttonsHGroup)
+            .SetText("Select Player")
+            .SetOnClick(TargetPlayerClicked)
+            .SetFlexibleWidth(0.3);
 
         InstructionLabel = UI.CreateLabel(vert).SetText("");
 
-        playerListHeading = UI.CreateVerticalLayoutGroup(vert).SetFlexibleWidth(1);
-        Create_PlayerList_UI(playerListHeading);
-
-        PlayCardBtn = UI.CreateButton(vert)
+        PlayCardBtn = UI.CreateButton(buttonsHGroup)
             .SetText("Bribe")
             .SetInteractable(false)
             .SetColor(BUTTON_COLOURS.DarkGreen)
+            .SetFlexibleWidth(0.7)
             .SetOnClick(function()
                 if (TargetPlayerID == nil) then
                     InstructionLabel.SetText("You must select a player first").SetColor(ERROR_COLOUR);
                     return;
                 end
 
-                local message = "Bribe " .. TargetPlayerName;
+                local message = "Bribed " .. TargetPlayerName .. "'s Spy for " .. Mod.Settings.BribeDuration .. " turn(s)";
                 local modData = "BribeSpy_" .. TargetPlayerID;
 
                 local jumpTerritoryID = first(GetPlayerTerritoryIDs(Game.LatestStanding.Territories, TargetPlayerID));
@@ -66,16 +66,15 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
     end);
 end
 
-function Create_PlayerList_UI(rootParent)
-    for playerID, player in pairs(Game.Game.PlayingPlayers) do
-        if (playerID ~= Game.Us.ID or Mod.Settings.AllowTargetingSelf) then
-            local playerName = player.DisplayName(nil, false);
-            UI.CreateButton(rootParent)
-                .SetText(playerName)
-                .SetColor(player.Color.HtmlColor)
-                .SetOnClick(function() PlayerListItemClicked(playerID, playerName); end);
-        end
-    end
+function TargetPlayerClicked()
+    local players = filter(Game.Game.Players, function(p)
+        return p.State == WL.GamePlayerState.Playing and (p.ID ~= Game.Us.ID or Mod.Settings.AllowTargetingSelf);
+    end);
+    local options = map(players, function(p)
+        local playerName = p.DisplayName(nil, false);
+        return { text = playerName, selected = function() PlayerListItemClicked(p.ID, playerName); end };
+    end);
+    UI.PromptFromList("Select the player you'd like to bribe", options);
 end
 
 function PlayerListItemClicked(playerID, playerName)
