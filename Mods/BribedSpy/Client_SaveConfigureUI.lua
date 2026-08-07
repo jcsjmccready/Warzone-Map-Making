@@ -43,7 +43,7 @@ function Client_SaveConfigureUI(alert, addCard)
 
     local bribedSpyCardID = addCard(
         "Bribed Spy",
-        "All players get and play a spy card on a target player.\nAdditionally, grant that player increased income.",
+        "For " .. Mod.Settings.BribeDuration .. " turn(s), all players get and play a spy card on a target player.\nAdditionally, grant that player increased income.",
         "BribedSpyCard.png",
         Mod.Settings.NumPieces,
         Mod.Settings.MinPieces,
