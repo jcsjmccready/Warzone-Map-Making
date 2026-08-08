@@ -1,5 +1,9 @@
 require("Utilities");
 
+--- todo: Improve struct art to be more noticiable.
+--- menu UI for selecting a bonus should only work for bonuses where the player can see at least one territory, to prevent gaining information about a bonus they can't see
+--- add menu ui item for selecting a territory you can see: show user every bonus it has and how conscripted it is
+
 ---Server_AdvanceTurn_Order hook. Records a pending Conscription (does not resolve it yet - the actual effect is
 ---only applied at Server_AdvanceTurn_End, once the whole turn including attacks has resolved, so that we validate
 ---the player still fully owns the bonus at that point rather than only at the moment they played the card.
