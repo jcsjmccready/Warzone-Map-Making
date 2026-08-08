@@ -68,9 +68,14 @@ function Client_SaveConfigureUI(alert, addCard)
         return;
     end
 
+    local conscriptionCardDescription = "At the end of the turn, conscript a bonus you fully control.\n Receive a one-turn boost to your income of " .. (Mod.Settings.FlatIncomeGained or 0) .. " + " .. (Mod.Settings.PercentIncomeGained or 0) * 100 .. "% of the bonus value.\n Reduce the bonus value permanently by " .. (Mod.Settings.FlatValueDecrease or 0) .. " + " .. (Mod.Settings.PercentValueDecrease or 0) * 100 .. "%.";
+    if (Mod.Settings.NeutraliseFullyConscripted) then
+        conscriptionCardDescription = conscriptionCardDescription .. "\n Fully conscripted bonuses will slowly neutralise if left unoccupied.";
+    end
+
     local conscriptionCardId = addCard(
         "Conscription Card",
-        "Play this card and select a bonus you fully control. If you still fully control it at the end of the turn, its value is permanently reduced and you receive a one-turn boost to your income.",
+        conscriptionCardDescription,
         "ConscriptionCard.png",
         Mod.Settings.ConscriptionNumPieces,
         Mod.Settings.ConscriptionMinPieces,

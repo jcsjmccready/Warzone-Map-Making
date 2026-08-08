@@ -142,7 +142,7 @@ function GetEffectiveBonusValue(map, bonusID)
 	local bonus = map.Bonuses[bonusID];
 	if (bonus == nil) then return 0; end;
 
-	local reductions = (Mod.PrivateGameData or {}).BonusReductions or {};
+	local reductions = (Mod.PublicGameData or {}).BonusReductions or {};
 	local reduction = reductions[bonusID] or 0;
 	return math.max(bonus.Amount - reduction, 0);
 end
@@ -150,7 +150,7 @@ end
 --Ordered from least to most conscripted. StructureName must match a file in StructureImages/ (minus ".png").
 --Threshold doubles as the tier's ordering/comparison key, since it's already monotonically increasing.
 CONSCRIPTION_TIERS = {
-	{ Threshold = 0.01, StructureName = "Conscripted" };
+	{ Threshold = 0.01, StructureName = "MinimalConscripted" };
 	{ Threshold = 0.25, StructureName = "QuarterConscripted" };
 	{ Threshold = 0.50, StructureName = "HalfConscripted" };
 	{ Threshold = 0.75, StructureName = "ThreeQuarterConscripted" };

@@ -11,6 +11,13 @@ require("Utilities");
 function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrder)
     if (order.proxyType == 'GameOrderPlayCardCustom' and startsWith(order.ModData, "Conscript_")) then
         local bonusID = tonumber(string.sub(order.ModData, 11));
+        local bonus = game.Map.Bonuses[bonusID];
+
+        if (bonus ~= nil and bonus.Amount < 0) then
+            local event = WL.GameOrderEvent.Create(order.PlayerID, "Conscription failed: " .. bonus.Name .. " has a negative value and cannot be conscripted", {}, {});
+            addNewOrder(event);
+            return;
+        end
 
         if (not PlayerFullyOwnsBonus(game.ServerGame.LatestTurnStanding, game.Map, bonusID, order.PlayerID)) then
             local event = WL.GameOrderEvent.Create(order.PlayerID, "Conscription failed: you no longer fully control that bonus", {}, {});
@@ -52,7 +59,8 @@ function ResolvePendingConscriptions(game, addNewOrder)
     if (pending == nil or #pending == 0) then return; end;
 
     local standing = game.ServerGame.LatestTurnStanding;
-    local reductions = priv.BonusReductions or {};
+    local pub = Mod.PublicGameData;
+    local reductions = pub.BonusReductions or {};
 
     -- shared across every item resolved this call, so bonuses that overlap on a territory see each other's
     -- structure edits instead of each re-reading the stale standing and clobbering one another
@@ -70,14 +78,15 @@ function ResolvePendingConscriptions(game, addNewOrder)
                 local existingReduction = reductions[item.BonusID] or 0;
                 local effectiveValueBefore = math.max(bonus.Amount - existingReduction, 0);
 
+                -- the minimum only floors the %-based portion (the flat portion always applies on top of it) -
                 -- the value decrease is never allowed to take the bonus below 0
-                local desiredDecrease = math.max(
-                    (Mod.Settings.FlatValueDecrease or 0) + (Mod.Settings.PercentValueDecrease or 0) * effectiveValueBefore,
+                local desiredDecrease = (Mod.Settings.FlatValueDecrease or 0) + math.max(
+                    (Mod.Settings.PercentValueDecrease or 0) * effectiveValueBefore,
                     Mod.Settings.MinimumValueDecrease or 0);
                 local actualDecrease = math.min(desiredDecrease, effectiveValueBefore);
 
-                local incomeGain = math.max(
-                    (Mod.Settings.FlatIncomeGained or 0) + (Mod.Settings.PercentIncomeGained or 0) * effectiveValueBefore,
+                local incomeGain = (Mod.Settings.FlatIncomeGained or 0) + math.max(
+                    (Mod.Settings.PercentIncomeGained or 0) * effectiveValueBefore,
                     Mod.Settings.MinimumIncomeGained or 0);
 
                 -- if the bonus was too close to 0 to take the full desired decrease, scale the income down by
@@ -114,7 +123,9 @@ function ResolvePendingConscriptions(game, addNewOrder)
         addNewOrder(structuresEvent);
     end
 
-    priv.BonusReductions = reductions;
+    pub.BonusReductions = reductions;
+    Mod.PublicGameData = pub;
+
     priv.PendingConscriptions = nil;
     Mod.PrivateGameData = priv;
 end
@@ -158,8 +169,7 @@ end
 ---@param game GameServerHook
 ---@param addNewOrder fun(order: GameOrder)
 function ApplyPermanentBonusReductions(game, addNewOrder)
-    local priv = Mod.PrivateGameData;
-    local reductions = priv.BonusReductions;
+    local reductions = Mod.PublicGameData.BonusReductions;
     if (reductions == nil) then return; end;
 
     local standing = game.ServerGame.LatestTurnStanding;
@@ -181,14 +191,14 @@ end
 ---value, a configurable % of its undefended territories go neutral each turn - representing the population no
 ---longer willing to fight for you. "Undefended" means at the compulsory minimum army (1 if the game's One Army
 ---Must Stand Guard setting is on, otherwise 0 - a territory sitting at 1 army under that setting is exactly as
----undefended as a territory sitting at 0 army when the setting is off). At least 1 applicable territory always
+---undefended as a territory sitting at 0 army when the setting is off) and has no special units garrisoned on
+---it either. At least 1 applicable territory always
 ---goes neutral as long as the configured % is at least 1%. Bonuses that start at 0 value are excluded since they
 ---can never be "fully conscripted" in a meaningful sense.
 ---@param game GameServerHook
 ---@param addNewOrder fun(order: GameOrder)
 function NeutraliseFullyConscriptedBonuses(game, addNewOrder)
-    local priv = Mod.PrivateGameData;
-    local reductions = priv.BonusReductions;
+    local reductions = Mod.PublicGameData.BonusReductions;
     if (reductions == nil) then return; end;
 
     local standing = game.ServerGame.LatestTurnStanding;
@@ -207,8 +217,12 @@ function NeutraliseFullyConscriptedBonuses(game, addNewOrder)
             local applicableTerritoryIds = {};
             for _, terrID in ipairs(bonus.Territories) do
                 local territoryStanding = standing.Territories[terrID];
+                local hasSpecialUnits = territoryStanding ~= nil and territoryStanding.NumArmies ~= nil
+                    and territoryStanding.NumArmies.SpecialUnits ~= nil and #territoryStanding.NumArmies.SpecialUnits > 0;
+
                 if (territoryStanding ~= nil and territoryStanding.OwnerPlayerID ~= WL.PlayerID.Neutral
-                    and territoryStanding.NumArmies ~= nil and territoryStanding.NumArmies.NumArmies <= unoccupiedThreshold) then
+                    and territoryStanding.NumArmies ~= nil and territoryStanding.NumArmies.NumArmies <= unoccupiedThreshold
+                    and not hasSpecialUnits) then
                     table.insert(applicableTerritoryIds, terrID);
                 end
             end

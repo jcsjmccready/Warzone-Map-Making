@@ -12,7 +12,7 @@ function Create_UI_Controls(rootParent)
     
     UI.CreateLabel(mainModUI).SetText('Mod Behaviour:').SetColor(SUBHEADING_COLOUR);
     local modBehaviourVGroup = UI.CreateVerticalLayoutGroup(mainModUI);
-    
+
     UI.CreateLabel(modBehaviourVGroup).SetText('Income Gained:');
 
     local horz = UI.CreateHorizontalLayoutGroup(modBehaviourVGroup);
@@ -31,7 +31,7 @@ function Create_UI_Controls(rootParent)
         .SetValue(Mod.Settings.PercentIncomeGained or 0.5);
 
     local horz = UI.CreateHorizontalLayoutGroup(modBehaviourVGroup);
-    UI.CreateLabel(horz).SetText('Minimum income gained').SetPreferredWidth(290);
+    UI.CreateLabel(horz).SetText('Minimum income gained from %').SetPreferredWidth(290);
     minimumIncomeGained = UI.CreateNumberInputField(horz)
         .SetSliderMinValue(0)
         .SetSliderMaxValue(20)
@@ -55,7 +55,7 @@ function Create_UI_Controls(rootParent)
         .SetValue(Mod.Settings.PercentValueDecrease or 0.25);
 
     local horz = UI.CreateHorizontalLayoutGroup(modBehaviourVGroup);
-    UI.CreateLabel(horz).SetText('Minimum bonus value decrease').SetPreferredWidth(290);
+    UI.CreateLabel(horz).SetText('Minimum bonus value decrease from %').SetPreferredWidth(290);
     minimumValueDecrease = UI.CreateNumberInputField(horz)
         .SetSliderMinValue(0)
         .SetSliderMaxValue(20)

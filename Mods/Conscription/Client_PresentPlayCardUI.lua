@@ -23,7 +23,7 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
 
     game.CreateDialog(function(rootParent, setMaxSize, setScrollable, game, close)
         Close = close;
-        setMaxSize(420, 260);
+        setMaxSize(420, 233);
 
         local vert = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1); --set flexible width so things don't jump around while we change InstructionLabel
 
@@ -60,7 +60,7 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
                     jumpToSpot = WL.RectangleVM.Create(td.MiddlePointX, td.MiddlePointY, td.MiddlePointX, td.MiddlePointY);
                 end
 
-                if (playCard("Conscripts " .. SelectedBonusName, "Conscript_" .. SelectedBonusID, WL.TurnPhase.Attacks, {}, jumpToSpot)) then
+                if (playCard("Conscripts " .. SelectedBonusName, "Conscript_" .. SelectedBonusID, WL.TurnPhase.SanctionCards, {}, jumpToSpot)) then
                     Game.HighlightTerritories({});
                     close();
                 end
@@ -97,12 +97,30 @@ end
 function SelectFromListClicked()
     local options = {};
     for bonusID, bonus in pairs(Game.Map.Bonuses) do
-        table.insert(options, { text = bonus.Name, selected = function() TrySelectBonus(bonusID, bonus.Name); end });
+        if (bonus.Amount >= 0 and PlayerFullyOwnsBonus(Game.LatestStanding, Game.Map, bonusID, Game.Us.ID)) then
+            table.insert(options, { text = bonus.Name, selected = function() TrySelectBonus(bonusID, bonus.Name); end });
+        end
     end
+
+    if (#options == 0) then
+        SelectionInstructionLabel.SetText("You don't fully control any bonus eligible for conscription").SetColor(ERROR_COLOUR);
+        return;
+    end
+
     UI.PromptFromList("Choose a bonus to conscript", options);
 end
 
 function TrySelectBonus(bonusID, bonusName)
+    local bonus = Game.Map.Bonuses[bonusID];
+    if (bonus ~= nil and bonus.Amount < 0) then
+        SelectionInstructionLabel.SetText(bonusName .. " has a negative value and cannot be conscripted").SetColor(ERROR_COLOUR);
+        SelectedBonusID = nil;
+        SelectedBonusName = nil;
+        PlayCardBtn.SetInteractable(false);
+        Game.HighlightTerritories({});
+        return;
+    end
+
     if (not PlayerFullyOwnsBonus(Game.LatestStanding, Game.Map, bonusID, Game.Us.ID)) then
         SelectionInstructionLabel.SetText("You must fully control every territory in " .. bonusName .. " to select it").SetColor(ERROR_COLOUR);
         SelectedBonusID = nil;
