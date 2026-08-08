@@ -54,6 +54,11 @@ function ResolvePendingConscriptions(game, addNewOrder)
     local standing = game.ServerGame.LatestTurnStanding;
     local reductions = priv.BonusReductions or {};
 
+    -- shared across every item resolved this call, so bonuses that overlap on a territory see each other's
+    -- structure edits instead of each re-reading the stale standing and clobbering one another
+    local structuresByTerritory = {};
+    local allTerritoryModifications = {};
+
     for _, item in ipairs(pending) do
         local bonus = game.Map.Bonuses[item.BonusID];
 
@@ -86,6 +91,8 @@ function ResolvePendingConscriptions(game, addNewOrder)
 
                 reductions[item.BonusID] = math.min(existingReduction + decreaseAmount, bonus.Amount);
 
+                ApplyConscriptionStructuresForBonus(game, structuresByTerritory, allTerritoryModifications, bonus, reductions[item.BonusID]);
+
                 local message = "Conscripted " .. bonus.Name .. ": bonus value permanently reduced by " .. decreaseAmount .. ", gained " .. incomeGain .. " income this turn";
                 local event = WL.GameOrderEvent.Create(item.PlayerID, message, { item.PlayerID }, {});
 
@@ -100,9 +107,48 @@ function ResolvePendingConscriptions(game, addNewOrder)
         end
     end
 
+    if (#allTerritoryModifications > 0) then
+        -- WL.PlayerID.Neutral + empty visibleTo ({} = visible to everyone) since these are real map changes,
+        -- not private info for the conscribing player - the per-item income events above stay player-scoped
+        local structuresEvent = WL.GameOrderEvent.Create(WL.PlayerID.Neutral, "Conscription structures updated", {}, allTerritoryModifications);
+        addNewOrder(structuresEvent);
+    end
+
     priv.BonusReductions = reductions;
     priv.PendingConscriptions = nil;
     Mod.PrivateGameData = priv;
+end
+
+---Places/upgrades the conscription tier structure (25/50/75/100%) on every territory in a bonus, based on how
+---much of its value has been permanently taken. Never downgrades a territory's structure - since a territory can
+---belong to more than one bonus, its structure always reflects the highest tier reached by any of them.
+---@param game GameServerHook
+---@param structuresByTerritory table<TerritoryID, table<EnumStructureType, integer>>
+---@param territoryModificationsOut TerritoryModification[]
+---@param bonus BonusDetails
+---@param reduction integer
+function ApplyConscriptionStructuresForBonus(game, structuresByTerritory, territoryModificationsOut, bonus, reduction)
+    if (bonus.Amount <= 0) then return; end;
+
+    local percent = reduction / bonus.Amount;
+    local tier = GetConscriptionTierForPercent(percent);
+    if (tier == nil) then return; end;
+
+    for _, terrID in ipairs(bonus.Territories) do
+        local structures = GetTerritoryStructures(game, structuresByTerritory, terrID);
+        local currentThreshold = GetAppliedConscriptionThreshold(structures);
+
+        if (tier.Threshold > currentThreshold) then
+            for _, otherTier in ipairs(CONSCRIPTION_TIERS) do
+                structures[WL.StructureType.Custom(otherTier.StructureName)] = 0;
+            end
+            structures[WL.StructureType.Custom(tier.StructureName)] = 1;
+
+            local territoryModification = WL.TerritoryModification.Create(terrID);
+            territoryModification.SetStructuresOpt = CopyStructures(structures);
+            table.insert(territoryModificationsOut, territoryModification);
+        end
+    end
 end
 
 ---Every turn, re-applies each previously-conscripted bonus's permanent value reduction as a negative income

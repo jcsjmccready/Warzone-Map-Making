@@ -27,8 +27,6 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
 
         local vert = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1); --set flexible width so things don't jump around while we change InstructionLabel
 
-        UI.CreateLabel(vert).SetText("Select a bonus you fully control to conscript.");
-
         local buttonsHGroup = UI.CreateHorizontalLayoutGroup(vert).SetFlexibleWidth(1);
         SelectFromMapBtn = UI.CreateButton(buttonsHGroup)
             .SetText("Select From Map")

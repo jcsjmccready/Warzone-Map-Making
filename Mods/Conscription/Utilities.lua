@@ -146,3 +146,65 @@ function GetEffectiveBonusValue(map, bonusID)
 	local reduction = reductions[bonusID] or 0;
 	return math.max(bonus.Amount - reduction, 0);
 end
+
+--Ordered from least to most conscripted. StructureName must match a file in StructureImages/ (minus ".png").
+--Threshold doubles as the tier's ordering/comparison key, since it's already monotonically increasing.
+CONSCRIPTION_TIERS = {
+	{ Threshold = 0.01, StructureName = "Conscripted" };
+	{ Threshold = 0.25, StructureName = "QuarterConscripted" };
+	{ Threshold = 0.50, StructureName = "HalfConscripted" };
+	{ Threshold = 0.75, StructureName = "ThreeQuarterConscripted" };
+	{ Threshold = 1.00, StructureName = "FullyConscripted" };
+};
+
+--Returns the highest conscription tier whose Threshold has been reached by percent (0-1), or nil if percent is
+--below the lowest tier's threshold.
+function GetConscriptionTierForPercent(percent)
+	local highest = nil;
+	for _, tier in ipairs(CONSCRIPTION_TIERS) do
+		if (percent >= tier.Threshold) then
+			highest = tier;
+		end
+	end
+	return highest;
+end
+
+--Returns the highest conscription tier Threshold currently present (with a count > 0) on a territory's
+--structures table, or 0 if none of the 4 conscription structures are present.
+function GetAppliedConscriptionThreshold(structures)
+	local highestThreshold = 0;
+	for _, tier in ipairs(CONSCRIPTION_TIERS) do
+		local structureID = WL.StructureType.Custom(tier.StructureName);
+		if (structures[structureID] ~= nil and structures[structureID] > 0 and tier.Threshold > highestThreshold) then
+			highestThreshold = tier.Threshold;
+		end
+	end
+	return highestThreshold;
+end
+
+--Returns the (mutable, cached) structures table for a territory, seeded from LatestTurnStanding the first
+--time it's requested for a given structuresByTerritory cache. Callers mutate the returned table in place.
+---@param game GameServerHook
+---@param structuresByTerritory table<TerritoryID, table<EnumStructureType, integer>>
+---@param territoryId TerritoryID
+function GetTerritoryStructures(game, structuresByTerritory, territoryId)
+	local structures = structuresByTerritory[territoryId];
+	if (structures == nil) then
+		structures = {};
+		for key, value in pairs(game.ServerGame.LatestTurnStanding.Territories[territoryId].Structures or {}) do
+			structures[key] = value;
+		end
+		structuresByTerritory[territoryId] = structures;
+	end
+	return structures;
+end
+
+--Returns a shallow copy of a structures table.
+---@param structures table<EnumStructureType, integer>
+function CopyStructures(structures)
+	local copy = {};
+	for key, value in pairs(structures) do
+		copy[key] = value;
+	end
+	return copy;
+end
