@@ -127,6 +127,14 @@ function GetBonusSoleOwner(standing, map, bonusID)
 	return nil;
 end
 
+--Returns true if territoryID isn't fully fogged for the player who owns `standing`.
+---@param standing GameStanding
+---@param territoryID TerritoryID
+function PlayerCanSeeTerritory(standing, territoryID)
+	local territoryStanding = standing.Territories[territoryID];
+	return territoryStanding ~= nil and territoryStanding.FogLevel ~= WL.StandingFogLevel.Fogged;
+end
+
 --Returns true if at least one territory in bonusID isn't fully fogged for the player who owns `standing` (i.e.
 --they have some visibility into the bonus, even if just OwnerOnly). On the server FogLevel is always fully
 --visible per the engine docs, so this is only meaningful when called with a client's own standing.

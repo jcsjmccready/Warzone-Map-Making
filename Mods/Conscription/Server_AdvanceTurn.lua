@@ -1,8 +1,6 @@
 require("Utilities");
 
 --- todo: Improve struct art to be more noticiable.
---- menu UI for selecting a bonus should only work for bonuses where the player can see at least one territory, to prevent gaining information about a bonus they can't see
---- add menu ui item for selecting a territory you can see: show user every bonus it has and how conscripted it is
 --- Check events, might not want them all
 
 ---Server_AdvanceTurn_Order hook. Records a pending Conscription (does not resolve it yet - the actual effect is
