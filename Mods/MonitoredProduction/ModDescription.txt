@@ -1,3 +1,3 @@
-Your Reconnaissance Cards can now be used to monitor your own civilians output. They're more productive under your watchful eye.
+Your Reconnaissance and Surveillance Cards can now be used to monitor your own civilians output. They're more productive under your watchful eye.
 
-At the end of the turn, your territories, cities or territories with a city provide a configurable amount of income while under the effect of a Reconnaissance Card.
+At the end of the turn, your territories, cities or territories with a city provide a configurable amount of income while under the effect of a Reconnaissance or Surveillance Card. Each card type can be enabled and configured independently.
