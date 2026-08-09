@@ -127,6 +127,25 @@ function GetBonusSoleOwner(standing, map, bonusID)
 	return nil;
 end
 
+--Returns true if at least one territory in bonusID isn't fully fogged for the player who owns `standing` (i.e.
+--they have some visibility into the bonus, even if just OwnerOnly). On the server FogLevel is always fully
+--visible per the engine docs, so this is only meaningful when called with a client's own standing.
+---@param standing GameStanding
+---@param map MapDetails
+---@param bonusID BonusID
+function PlayerCanSeeAnyTerritoryInBonus(standing, map, bonusID)
+	local bonus = map.Bonuses[bonusID];
+	if (bonus == nil) then return false; end;
+
+	for _, terrID in ipairs(bonus.Territories) do
+		local territoryStanding = standing.Territories[terrID];
+		if (territoryStanding ~= nil and territoryStanding.FogLevel ~= WL.StandingFogLevel.Fogged) then
+			return true;
+		end
+	end
+	return false;
+end
+
 function shuffle(tbl)
 	for i = #tbl, 2, -1 do
 		local j = math.random(i)
@@ -145,6 +164,34 @@ function GetEffectiveBonusValue(map, bonusID)
 	local reductions = (Mod.PublicGameData or {}).BonusReductions or {};
 	local reduction = reductions[bonusID] or 0;
 	return math.max(bonus.Amount - reduction, 0);
+end
+
+--Given a bonus's current effective value, computes what a single Conscription instance would do to it: the
+--(rounded) permanent value decrease and the (rounded) one-turn income gain, per the configured settings. Shared
+--by both the actual resolution (Server_AdvanceTurn.lua) and the play-card preview, so they can never drift.
+---@param effectiveValueBefore integer
+function CalculateConscriptionEffect(effectiveValueBefore)
+	-- the minimum only floors the %-based portion (the flat portion always applies on top of it) - the value
+	-- decrease is never allowed to take the bonus below 0
+	local desiredDecrease = (Mod.Settings.FlatValueDecrease or 0) + math.max(
+		(Mod.Settings.PercentValueDecrease or 0) * effectiveValueBefore,
+		Mod.Settings.MinimumValueDecrease or 0);
+	local actualDecrease = math.min(desiredDecrease, effectiveValueBefore);
+
+	local incomeGain = (Mod.Settings.FlatIncomeGained or 0) + math.max(
+		(Mod.Settings.PercentIncomeGained or 0) * effectiveValueBefore,
+		Mod.Settings.MinimumIncomeGained or 0);
+
+	-- if the bonus was too close to 0 to take the full desired decrease, scale the income down by the same
+	-- proportion - this is the one case where the configured minimum income is overridden
+	if (desiredDecrease > 0 and actualDecrease < desiredDecrease) then
+		incomeGain = incomeGain * (actualDecrease / desiredDecrease);
+	end
+
+	local decreaseAmount = math.floor(actualDecrease + 0.5);
+	incomeGain = math.floor(incomeGain + 0.5);
+
+	return decreaseAmount, incomeGain;
 end
 
 --Ordered from least to most conscripted. StructureName must match a file in StructureImages/ (minus ".png").

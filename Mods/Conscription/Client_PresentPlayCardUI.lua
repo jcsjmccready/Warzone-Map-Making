@@ -23,7 +23,7 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
 
     game.CreateDialog(function(rootParent, setMaxSize, setScrollable, game, close)
         Close = close;
-        setMaxSize(420, 233);
+        setMaxSize(420, 253);
 
         local vert = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1); --set flexible width so things don't jump around while we change InstructionLabel
 
@@ -39,6 +39,7 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
             .SetFlexibleWidth(0.5);
 
         SelectionInstructionLabel = UI.CreateLabel(vert).SetText("");
+        PreviewLabel = UI.CreateLabel(vert).SetText("");
 
         local playHGroup = UI.CreateHorizontalLayoutGroup(vert).SetFlexibleWidth(1);
         PlayCardBtn = UI.CreateButton(playHGroup)
@@ -69,8 +70,14 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
 end
 
 function SelectFromMapClicked()
+    if (UI.IsDestroyed(SelectFromMapBtn)) then
+        -- This dialog was already closed/replaced before this click was processed
+        return;
+    end
+
     Game.HighlightTerritories({});
     SelectionInstructionLabel.SetText("Please click on a bonus you fully control.").SetColor(TEXT_DEFAULT_COLOUR);
+    PreviewLabel.SetText("");
     SelectFromMapBtn.SetInteractable(false);
     SelectFromListBtn.SetInteractable(false);
     PlayCardBtn.SetInteractable(false);
@@ -88,6 +95,7 @@ function BonusClickedFromMap(bonusDetails)
     if (bonusDetails == nil) then
         --The click request was cancelled. Return to our default state.
         SelectionInstructionLabel.SetText("");
+        PreviewLabel.SetText("");
         return;
     end
 
@@ -95,6 +103,11 @@ function BonusClickedFromMap(bonusDetails)
 end
 
 function SelectFromListClicked()
+    if (UI.IsDestroyed(SelectFromListBtn)) then
+        -- This dialog was already closed/replaced before this click was processed
+        return;
+    end
+
     local options = {};
     for bonusID, bonus in pairs(Game.Map.Bonuses) do
         if (bonus.Amount >= 0 and PlayerFullyOwnsBonus(Game.LatestStanding, Game.Map, bonusID, Game.Us.ID)) then
@@ -111,9 +124,15 @@ function SelectFromListClicked()
 end
 
 function TrySelectBonus(bonusID, bonusName)
+    if (UI.IsDestroyed(SelectionInstructionLabel)) then
+        -- This dialog was already closed/replaced before this selection was processed
+        return;
+    end
+
     local bonus = Game.Map.Bonuses[bonusID];
     if (bonus ~= nil and bonus.Amount < 0) then
         SelectionInstructionLabel.SetText(bonusName .. " has a negative value and cannot be conscripted").SetColor(ERROR_COLOUR);
+        PreviewLabel.SetText("");
         SelectedBonusID = nil;
         SelectedBonusName = nil;
         PlayCardBtn.SetInteractable(false);
@@ -123,6 +142,7 @@ function TrySelectBonus(bonusID, bonusName)
 
     if (not PlayerFullyOwnsBonus(Game.LatestStanding, Game.Map, bonusID, Game.Us.ID)) then
         SelectionInstructionLabel.SetText("You must fully control every territory in " .. bonusName .. " to select it").SetColor(ERROR_COLOUR);
+        PreviewLabel.SetText("");
         SelectedBonusID = nil;
         SelectedBonusName = nil;
         PlayCardBtn.SetInteractable(false);
@@ -133,6 +153,13 @@ function TrySelectBonus(bonusID, bonusName)
     SelectedBonusID = bonusID;
     SelectedBonusName = bonusName;
     SelectionInstructionLabel.SetText("Selected bonus: " .. bonusName).SetColor(TEXT_DEFAULT_COLOUR);
+
+    -- this is a preview only: if more than one Conscription resolves against the same bonus this turn, later
+    -- ones will see a lower effective value, so these figures are only guaranteed as an upper bound
+    local effectiveValue = GetEffectiveBonusValue(Game.Map, bonusID);
+    local decreaseAmount, incomeGain = CalculateConscriptionEffect(effectiveValue);
+    PreviewLabel.SetText("Maximum income gained: " .. incomeGain .. "\nMaximum bonus reduction: " .. decreaseAmount).SetColor(TEXT_DEFAULT_COLOUR);
+
     PlayCardBtn.SetInteractable(true);
     Game.HighlightTerritories(Game.Map.Bonuses[bonusID].Territories);
 end

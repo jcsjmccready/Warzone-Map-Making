@@ -3,6 +3,7 @@ require("Utilities");
 --- todo: Improve struct art to be more noticiable.
 --- menu UI for selecting a bonus should only work for bonuses where the player can see at least one territory, to prevent gaining information about a bonus they can't see
 --- add menu ui item for selecting a territory you can see: show user every bonus it has and how conscripted it is
+--- Check events, might not want them all
 
 ---Server_AdvanceTurn_Order hook. Records a pending Conscription (does not resolve it yet - the actual effect is
 ---only applied at Server_AdvanceTurn_End, once the whole turn including attacks has resolved, so that we validate
@@ -82,25 +83,7 @@ function ResolvePendingConscriptions(game, addNewOrder)
                 local existingReduction = reductions[item.BonusID] or 0;
                 local effectiveValueBefore = math.max(bonus.Amount - existingReduction, 0);
 
-                -- the minimum only floors the %-based portion (the flat portion always applies on top of it) -
-                -- the value decrease is never allowed to take the bonus below 0
-                local desiredDecrease = (Mod.Settings.FlatValueDecrease or 0) + math.max(
-                    (Mod.Settings.PercentValueDecrease or 0) * effectiveValueBefore,
-                    Mod.Settings.MinimumValueDecrease or 0);
-                local actualDecrease = math.min(desiredDecrease, effectiveValueBefore);
-
-                local incomeGain = (Mod.Settings.FlatIncomeGained or 0) + math.max(
-                    (Mod.Settings.PercentIncomeGained or 0) * effectiveValueBefore,
-                    Mod.Settings.MinimumIncomeGained or 0);
-
-                -- if the bonus was too close to 0 to take the full desired decrease, scale the income down by
-                -- the same proportion - this is the one case where the configured minimum income is overridden
-                if (desiredDecrease > 0 and actualDecrease < desiredDecrease) then
-                    incomeGain = incomeGain * (actualDecrease / desiredDecrease);
-                end
-
-                local decreaseAmount = math.floor(actualDecrease + 0.5);
-                incomeGain = math.floor(incomeGain + 0.5);
+                local decreaseAmount, incomeGain = CalculateConscriptionEffect(effectiveValueBefore);
 
                 reductions[item.BonusID] = math.min(existingReduction + decreaseAmount, bonus.Amount);
 

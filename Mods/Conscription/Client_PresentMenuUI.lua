@@ -30,6 +30,11 @@ function Client_PresentMenuUI(rootParent, setMaxSize, setScrollable, game, close
 end
 
 function SelectFromMapClicked()
+    if (UI.IsDestroyed(SelectFromMapBtn)) then
+        -- This dialog was already closed/replaced before this click was processed
+        return;
+    end
+
     UI.InterceptNextBonusLinkClick(BonusClickedFromMap);
     BonusValueLabel.SetText("");
     SelectFromMapBtn.SetInteractable(false);
@@ -52,18 +57,42 @@ function BonusClickedFromMap(bonusDetails)
         return;
     end
 
+    if (not PlayerCanSeeAnyTerritoryInBonus(Game.LatestStanding, Game.Map, bonusDetails.ID)) then
+        BonusInstructionLabel.SetText("You can't check a bonus you have no visibility into").SetColor(ERROR_COLOUR);
+        BonusValueLabel.SetText("");
+        return;
+    end
+
     ShowBonusValue(bonusDetails.ID, bonusDetails.Name);
 end
 
 function SelectFromListClicked()
+    if (UI.IsDestroyed(SelectFromListBtn)) then
+        -- This dialog was already closed/replaced before this click was processed
+        return;
+    end
+
     local options = {};
     for bonusID, bonus in pairs(Game.Map.Bonuses) do
-        table.insert(options, { text = bonus.Name, selected = function() ShowBonusValue(bonusID, bonus.Name); end });
+        if (PlayerCanSeeAnyTerritoryInBonus(Game.LatestStanding, Game.Map, bonusID)) then
+            table.insert(options, { text = bonus.Name, selected = function() ShowBonusValue(bonusID, bonus.Name); end });
+        end
     end
+
+    if (#options == 0) then
+        BonusInstructionLabel.SetText("You don't have visibility into any bonus").SetColor(ERROR_COLOUR);
+        return;
+    end
+
     UI.PromptFromList("Choose a bonus", options);
 end
 
 function ShowBonusValue(bonusID, bonusName)
+    if (UI.IsDestroyed(BonusInstructionLabel)) then
+        -- This dialog was already closed/replaced before this selection was processed
+        return;
+    end
+
     local bonus = Game.Map.Bonuses[bonusID];
     if (bonus == nil) then return; end;
 
