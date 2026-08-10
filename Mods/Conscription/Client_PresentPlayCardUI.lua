@@ -116,7 +116,7 @@ function SelectFromListClicked()
     end
 
     if (#options == 0) then
-        SelectionInstructionLabel.SetText("You don't fully control any bonus eligible for conscription").SetColor(ERROR_COLOUR);
+        SelectionInstructionLabel.SetText("You don't fully control any bonuses eligible for conscription").SetColor(ERROR_COLOUR);
         return;
     end
 
@@ -158,7 +158,7 @@ function TrySelectBonus(bonusID, bonusName)
     -- ones will see a lower effective value, so these figures are only guaranteed as an upper bound
     local effectiveValue = GetEffectiveBonusValue(Game.Map, bonusID);
     local decreaseAmount, incomeGain = CalculateConscriptionEffect(effectiveValue);
-    PreviewLabel.SetText("Maximum income gained: " .. incomeGain .. "\nMaximum bonus reduction: " .. decreaseAmount).SetColor(TEXT_DEFAULT_COLOUR);
+    PreviewLabel.SetText("Maximum income gained: " .. incomeGain .. "\nBonus: " .. effectiveValue .. "/" .. bonus.Amount .. " (-" .. decreaseAmount .. ")").SetColor(TEXT_DEFAULT_COLOUR);
 
     PlayCardBtn.SetInteractable(true);
     Game.HighlightTerritories(Game.Map.Bonuses[bonusID].Territories);

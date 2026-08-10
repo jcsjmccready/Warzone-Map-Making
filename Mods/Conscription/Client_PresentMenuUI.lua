@@ -59,7 +59,7 @@ end
 ---Destroys the currently active sub-panel (whichever one it is), taking every one of its suboptions down with
 ---it (UI.Destroy is recursive), before the caller builds the other panel in its place.
 function Destroy_Content_UI()
-    if (ContentVGroup ~= nil) then
+    if (ContentVGroup ~= nil and not UI.IsDestroyed(ContentVGroup)) then
         UI.Destroy(ContentVGroup);
     end
 end
@@ -193,10 +193,10 @@ function SelectTerritoryClicked()
 
     UI.InterceptNextTerritoryClick(TerritoryClickedFromMap);
     TerritoryInstructionLabel.SetText("Please click on the territory you wish to inspect.").SetColor(TEXT_DEFAULT_COLOUR);
-    if (TerritoryBonusesVGroup ~= nil) then
+    if (TerritoryBonusesVGroup ~= nil and not UI.IsDestroyed(TerritoryBonusesVGroup)) then
         UI.Destroy(TerritoryBonusesVGroup);
-        TerritoryBonusesVGroup = nil;
     end
+    TerritoryBonusesVGroup = nil;
     SelectTerritoryBtn.SetInteractable(false);
 end
 
@@ -225,16 +225,16 @@ function ShowTerritoryBonuses(territoryID, territoryName)
 
     if (not PlayerCanSeeTerritory(Game.LatestStanding, territoryID)) then
         TerritoryInstructionLabel.SetText("You must have visibility of the territory").SetColor(ERROR_COLOUR);
-        if (TerritoryBonusesVGroup ~= nil) then
+        if (TerritoryBonusesVGroup ~= nil and not UI.IsDestroyed(TerritoryBonusesVGroup)) then
             UI.Destroy(TerritoryBonusesVGroup);
-            TerritoryBonusesVGroup = nil;
         end
+        TerritoryBonusesVGroup = nil;
         return;
     end
 
     TerritoryInstructionLabel.SetText("Selected territory: " .. territoryName).SetColor(TEXT_DEFAULT_COLOUR);
 
-    if (TerritoryBonusesVGroup ~= nil) then
+    if (TerritoryBonusesVGroup ~= nil and not UI.IsDestroyed(TerritoryBonusesVGroup)) then
         UI.Destroy(TerritoryBonusesVGroup);
     end
     TerritoryBonusesVGroup = UI.CreateVerticalLayoutGroup(TerritoryBonusesParent);

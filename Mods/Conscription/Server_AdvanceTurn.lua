@@ -18,12 +18,14 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
 
         if (bonus ~= nil and bonus.Amount < 0) then
             local event = WL.GameOrderEvent.Create(order.PlayerID, "Conscription failed: " .. bonus.Name .. " has a negative value and cannot be conscripted", {}, {});
+            event.Icon = "Blocked";
             addNewOrder(event);
             return;
         end
 
         if (not PlayerFullyOwnsBonus(game.ServerGame.LatestTurnStanding, game.Map, bonusID, order.PlayerID)) then
             local event = WL.GameOrderEvent.Create(order.PlayerID, "Conscription failed: you no longer fully control that bonus", {}, {});
+            event.Icon = "Blocked";
             addNewOrder(event);
             return;
         end
@@ -76,6 +78,7 @@ function ResolvePendingConscriptions(game, addNewOrder)
         if (bonus ~= nil) then
             if (not PlayerFullyOwnsBonus(standing, game.Map, item.BonusID, item.PlayerID)) then
                 local failEvent = WL.GameOrderEvent.Create(item.PlayerID, "Conscription of " .. bonus.Name .. " failed: you no longer fully control it", {}, {});
+                failEvent.Icon = "Blocked";
                 addNewOrder(failEvent);
             else
                 local existingReduction = reductions[item.BonusID] or 0;
@@ -89,6 +92,7 @@ function ResolvePendingConscriptions(game, addNewOrder)
 
                 local message = "Conscripted " .. bonus.Name .. ": bonus value permanently reduced by " .. decreaseAmount .. ", gained " .. incomeGain .. " income this turn";
                 local event = WL.GameOrderEvent.Create(item.PlayerID, message, { item.PlayerID }, {});
+                event.Icon = "IncomeGain";
 
                 if (game.Settings.CommerceGame) then
                     event.AddResourceOpt = { [item.PlayerID] = { [WL.ResourceType.Gold] = incomeGain } };
@@ -105,6 +109,7 @@ function ResolvePendingConscriptions(game, addNewOrder)
         -- WL.PlayerID.Neutral + empty visibleTo ({} = visible to everyone) since these are real map changes,
         -- not private info for the conscribing player - the per-item income events above stay player-scoped
         local structuresEvent = WL.GameOrderEvent.Create(WL.PlayerID.Neutral, "Conscription structures updated", {}, allTerritoryModifications);
+        structuresEvent.Icon = "Build";
         addNewOrder(structuresEvent);
     end
 
@@ -166,6 +171,7 @@ function ApplyPermanentBonusReductions(game, addNewOrder)
                 local bonus = game.Map.Bonuses[bonusID];
                 local event = WL.GameOrderEvent.Create(ownerID, bonus.Name .. " income reduced due to Conscription", { ownerID }, {});
                 event.IncomeMods = { WL.IncomeMod.Create(ownerID, -reduction, "Conscription", bonusID) };
+                event.Icon = "IncomeLoss";
                 addNewOrder(event);
             end
         end
@@ -234,6 +240,7 @@ function NeutraliseFullyConscriptedBonuses(game, addNewOrder)
 
     if (#territoryModifications > 0) then
         local event = WL.GameOrderEvent.Create(WL.PlayerID.Neutral, "Fully conscripted territories rebel and go neutral", {}, territoryModifications);
+        event.Icon = "Triggered";
         addNewOrder(event);
     end
 end
