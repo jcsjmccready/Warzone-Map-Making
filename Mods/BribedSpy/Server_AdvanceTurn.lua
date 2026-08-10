@@ -119,10 +119,12 @@ function GrantBribeIncome(game, standing, targetPlayerID, targetPlayer, addNewOr
     if (game.Settings.CommerceGame) then
         local event = WL.GameOrderEvent.Create(targetPlayerID, "Bribed Spy granted " .. totalGain .. " bonus gold", { targetPlayerID }, {});
         event.AddResourceOpt = { [targetPlayerID] = { [WL.ResourceType.Gold] = totalGain } };
+        event.Icon = "Income";
         addNewOrder(event);
     else
         local event = WL.GameOrderEvent.Create(targetPlayerID, "Bribed Spy granted " .. totalGain .. " bonus income", { targetPlayerID }, {});
         event.IncomeMods = { WL.IncomeMod.Create(targetPlayerID, totalGain, "Bribed Spy") };
+        event.Icon = "Income";
         addNewOrder(event);
     end
 end
