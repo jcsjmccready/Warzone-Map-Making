@@ -112,12 +112,14 @@ function ApplyMonitoredProductionIncome(game, addNewOrder)
     for playerID, amount in pairs(goldByPlayer) do
         local event = WL.GameOrderEvent.Create(playerID, "Monitored Production granted " .. amount .. " gold", { playerID }, {});
         event.AddResourceOpt = { [playerID] = { [WL.ResourceType.Gold] = amount } };
+        event.Icon = "Income";
         addNewOrder(event);
     end
 
     for playerID, amount in pairs(armiesByPlayer) do
         local event = WL.GameOrderEvent.Create(playerID, "Monitored Production granted " .. amount .. " bonus armies", { playerID }, {});
         event.IncomeMods = { WL.IncomeMod.Create(playerID, amount, "Monitored Production") };
+        event.Icon = "Income";
         addNewOrder(event);
     end
 end
