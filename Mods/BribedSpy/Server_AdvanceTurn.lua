@@ -34,7 +34,8 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
         return; -- self-targeting isn't allowed, and the client can't be trusted to have enforced that
     end
 
-    TriggerBribe(game, targetPlayerID, addNewOrder);
+    local alreadySpiedThisTurn = MarkSpiedThisTurn(targetPlayerID);
+    TriggerBribe(game, targetPlayerID, addNewOrder, alreadySpiedThisTurn);
 
     local duration = Mod.Settings.BribeDuration or 1;
     if (duration > 1) then
@@ -62,13 +63,15 @@ function Server_AdvanceTurn_Start(game, addNewOrder)
 
     for _, bribe in ipairs(activeBribes) do
         if (game.Game.PlayingPlayers[bribe.TargetPlayerID] ~= nil) then
-            TriggerBribe(game, bribe.TargetPlayerID, addNewOrder);
+            local alreadySpiedThisTurn = MarkSpiedThisTurn(bribe.TargetPlayerID);
+            TriggerBribe(game, bribe.TargetPlayerID, addNewOrder, alreadySpiedThisTurn);
         end
     end
 end
 
 ---Server_AdvanceTurn_End hook. Removes any tracked bribe whose final turn was this turn, since it's already
----triggered for the last time (via Server_AdvanceTurn_Start, above).
+---triggered for the last time (via Server_AdvanceTurn_Start, above). Also clears this turn's spy tracker,
+---since it's only needed for the duration of the turn.
 ---@param game GameServerHook
 ---@param addNewOrder fun(order: GameOrder)
 function Server_AdvanceTurn_End(game, addNewOrder)
@@ -83,24 +86,44 @@ function Server_AdvanceTurn_End(game, addNewOrder)
     end
 
     priv.ActiveBribes = remainingBribes;
+    priv.SpiedThisTurn = nil;
     Mod.PrivateGameData = priv;
 end
 
 --triggers a bribe for this turn: gives every playing player other than the bribed player a fresh Spy card and
---immediately plays it against the bribed player, then grants the bribed player their bonus income for the turn
-function TriggerBribe(game, targetPlayerID, addNewOrder)
+--immediately plays it against the bribed player, then grants the bribed player their bonus income for the turn.
+--skipSpyCards is set when another bribe already spied on this same player this turn, so only the income is granted.
+function TriggerBribe(game, targetPlayerID, addNewOrder, skipSpyCards)
     local targetPlayer = game.Game.PlayingPlayers[targetPlayerID];
     if (targetPlayer == nil) then return; end
 
-    for playerID, _ in pairs(game.Game.PlayingPlayers) do
-        if (playerID ~= targetPlayerID) then
-            local instance = WL.NoParameterCardInstance.Create(WL.CardID.Spy);
-            addNewOrder(WL.GameOrderReceiveCard.Create(playerID, { instance }));
-            addNewOrder(WL.GameOrderPlayCardSpy.Create(instance.ID, playerID, targetPlayerID));
+    if (not skipSpyCards) then
+        for playerID, _ in pairs(game.Game.PlayingPlayers) do
+            if (playerID ~= targetPlayerID) then
+                local instance = WL.NoParameterCardInstance.Create(WL.CardID.Spy);
+                addNewOrder(WL.GameOrderReceiveCard.Create(playerID, { instance }));
+                addNewOrder(WL.GameOrderPlayCardSpy.Create(instance.ID, playerID, targetPlayerID));
+            end
         end
     end
 
     GrantBribeIncome(game, game.ServerGame.LatestTurnStanding, targetPlayerID, targetPlayer, addNewOrder);
+end
+
+--tracks which targets have already had spy cards played against them this turn (multiple bribe cards can be
+--played against the same target on the same turn), returning true if targetPlayerID was already marked, so the
+--caller knows to skip playing a redundant set of spy cards for it
+function MarkSpiedThisTurn(targetPlayerID)
+    local priv = Mod.PrivateGameData;
+    local spiedTargets = priv.SpiedThisTurn or {};
+
+    local alreadySpied = spiedTargets[targetPlayerID] or false;
+    spiedTargets[targetPlayerID] = true;
+
+    priv.SpiedThisTurn = spiedTargets;
+    Mod.PrivateGameData = priv;
+
+    return alreadySpied;
 end
 
 --grants targetPlayerID bonus income for this turn: at least MinimumIncomeGain, or IncreasedIncomePercentage% of

@@ -1,1 +1,2 @@
 Play the Bribed Spy card on a target player, granting them additional income but all other players play a free spy card against them while the card is in effect.
+Multiple bribes work multiplicatively with regards to additional income granted*
