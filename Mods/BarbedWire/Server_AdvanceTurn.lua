@@ -84,6 +84,7 @@ function HandleAttackTransferInTriggeredBarbedWire(game, order, result, skipThis
 	result.ActualArmies = WL.Armies.Create(0);
 	local event = WL.GameOrderEvent.Create(order.PlayerID, 'Movement blocked by barbed wire', {}, {});
 	event.TerritoryAnnotationsOpt = { [order.From] = WL.TerritoryAnnotation.Create("Armies stuck", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany)) };
+	event.Icon = "Blocked"
 	addNewOrder(event);
 end
 
@@ -136,6 +137,7 @@ function HandleAttackTransferToBarbedWire(game, order, result, addNewOrder)
 				
 				local event = WL.GameOrderEvent.Create(order.PlayerID, 'Barbed wire destroyed', {}, {territoryModificationTo});
 				event.TerritoryAnnotationsOpt = { [order.To] = WL.TerritoryAnnotation.Create("Barbed wire destroyed", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany)) };
+				event.Icon = "Destroyed";
 				addNewOrder(event, true);
 			end
 			
@@ -162,6 +164,7 @@ function HandleAttackTransferToBarbedWire(game, order, result, addNewOrder)
 				
 				local event = WL.GameOrderEvent.Create(order.PlayerID, 'Barbed wire destroyed', {}, {territoryModificationFrom});
 				event.TerritoryAnnotationsOpt = { [order.From] = WL.TerritoryAnnotation.Create("Barbed wire destroyed", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany)) };
+				event.Icon = "Destroyed";
 				addNewOrder(event, true);
 			end
 		end
@@ -226,6 +229,7 @@ function HandleAttackTransferToBarbedWire(game, order, result, addNewOrder)
 
 	local event = WL.GameOrderEvent.Create(order.PlayerID, "Triggered a Barbed Wire", {}, {territoryModification});
 	event.TerritoryAnnotationsOpt = { [order.To] = WL.TerritoryAnnotation.Create("Triggered Barbed Wire", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany)) };
+	event.Icon = "Triggered";
 	addNewOrder(event, true);
 	Mod.PrivateGameData = privateGameData;
 
@@ -263,6 +267,7 @@ function ResetTriggeredBarbedWire(game, addNewOrder)
 	end
 	if (anyReset) then
 		local event = WL.GameOrderEvent.Create(WL.PlayerID.Neutral, "Reset Barbed Wire", {}, territoryModifications);
+		event.Icon = "Reset";
 		addNewOrder(event);
 	end
 
@@ -320,6 +325,7 @@ function BuildStructures(game, addNewOrder)
 			local td = game.Map.Territories[territoryID];
 			event.JumpToActionSpotOpt = WL.RectangleVM.Create(td.MiddlePointX, td.MiddlePointY, td.MiddlePointX, td.MiddlePointY);
 			event.TerritoryAnnotationsOpt = { [territoryID] = WL.TerritoryAnnotation.Create("Build Barbed Wire", 8, GetColourIntegerFromHex(BUTTON_COLOURS.DarkGreen)) };
+			event.Icon = "Build";
 
 			addNewOrder(event);
 		end
@@ -333,6 +339,7 @@ function BuildStructures(game, addNewOrder)
 			local td = game.Map.Territories[territoryID];
 			event.JumpToActionSpotOpt = WL.RectangleVM.Create(td.MiddlePointX, td.MiddlePointY, td.MiddlePointX, td.MiddlePointY);
 			event.TerritoryAnnotationsOpt = { [territoryID] = WL.TerritoryAnnotation.Create("Unable to build Barbed Wire", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Red)) };
+			event.Icon = "BuildFailed";
 
 			addNewOrder(event);
 		end
