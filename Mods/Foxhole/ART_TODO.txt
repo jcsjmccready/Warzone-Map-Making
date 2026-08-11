@@ -1,0 +1,8 @@
+Art still needed for this mod (not created in this pass):
+
+- Icon.png        - mod listing icon (shown in the mod browser)
+- Feature.png      - mod listing banner/feature image
+- CardImages/FoxholeCard.png   - artwork for the Foxhole Card (only used when the mod is configured for Card acquisition)
+- StructureImages/Foxhole.png  - the Foxhole structure icon shown on the map
+
+See other mods' equivalent files (e.g. Mods/Conscription/Icon.png, Mods/Conscription/StructureImages/) for expected image dimensions/style.
