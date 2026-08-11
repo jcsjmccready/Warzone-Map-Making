@@ -174,6 +174,19 @@ function GetEffectiveBonusValue(map, bonusID)
 	return math.max(bonus.Amount - reduction, 0);
 end
 
+--Returns a bonus's conscription status text and colour: "fully conscripted" in red (reduced all the way to 0),
+--"conscripted" in orange (partially reduced), or "not conscripted" in green.
+---@param bonus BonusDetails
+---@param effectiveValue integer
+function GetConscriptionStatus(bonus, effectiveValue)
+	if (effectiveValue <= 0 and bonus.Amount > 0) then
+		return "fully conscripted", BUTTON_COLOURS.Red;
+	elseif (effectiveValue < bonus.Amount) then
+		return "conscripted", BUTTON_COLOURS.Orange;
+	end
+	return "not conscripted", BUTTON_COLOURS.DarkGreen;
+end
+
 --Given a bonus's current effective value, computes what a single Conscription instance would do to it: the
 --(rounded) permanent value decrease and the (rounded) one-turn income gain, per the configured settings. Shared
 --by both the actual resolution (Server_AdvanceTurn.lua) and the play-card preview, so they can never drift.

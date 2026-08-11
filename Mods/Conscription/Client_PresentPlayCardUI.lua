@@ -23,7 +23,7 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
 
     game.CreateDialog(function(rootParent, setMaxSize, setScrollable, game, close)
         Close = close;
-        setMaxSize(420, 253);
+        setMaxSize(420, 258);
 
         local vert = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1); --set flexible width so things don't jump around while we change InstructionLabel
 
@@ -40,6 +40,7 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
 
         SelectionInstructionLabel = UI.CreateLabel(vert).SetText("");
         PreviewLabel = UI.CreateLabel(vert).SetText("");
+        BonusPreviewLabel = UI.CreateLabel(vert).SetText("");
 
         local playHGroup = UI.CreateHorizontalLayoutGroup(vert).SetFlexibleWidth(1);
         PlayCardBtn = UI.CreateButton(playHGroup)
@@ -69,15 +70,36 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
     end);
 end
 
+---Every territory belonging to a bonus the player fully controls and could therefore select (non-negative
+---value), as a HighlightTerritories-ready array - shown as an overview when "Select From Map" is clicked, before
+---a specific bonus has been picked.
+function GetEligibleBonusTerritoriesToHighlight()
+    local highlightSet = {};
+    for bonusID, bonus in pairs(Game.Map.Bonuses) do
+        if (bonus.Amount >= 0 and PlayerFullyOwnsBonus(Game.LatestStanding, Game.Map, bonusID, Game.Us.ID)) then
+            for _, terrID in ipairs(bonus.Territories) do
+                highlightSet[terrID] = true;
+            end
+        end
+    end
+
+    local highlightList = {};
+    for terrID, _ in pairs(highlightSet) do
+        table.insert(highlightList, terrID);
+    end
+    return highlightList;
+end
+
 function SelectFromMapClicked()
     if (UI.IsDestroyed(SelectFromMapBtn)) then
         -- This dialog was already closed/replaced before this click was processed
         return;
     end
 
-    Game.HighlightTerritories({});
+    Game.HighlightTerritories(GetEligibleBonusTerritoriesToHighlight());
     SelectionInstructionLabel.SetText("Please click on a bonus you fully control.").SetColor(TEXT_DEFAULT_COLOUR);
     PreviewLabel.SetText("");
+    BonusPreviewLabel.SetText("");
     SelectFromMapBtn.SetInteractable(false);
     SelectFromListBtn.SetInteractable(false);
     PlayCardBtn.SetInteractable(false);
@@ -96,6 +118,7 @@ function BonusClickedFromMap(bonusDetails)
         --The click request was cancelled. Return to our default state.
         SelectionInstructionLabel.SetText("");
         PreviewLabel.SetText("");
+    BonusPreviewLabel.SetText("");
         return;
     end
 
@@ -133,6 +156,7 @@ function TrySelectBonus(bonusID, bonusName)
     if (bonus ~= nil and bonus.Amount < 0) then
         SelectionInstructionLabel.SetText(bonusName .. " has a negative value and cannot be conscripted").SetColor(ERROR_COLOUR);
         PreviewLabel.SetText("");
+    BonusPreviewLabel.SetText("");
         SelectedBonusID = nil;
         SelectedBonusName = nil;
         PlayCardBtn.SetInteractable(false);
@@ -143,6 +167,7 @@ function TrySelectBonus(bonusID, bonusName)
     if (not PlayerFullyOwnsBonus(Game.LatestStanding, Game.Map, bonusID, Game.Us.ID)) then
         SelectionInstructionLabel.SetText("You must fully control every territory in " .. bonusName .. " to select it").SetColor(ERROR_COLOUR);
         PreviewLabel.SetText("");
+    BonusPreviewLabel.SetText("");
         SelectedBonusID = nil;
         SelectedBonusName = nil;
         PlayCardBtn.SetInteractable(false);
@@ -158,7 +183,10 @@ function TrySelectBonus(bonusID, bonusName)
     -- ones will see a lower effective value, so these figures are only guaranteed as an upper bound
     local effectiveValue = GetEffectiveBonusValue(Game.Map, bonusID);
     local decreaseAmount, incomeGain = CalculateConscriptionEffect(effectiveValue);
-    PreviewLabel.SetText("Maximum income gained: " .. incomeGain .. "\nBonus: " .. effectiveValue .. "/" .. bonus.Amount .. " (-" .. decreaseAmount .. ")").SetColor(TEXT_DEFAULT_COLOUR);
+    PreviewLabel.SetText("Maximum income gained: " .. incomeGain).SetColor(TEXT_DEFAULT_COLOUR);
+
+    local _, color = GetConscriptionStatus(bonus, effectiveValue);
+    BonusPreviewLabel.SetText("Bonus: " .. effectiveValue .. "/" .. bonus.Amount .. " (-" .. decreaseAmount .. ")").SetColor(color);
 
     PlayCardBtn.SetInteractable(true);
     Game.HighlightTerritories(Game.Map.Bonuses[bonusID].Territories);

@@ -1,5 +1,7 @@
 require('Utilities')
 
+MAX_RESULT_LINES = 8;
+
 ---Client_PresentMenuUI hook
 ---@param rootParent RootParent
 ---@param setMaxSize fun(width: number, height: number)
@@ -10,115 +12,163 @@ function Client_PresentMenuUI(rootParent, setMaxSize, setScrollable, game, close
     Game = game;
     Close = close;
 
-    setMaxSize(400, 300);
+    setMaxSize(420, 300);
 
     local vert = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
 
-    local topButtonsHGroup = UI.CreateHorizontalLayoutGroup(vert).SetFlexibleWidth(1);
-    InspectBonusBtn = UI.CreateButton(topButtonsHGroup)
-        .SetText("Inspect Bonus")
-        .SetOnClick(InspectBonusClicked)
+    local titleHGroup = UI.CreateHorizontalLayoutGroup(vert).SetFlexibleWidth(1);
+    UI.CreateButton(titleHGroup)
+        .SetText("Identify Conscription Level")
+        .SetInteractable(false)
+        .SetFlexibleWidth(1);
+
+    local buttonsHGroup = UI.CreateHorizontalLayoutGroup(vert).SetFlexibleWidth(1);
+    BonusFromMapBtn = UI.CreateButton(buttonsHGroup)
+        .SetText("Bonus from Map")
+        .SetOnClick(BonusFromMapClicked)
         .SetColor(BUTTON_COLOURS.RoyalBlue)
-        .SetFlexibleWidth(0.5);
+        .SetFlexibleWidth(1);
 
-    InspectTerritoryBtn = UI.CreateButton(topButtonsHGroup)
-        .SetText("Inspect Territory")
-        .SetOnClick(InspectTerritoryClicked)
+    BonusFromListBtn = UI.CreateButton(buttonsHGroup)
+        .SetText("Bonus from List")
+        .SetOnClick(BonusFromListClicked)
         .SetColor(BUTTON_COLOURS.Tan)
-        .SetFlexibleWidth(0.5);
+        .SetFlexibleWidth(1);
 
-    ContentParent = UI.CreateVerticalLayoutGroup(vert).SetFlexibleWidth(1);
+    BonusFromTerritoryBtn = UI.CreateButton(buttonsHGroup)
+        .SetText("Bonus from Territory")
+        .SetOnClick(BonusFromTerritoryClicked)
+        .SetColor(BUTTON_COLOURS.Amazon)
+        .SetFlexibleWidth(1);
+
+    InstructionLabel = UI.CreateLabel(vert).SetText("");
+
+    -- fixed pool of reusable result-line labels, so each bonus's line can be individually coloured (orange
+    -- if conscripted, green if not) without ever destroying/recreating UI objects
+    ResultsParent = UI.CreateVerticalLayoutGroup(vert);
+    ResultsLabels = {};
+    for i = 1, MAX_RESULT_LINES do
+        ResultsLabels[i] = UI.CreateLabel(ResultsParent).SetText("");
+    end
 end
 
-function InspectBonusClicked()
-    if (UI.IsDestroyed(InspectBonusBtn)) then
-        -- This dialog was already closed/replaced before this click was processed
-        return;
+function ClearResultLines()
+    for i = 1, MAX_RESULT_LINES do
+        ResultsLabels[i].SetText("");
     end
-
-    InspectBonusBtn.SetInteractable(false);
-    InspectTerritoryBtn.SetInteractable(true);
-
-    Destroy_Content_UI();
-    Create_InspectBonus_UI(ContentParent);
 end
 
-function InspectTerritoryClicked()
-    if (UI.IsDestroyed(InspectTerritoryBtn)) then
-        -- This dialog was already closed/replaced before this click was processed
-        return;
-    end
-
-    InspectTerritoryBtn.SetInteractable(false);
-    InspectBonusBtn.SetInteractable(true);
-
-    Destroy_Content_UI();
-    Create_InspectTerritory_UI(ContentParent);
+---Sets result line `index` (1-based) to `text` in `color`. Silently does nothing past MAX_RESULT_LINES.
+function SetResultLine(index, text, color)
+    if (index > MAX_RESULT_LINES) then return; end;
+    ResultsLabels[index].SetText(text).SetColor(color);
 end
 
----Destroys the currently active sub-panel (whichever one it is), taking every one of its suboptions down with
----it (UI.Destroy is recursive), before the caller builds the other panel in its place.
-function Destroy_Content_UI()
-    if (ContentVGroup ~= nil and not UI.IsDestroyed(ContentVGroup)) then
-        UI.Destroy(ContentVGroup);
+---Returns bonus's formatted result line and its status colour: "Name: current/base (status)".
+function FormatBonusLine(bonus, effectiveValue)
+    local status, color = GetConscriptionStatus(bonus, effectiveValue);
+    if (effectiveValue < bonus.Amount) then
+        return bonus.Name .. ": " .. effectiveValue .. "/" .. bonus.Amount .. " (" .. status .. ")", color;
     end
+    return bonus.Name .. ": " .. effectiveValue .. " (" .. status .. ")", color;
+end
+
+---Re-enables whichever button a map/territory click is currently being awaited for (if any) and clears the
+---pending state, so a stale click that arrives afterwards (see the PendingSelectionType checks in
+---BonusClickedFromMap/TerritoryClickedFromMap) is just let through instead of being treated as our selection.
+---There's no engine API to cancel an InterceptNextBonusLinkClick/InterceptNextTerritoryClick ahead of time, so
+---this only cleans up our own UI/state - the intercept itself is cancelled from inside the callback instead.
+function AbortPendingSelection()
+    if (PendingSelectionType == "map") then
+        BonusFromMapBtn.SetInteractable(true);
+    elseif (PendingSelectionType == "territory") then
+        BonusFromTerritoryBtn.SetInteractable(true);
+    end
+    PendingSelectionType = nil;
+end
+
+---Every territory belonging to a currently-conscripted bonus that the player has at least partial visibility
+---into (i.e. PlayerCanSeeAnyTerritoryInBonus), as a HighlightTerritories-ready array.
+function GetConscriptedBonusTerritoriesToHighlight()
+    local highlightSet = {};
+    for bonusID, bonus in pairs(Game.Map.Bonuses) do
+        local effectiveValue = GetEffectiveBonusValue(Game.Map, bonusID);
+        if (effectiveValue < bonus.Amount and PlayerCanSeeAnyTerritoryInBonus(Game.LatestStanding, Game.Map, bonusID)) then
+            for _, terrID in ipairs(bonus.Territories) do
+                highlightSet[terrID] = true;
+            end
+        end
+    end
+
+    local highlightList = {};
+    for terrID, _ in pairs(highlightSet) do
+        table.insert(highlightList, terrID);
+    end
+    return highlightList;
+end
+
+---Every territory the player can individually see that belongs to at least one currently-conscripted bonus, as
+---a HighlightTerritories-ready array.
+function GetVisibleTerritoriesInConscriptedBonuses()
+    local highlightList = {};
+    for terrID, territory in pairs(Game.Map.Territories) do
+        if (PlayerCanSeeTerritory(Game.LatestStanding, terrID)) then
+            for _, bonusID in ipairs(territory.PartOfBonuses or {}) do
+                local bonus = Game.Map.Bonuses[bonusID];
+                if (bonus ~= nil and GetEffectiveBonusValue(Game.Map, bonusID) < bonus.Amount) then
+                    table.insert(highlightList, terrID);
+                    break;
+                end
+            end
+        end
+    end
+    return highlightList;
 end
 
 ------------------------------
--- Inspect Bonus
+-- Bonus from Map / Bonus from List
 ------------------------------
 
-function Create_InspectBonus_UI(rootParent)
-    ContentVGroup = UI.CreateVerticalLayoutGroup(rootParent);
-
-    local buttonsHGroup = UI.CreateHorizontalLayoutGroup(ContentVGroup).SetFlexibleWidth(1);
-    SelectBonusFromMapBtn = UI.CreateButton(buttonsHGroup)
-        .SetText("Select From Map")
-        .SetOnClick(SelectBonusFromMapClicked)
-        .SetFlexibleWidth(0.5);
-
-    SelectBonusFromListBtn = UI.CreateButton(buttonsHGroup)
-        .SetText("Select From List")
-        .SetOnClick(SelectBonusFromListClicked)
-        .SetFlexibleWidth(0.5);
-
-    BonusInstructionLabel = UI.CreateLabel(ContentVGroup).SetText("");
-    BonusValueLabel = UI.CreateLabel(ContentVGroup).SetText("");
-end
-
-function SelectBonusFromMapClicked()
-    if (UI.IsDestroyed(SelectBonusFromMapBtn)) then
+function BonusFromMapClicked()
+    if (UI.IsDestroyed(BonusFromMapBtn)) then
         -- This dialog was already closed/replaced before this click was processed
         return;
     end
+
+    AbortPendingSelection();
 
     UI.InterceptNextBonusLinkClick(BonusClickedFromMap);
-    Game.HighlightTerritories({});
-    BonusValueLabel.SetText("");
-    SelectBonusFromMapBtn.SetInteractable(false);
-    SelectBonusFromListBtn.SetInteractable(false);
+    Game.HighlightTerritories(GetConscriptedBonusTerritoriesToHighlight());
+    ClearResultLines();
+    InstructionLabel.SetText("Please click on the bonus you wish to inspect.").SetColor(TEXT_DEFAULT_COLOUR);
+    BonusFromMapBtn.SetInteractable(false);
+    PendingSelectionType = "map";
 end
 
 function BonusClickedFromMap(bonusDetails)
-    if UI.IsDestroyed(SelectBonusFromMapBtn) then
+    if UI.IsDestroyed(BonusFromMapBtn) then
         -- Dialog was destroyed, so we don't need to intercept the click anymore
         return WL.CancelClickIntercept;
     end
 
-    SelectBonusFromMapBtn.SetInteractable(true);
-    SelectBonusFromListBtn.SetInteractable(true);
+    if (PendingSelectionType ~= "map") then
+        -- a different button was clicked before this bonus was, so let the click through normally instead of
+        -- treating it as our selection
+        return WL.CancelClickIntercept;
+    end
+
+    BonusFromMapBtn.SetInteractable(true);
+    PendingSelectionType = nil;
 
     if (bonusDetails == nil) then
         --The click request was cancelled. Return to our default state.
-        BonusInstructionLabel.SetText("");
-        BonusValueLabel.SetText("");
+        InstructionLabel.SetText("");
         Game.HighlightTerritories({});
         return;
     end
 
     if (not PlayerCanSeeAnyTerritoryInBonus(Game.LatestStanding, Game.Map, bonusDetails.ID)) then
-        BonusInstructionLabel.SetText("You must have visibility of the bonus").SetColor(ERROR_COLOUR);
-        BonusValueLabel.SetText("");
+        InstructionLabel.SetText("You must have visibility of the bonus").SetColor(ERROR_COLOUR);
         Game.HighlightTerritories({});
         return;
     end
@@ -126,21 +176,23 @@ function BonusClickedFromMap(bonusDetails)
     ShowBonusValue(bonusDetails.ID, bonusDetails.Name);
 end
 
-function SelectBonusFromListClicked()
-    if (UI.IsDestroyed(SelectBonusFromListBtn)) then
+function BonusFromListClicked()
+    if (UI.IsDestroyed(BonusFromListBtn)) then
         -- This dialog was already closed/replaced before this click was processed
         return;
     end
 
+    AbortPendingSelection();
+
     local options = {};
     for bonusID, bonus in pairs(Game.Map.Bonuses) do
-        if (bonus.Amount >= 0 and PlayerCanSeeAnyTerritoryInBonus(Game.LatestStanding, Game.Map, bonusID)) then
+        if (GetEffectiveBonusValue(Game.Map, bonusID) < bonus.Amount and PlayerCanSeeAnyTerritoryInBonus(Game.LatestStanding, Game.Map, bonusID)) then
             table.insert(options, { text = bonus.Name, selected = function() ShowBonusValue(bonusID, bonus.Name); end });
         end
     end
 
     if (#options == 0) then
-        BonusInstructionLabel.SetText("You don't have visibility of any non-negative bonuses").SetColor(ERROR_COLOUR);
+        InstructionLabel.SetText("You don't have visibility of any conscripted bonuses").SetColor(ERROR_COLOUR);
         return;
     end
 
@@ -148,7 +200,7 @@ function SelectBonusFromListClicked()
 end
 
 function ShowBonusValue(bonusID, bonusName)
-    if (UI.IsDestroyed(BonusInstructionLabel)) then
+    if (UI.IsDestroyed(InstructionLabel)) then
         -- This dialog was already closed/replaced before this selection was processed
         return;
     end
@@ -156,61 +208,59 @@ function ShowBonusValue(bonusID, bonusName)
     local bonus = Game.Map.Bonuses[bonusID];
     if (bonus == nil) then return; end;
 
-    BonusInstructionLabel.SetText("Selected bonus: " .. bonusName).SetColor(TEXT_DEFAULT_COLOUR);
-    Game.HighlightTerritories(bonus.Territories);
+    InstructionLabel.SetText("Selected bonus: " .. bonusName).SetColor(TEXT_DEFAULT_COLOUR);
 
     local effectiveValue = GetEffectiveBonusValue(Game.Map, bonusID);
+    local status, color = GetConscriptionStatus(bonus, effectiveValue);
+
     if (effectiveValue < bonus.Amount) then
-        BonusValueLabel.SetText("Current value: " .. effectiveValue .. "/" .. bonus.Amount .. " (conscripted)").SetColor(BUTTON_COLOURS.Orange);
+        Game.HighlightTerritories(bonus.Territories);
+        SetResultLine(1, "Current value: " .. effectiveValue .. "/" .. bonus.Amount .. " (" .. status .. ")", color);
     else
-        BonusValueLabel.SetText("Current value: " .. effectiveValue .. " (not conscripted)").SetColor(BUTTON_COLOURS.DarkGreen);
+        Game.HighlightTerritories({});
+        SetResultLine(1, "Current value: " .. effectiveValue .. " (" .. status .. ")", color);
     end
 end
 
 ------------------------------
--- Inspect Territory
+-- Bonus from Territory
 ------------------------------
 
-function Create_InspectTerritory_UI(rootParent)
-    ContentVGroup = UI.CreateVerticalLayoutGroup(rootParent);
-
-    local buttonHGroup = UI.CreateHorizontalLayoutGroup(ContentVGroup).SetFlexibleWidth(1);
-    SelectTerritoryBtn = UI.CreateButton(buttonHGroup)
-        .SetText("Select Territory")
-        .SetFlexibleWidth(1)
-        .SetOnClick(SelectTerritoryClicked);
-
-    TerritoryInstructionLabel = UI.CreateLabel(ContentVGroup).SetText("");
-    TerritoryBonusesParent = UI.CreateVerticalLayoutGroup(ContentVGroup);
-    TerritoryBonusesVGroup = nil;
-end
-
-function SelectTerritoryClicked()
-    if (UI.IsDestroyed(SelectTerritoryBtn)) then
+function BonusFromTerritoryClicked()
+    if (UI.IsDestroyed(BonusFromTerritoryBtn)) then
         -- This dialog was already closed/replaced before this click was processed
         return;
     end
 
+    AbortPendingSelection();
+
     UI.InterceptNextTerritoryClick(TerritoryClickedFromMap);
-    TerritoryInstructionLabel.SetText("Please click on the territory you wish to inspect.").SetColor(TEXT_DEFAULT_COLOUR);
-    if (TerritoryBonusesVGroup ~= nil and not UI.IsDestroyed(TerritoryBonusesVGroup)) then
-        UI.Destroy(TerritoryBonusesVGroup);
-    end
-    TerritoryBonusesVGroup = nil;
-    SelectTerritoryBtn.SetInteractable(false);
+    Game.HighlightTerritories(GetVisibleTerritoriesInConscriptedBonuses());
+    ClearResultLines();
+    InstructionLabel.SetText("Please click on the territory you wish to inspect.").SetColor(TEXT_DEFAULT_COLOUR);
+    BonusFromTerritoryBtn.SetInteractable(false);
+    PendingSelectionType = "territory";
 end
 
 function TerritoryClickedFromMap(terrDetails)
-    if UI.IsDestroyed(SelectTerritoryBtn) then
+    if UI.IsDestroyed(BonusFromTerritoryBtn) then
         -- Dialog was destroyed, so we don't need to intercept the click anymore
         return WL.CancelClickIntercept;
     end
 
-    SelectTerritoryBtn.SetInteractable(true);
+    if (PendingSelectionType ~= "territory") then
+        -- a different button was clicked before this territory was, so let the click through normally instead
+        -- of treating it as our selection
+        return WL.CancelClickIntercept;
+    end
+
+    BonusFromTerritoryBtn.SetInteractable(true);
+    PendingSelectionType = nil;
 
     if (terrDetails == nil) then
         --The click request was cancelled. Return to our default state.
-        TerritoryInstructionLabel.SetText("");
+        InstructionLabel.SetText("");
+        Game.HighlightTerritories({});
         return;
     end
 
@@ -218,42 +268,49 @@ function TerritoryClickedFromMap(terrDetails)
 end
 
 function ShowTerritoryBonuses(territoryID, territoryName)
-    if (UI.IsDestroyed(TerritoryInstructionLabel)) then
+    if (UI.IsDestroyed(InstructionLabel)) then
         -- This dialog was already closed/replaced before this selection was processed
         return;
     end
 
     if (not PlayerCanSeeTerritory(Game.LatestStanding, territoryID)) then
-        TerritoryInstructionLabel.SetText("You must have visibility of the territory").SetColor(ERROR_COLOUR);
-        if (TerritoryBonusesVGroup ~= nil and not UI.IsDestroyed(TerritoryBonusesVGroup)) then
-            UI.Destroy(TerritoryBonusesVGroup);
-        end
-        TerritoryBonusesVGroup = nil;
+        InstructionLabel.SetText("You must have visibility of the territory").SetColor(ERROR_COLOUR);
+        Game.HighlightTerritories({});
         return;
     end
 
-    TerritoryInstructionLabel.SetText("Selected territory: " .. territoryName).SetColor(TEXT_DEFAULT_COLOUR);
-
-    if (TerritoryBonusesVGroup ~= nil and not UI.IsDestroyed(TerritoryBonusesVGroup)) then
-        UI.Destroy(TerritoryBonusesVGroup);
-    end
-    TerritoryBonusesVGroup = UI.CreateVerticalLayoutGroup(TerritoryBonusesParent);
+    InstructionLabel.SetText("Selected territory: " .. territoryName).SetColor(TEXT_DEFAULT_COLOUR);
 
     local bonusIDs = Game.Map.Territories[territoryID].PartOfBonuses or {};
     if (#bonusIDs == 0) then
-        UI.CreateLabel(TerritoryBonusesVGroup).SetText("This territory isn't part of any bonus.").SetColor(TEXT_DEFAULT_COLOUR);
+        SetResultLine(1, "This territory isn't part of any bonus.", TEXT_DEFAULT_COLOUR);
+        Game.HighlightTerritories({});
         return;
     end
 
+    -- only highlight territories belonging to bonuses that are actually conscripted, deduplicated since a
+    -- territory can belong to more than one bonus
+    local highlightSet = {};
+    local lineIndex = 1;
     for _, bonusID in ipairs(bonusIDs) do
         local bonus = Game.Map.Bonuses[bonusID];
         if (bonus ~= nil) then
             local effectiveValue = GetEffectiveBonusValue(Game.Map, bonusID);
+            local text, color = FormatBonusLine(bonus, effectiveValue);
+            SetResultLine(lineIndex, text, color);
+            lineIndex = lineIndex + 1;
+
             if (effectiveValue < bonus.Amount) then
-                UI.CreateLabel(TerritoryBonusesVGroup).SetText(bonus.Name .. ": " .. effectiveValue .. "/" .. bonus.Amount .. " (conscripted)").SetColor(BUTTON_COLOURS.Orange);
-            else
-                UI.CreateLabel(TerritoryBonusesVGroup).SetText(bonus.Name .. ": " .. effectiveValue .. " (not conscripted)").SetColor(BUTTON_COLOURS.DarkGreen);
+                for _, terrID in ipairs(bonus.Territories) do
+                    highlightSet[terrID] = true;
+                end
             end
         end
     end
+
+    local highlightList = {};
+    for terrID, _ in pairs(highlightSet) do
+        table.insert(highlightList, terrID);
+    end
+    Game.HighlightTerritories(highlightList);
 end
