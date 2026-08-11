@@ -183,6 +183,7 @@ function BonusFromListClicked()
     end
 
     AbortPendingSelection();
+    ClearResultLines();
 
     local options = {};
     for bonusID, bonus in pairs(Game.Map.Bonuses) do
