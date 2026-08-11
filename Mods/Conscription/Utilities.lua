@@ -237,17 +237,25 @@ function GetConscriptionTierForPercent(percent)
 	return highest;
 end
 
---Returns the highest conscription tier Threshold currently present (with a count > 0) on a territory's
---structures table, or 0 if none of the 4 conscription structures are present.
-function GetAppliedConscriptionThreshold(structures)
-	local highestThreshold = 0;
+--Returns the highest conscription tier (from CONSCRIPTION_TIERS) currently present (with a count > 0) on a
+--territory's structures table, or nil if none of the conscription structures are present.
+function GetAppliedConscriptionTier(structures)
+	local highest = nil;
 	for _, tier in ipairs(CONSCRIPTION_TIERS) do
 		local structureID = WL.StructureType.Custom(tier.StructureName);
-		if (structures[structureID] ~= nil and structures[structureID] > 0 and tier.Threshold > highestThreshold) then
-			highestThreshold = tier.Threshold;
+		if (structures[structureID] ~= nil and structures[structureID] > 0 and (highest == nil or tier.Threshold > highest.Threshold)) then
+			highest = tier;
 		end
 	end
-	return highestThreshold;
+	return highest;
+end
+
+--Returns the highest conscription tier Threshold currently present (with a count > 0) on a territory's
+--structures table, or 0 if none of the conscription structures are present.
+function GetAppliedConscriptionThreshold(structures)
+	local tier = GetAppliedConscriptionTier(structures);
+	if (tier == nil) then return 0; end;
+	return tier.Threshold;
 end
 
 --Returns the (mutable, cached) structures table for a territory, seeded from LatestTurnStanding the first

@@ -97,7 +97,7 @@ function ResolvePendingConscriptions(game, addNewOrder)
                 if (game.Settings.CommerceGame) then
                     event.AddResourceOpt = { [item.PlayerID] = { [WL.ResourceType.Gold] = incomeGain } };
                 else
-                    event.IncomeMods = { WL.IncomeMod.Create(item.PlayerID, incomeGain, "Conscription", item.BonusID) };
+                    event.IncomeMods = { WL.IncomeMod.Create(item.PlayerID, incomeGain, "Conscription") };
                 end
 
                 addNewOrder(event);
@@ -137,11 +137,12 @@ function ApplyConscriptionStructuresForBonus(game, structuresByTerritory, territ
 
     for _, terrID in ipairs(bonus.Territories) do
         local structures = GetTerritoryStructures(game, structuresByTerritory, terrID);
-        local currentThreshold = GetAppliedConscriptionThreshold(structures);
+        local currentTier = GetAppliedConscriptionTier(structures);
+        local currentThreshold = (currentTier ~= nil) and currentTier.Threshold or 0;
 
         if (tier.Threshold > currentThreshold) then
-            for _, otherTier in ipairs(CONSCRIPTION_TIERS) do
-                structures[WL.StructureType.Custom(otherTier.StructureName)] = 0;
+            if (currentTier ~= nil) then
+                structures[WL.StructureType.Custom(currentTier.StructureName)] = 0;
             end
             structures[WL.StructureType.Custom(tier.StructureName)] = 1;
 
@@ -155,7 +156,10 @@ end
 ---Every turn, re-applies each previously-conscripted bonus's permanent value reduction as a negative income
 ---modifier for whoever currently fully owns it (ownership may have changed hands since it was conscripted).
 ---There is no engine API to permanently change a bonus's own Amount, so the reduction is instead re-asserted
----every turn via a scoped IncomeMod - this is the same "re-apply every turn" pattern MonitoredProduction uses.
+---every turn via an IncomeMod - this is the same "re-apply every turn" pattern MonitoredProduction uses.
+---Grouped into one order per player (rather than one per conscripted bonus) to avoid spamming the order log -
+---since the IncomeMod isn't scoped to a bonus, every bonus's reduction for a player can just be summed into a
+---single combined IncomeMod on one event.
 ---@param game GameServerHook
 ---@param addNewOrder fun(order: GameOrder)
 function ApplyPermanentBonusReductions(game, addNewOrder)
@@ -163,18 +167,22 @@ function ApplyPermanentBonusReductions(game, addNewOrder)
     if (reductions == nil) then return; end;
 
     local standing = game.ServerGame.LatestTurnStanding;
+    local totalByPlayer = {};
 
     for bonusID, reduction in pairs(reductions) do
         if (reduction > 0) then
             local ownerID = GetBonusSoleOwner(standing, game.Map, bonusID);
             if (ownerID ~= nil) then
-                local bonus = game.Map.Bonuses[bonusID];
-                local event = WL.GameOrderEvent.Create(ownerID, bonus.Name .. " income reduced due to Conscription", { ownerID }, {});
-                event.IncomeMods = { WL.IncomeMod.Create(ownerID, -reduction, "Conscription", bonusID) };
-                event.Icon = "IncomeLoss";
-                addNewOrder(event);
+                totalByPlayer[ownerID] = (totalByPlayer[ownerID] or 0) + reduction;
             end
         end
+    end
+
+    for playerID, total in pairs(totalByPlayer) do
+        local event = WL.GameOrderEvent.Create(playerID, "Income reduced by " .. total .. " due to Conscription", { playerID }, {});
+        event.IncomeMods = { WL.IncomeMod.Create(playerID, -total, "Conscription") };
+        event.Icon = "IncomeLoss";
+        addNewOrder(event);
     end
 end
 

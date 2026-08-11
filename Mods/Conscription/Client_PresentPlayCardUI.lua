@@ -14,6 +14,11 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
     SelectedBonusID = nil;
     SelectedBonusName = nil;
 
+    -- marks any bonus-click intercept from a previous instance of this dialog as stale - relying only on
+    -- UI.IsDestroyed(SelectFromMapBtn) isn't enough, since if this hook re-fires while a click is still pending,
+    -- the global gets reassigned to the new dialog's button before the stale click arrives, defeating that check
+    AwaitingBonusFromMap = false;
+
     --If this dialog is already open, close the previous one. This prevents two copies of it from being open at once which can cause errors due to only saving one instance of the selection buttons/labels
     if (Close ~= nil) then
         Close();
@@ -31,11 +36,13 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
         SelectFromMapBtn = UI.CreateButton(buttonsHGroup)
             .SetText("Select From Map")
             .SetOnClick(SelectFromMapClicked)
+            .SetColor(BUTTON_COLOURS.RoyalBlue)
             .SetFlexibleWidth(0.5);
 
         SelectFromListBtn = UI.CreateButton(buttonsHGroup)
             .SetText("Select From List")
             .SetOnClick(SelectFromListClicked)
+            .SetColor(BUTTON_COLOURS.Tan)
             .SetFlexibleWidth(0.5);
 
         SelectionInstructionLabel = UI.CreateLabel(vert).SetText("");
@@ -97,13 +104,13 @@ function SelectFromMapClicked()
     end
 
     Game.HighlightTerritories(GetEligibleBonusTerritoriesToHighlight());
-    SelectionInstructionLabel.SetText("Please click on a bonus you fully control.").SetColor(TEXT_DEFAULT_COLOUR);
+    SelectionInstructionLabel.SetText("Please click on a bonus you fully control. It must be the bonus's name/link, not just one of its territories.").SetColor(TEXT_DEFAULT_COLOUR);
     PreviewLabel.SetText("");
     BonusPreviewLabel.SetText("");
     SelectFromMapBtn.SetInteractable(false);
-    SelectFromListBtn.SetInteractable(false);
     PlayCardBtn.SetInteractable(false);
     UI.InterceptNextBonusLinkClick(BonusClickedFromMap);
+    AwaitingBonusFromMap = true;
 end
 
 function BonusClickedFromMap(bonusDetails)
@@ -111,8 +118,16 @@ function BonusClickedFromMap(bonusDetails)
         -- Dialog was destroyed, so we don't need to intercept the click anymore
         return WL.CancelClickIntercept;
     end
+
+    if (not AwaitingBonusFromMap) then
+        -- this intercept belongs to an earlier instance of this dialog that's since been replaced, or was
+        -- already abandoned via SelectFromListClicked - let the click through normally instead of acting on
+        -- stale/reassigned UI objects
+        return WL.CancelClickIntercept;
+    end
+    AwaitingBonusFromMap = false;
+
     SelectFromMapBtn.SetInteractable(true);
-    SelectFromListBtn.SetInteractable(true);
 
     if (bonusDetails == nil) then
         --The click request was cancelled. Return to our default state.
@@ -129,6 +144,13 @@ function SelectFromListClicked()
     if (UI.IsDestroyed(SelectFromListBtn)) then
         -- This dialog was already closed/replaced before this click was processed
         return;
+    end
+
+    if (AwaitingBonusFromMap) then
+        -- abandon the pending "Select From Map" intercept (e.g. the player couldn't get a bonus-link click to
+        -- register) so it becomes a harmless pass-through if it ever fires, and re-enable that button
+        AwaitingBonusFromMap = false;
+        SelectFromMapBtn.SetInteractable(true);
     end
 
     local options = {};
