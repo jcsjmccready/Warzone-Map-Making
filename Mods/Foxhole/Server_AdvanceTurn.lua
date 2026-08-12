@@ -6,7 +6,6 @@ RESOLVE_BOMB_PREFIX = "Foxhole|ResolveBomb|";
 ---@param game GameServerHook
 ---@param addNewOrder fun(order: GameOrder)
 function Server_AdvanceTurn_Start(game, addNewOrder)
-    MigrateModSettings();
     RemoveExpiredFoxholes(game, addNewOrder);
 end
 
@@ -20,8 +19,6 @@ end
 ---@param skipThisOrder fun(modOrderControl: EnumModOrderControl)
 ---@param addNewOrder fun(order: GameOrder)
 function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrder)
-    MigrateModSettings();
-
     if (order.proxyType == 'GameOrderPlayCardCustom' and startsWith(order.ModData, "Foxhole_")) then
         local targetTerritoryID = tonumber(string.sub(order.ModData, 9));
         BuildFoxhole(game, addNewOrder, order.PlayerID, targetTerritoryID, "Built a Foxhole", false);

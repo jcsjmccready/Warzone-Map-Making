@@ -48,7 +48,7 @@ function Client_SaveConfigureUI(alert, addCard)
 
         local foxholeCardID = addCard(
             "Foxhole Card",
-            "Play this card and select a territory you control to build a Foxhole there. Armies in a Foxhole take reduced damage from Bomb Cards.",
+            "Creates a Foxhole on a target friendly territory at the end of the turn. Armies in a Foxhole take reduced damage from Bomb Cards.",
             "FoxholeCard.png",
             Mod.Settings.FoxholeNumPieces,
             Mod.Settings.FoxholeMinPieces,

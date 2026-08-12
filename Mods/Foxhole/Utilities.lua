@@ -1,13 +1,4 @@
---bump this whenever Mod.Settings' shape changes in a way that requires reading older saved settings differently.
---Mod.Settings.Version being nil means the settings predate versioning - the original shape defined below.
---Existing games' saved settings are never migrated on disk, only ever read - so this permanent fallback must be
---called at the start of every hook that reads Mod.Settings, not just once.
 CURRENT_SETTINGS_VERSION = 1;
-
-function MigrateModSettings()
-    local version = Mod.Settings.Version or 1;
-    -- no migrations yet - this is the original settings shape
-end
 
 function startsWith(str, sub)
 	return string.sub(str, 1, string.len(sub)) == sub;
