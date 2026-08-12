@@ -45,16 +45,7 @@ end
 ---@param game GameServerHook
 ---@param addNewOrder fun(order: GameOrder)
 function Server_AdvanceTurn_End(game, addNewOrder)
-    local priv = Mod.PrivateGameData;
-    local queuedBuilds = priv.QueuedFoxholeBuilds;
-    if (queuedBuilds == nil or #queuedBuilds == 0) then return; end;
-
-    for _, build in ipairs(queuedBuilds) do
-        BuildFoxhole(game, addNewOrder, build.PlayerID, build.TargetTerritoryID, "Built a Foxhole", build.IsCommerce);
-    end
-
-    priv.QueuedFoxholeBuilds = nil;
-    Mod.PrivateGameData = priv;
+    BuildQueuedFoxholes(game, addNewOrder);
 end
 
 ---Queues a Foxhole build request to be resolved in Server_AdvanceTurn_End, once the rest of the turn's orders
@@ -64,68 +55,114 @@ end
 ---@param isCommerce boolean
 function QueueFoxholeBuild(playerID, targetTerritoryID, isCommerce)
     local priv = Mod.PrivateGameData;
-    local queuedBuilds = priv.QueuedFoxholeBuilds or {};
+    local pendingBuilds = priv.PendingFoxholeBuilds or {};
 
-    table.insert(queuedBuilds, {
+    table.insert(pendingBuilds, {
         PlayerID = playerID,
-        TargetTerritoryID = targetTerritoryID,
+        TerritoryID = targetTerritoryID,
         IsCommerce = isCommerce,
     });
 
-    priv.QueuedFoxholeBuilds = queuedBuilds;
+    priv.PendingFoxholeBuilds = pendingBuilds;
     Mod.PrivateGameData = priv;
 end
 
----Builds a Foxhole on targetTerritoryID for playerID, re-validating ownership (and, for Commerce, the
----max-per-player cap) server-side since the client can never be trusted to have enforced it. Called from
----Server_AdvanceTurn_End via QueueFoxholeBuild, so standing already reflects the whole turn's other orders.
+---Builds every Foxhole queued this turn, re-validating ownership (and, for Commerce, the max-per-player cap)
+---server-side since the client can never be trusted to have enforced it. Follows the same pending-build shape as
+---BarbedWire/DeadManSwitch's BuildStructures: split into still-owned vs no-longer-owned, then group the still-owned
+---ones by territory so multiple Foxholes queued on the same territory this turn stack into a single build (rather
+---than each being computed against the same pre-turn structure count and clobbering each other).
 ---@param game GameServerHook
 ---@param addNewOrder fun(order: GameOrder)
----@param playerID PlayerID
----@param targetTerritoryID TerritoryID
----@param message string
----@param isCommerce boolean
-function BuildFoxhole(game, addNewOrder, playerID, targetTerritoryID, message, isCommerce)
-    local standing = game.ServerGame.LatestTurnStanding;
-    local territory = standing.Territories[targetTerritoryID];
+function BuildQueuedFoxholes(game, addNewOrder)
     local structureID = WL.StructureType.Custom("Foxhole");
+    local priv = Mod.PrivateGameData;
+    local pending = priv.PendingFoxholeBuilds;
+    if (pending == nil) then return; end;
 
-    if (territory == nil or territory.OwnerPlayerID ~= playerID) then
-        local event = WL.GameOrderEvent.Create(playerID, "Unable to build Foxhole: you no longer control that territory", {}, {});
-        event.TerritoryAnnotationsOpt = { [targetTerritoryID] = WL.TerritoryAnnotation.Create("Unable to build Foxhole", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Red)) };
-        event.Icon = "BuildFailed";
-        addNewOrder(event);
-        return;
-    end
-
-    if (isCommerce) then
-        local maxAllowed = Mod.Settings.FoxholeMaxPerPlayer or 0;
-        if (CountPlayerFoxholes(standing, playerID, structureID) >= maxAllowed) then
-            local event = WL.GameOrderEvent.Create(playerID, "Unable to build Foxhole: you already own the maximum number of Foxholes", {}, {});
-            event.TerritoryAnnotationsOpt = { [targetTerritoryID] = WL.TerritoryAnnotation.Create("Unable to build Foxhole", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Red)) };
-            event.Icon = "BuildFailed";
-            addNewOrder(event);
-            return;
+    local remainingPending = {};
+    local removedPending = {};
+    for _, build in pairs(pending) do
+        local territory = game.ServerGame.LatestTurnStanding.Territories[build.TerritoryID];
+        if (territory == nil or territory.OwnerPlayerID ~= build.PlayerID) then
+            table.insert(removedPending, build);
+        else
+            table.insert(remainingPending, build);
         end
     end
 
-    local structures = {};
-    for key, value in pairs(territory.Structures or {}) do
-        structures[key] = value;
+    -- Enforce the Commerce max-per-player cap against a running total, since two Commerce builds queued by the
+    -- same player this turn would otherwise both be checked against the same pre-turn count.
+    local builtCountByPlayer = {};
+    local allowedPending = {};
+    local cappedPending = {};
+    for _, build in pairs(remainingPending) do
+        if (build.IsCommerce) then
+            local maxAllowed = Mod.Settings.FoxholeMaxPerPlayer or 0;
+            local existingCount = CountPlayerFoxholes(game.ServerGame.LatestTurnStanding, build.PlayerID, structureID);
+            local builtSoFar = builtCountByPlayer[build.PlayerID] or 0;
+            if (existingCount + builtSoFar >= maxAllowed) then
+                table.insert(cappedPending, build);
+            else
+                builtCountByPlayer[build.PlayerID] = builtSoFar + 1;
+                table.insert(allowedPending, build);
+            end
+        else
+            table.insert(allowedPending, build);
+        end
     end
-    structures[structureID] = (structures[structureID] or 0) + 1;
 
-    local territoryModification = WL.TerritoryModification.Create(targetTerritoryID);
-    territoryModification.SetStructuresOpt = structures;
+    for territoryID, buildGroup in pairs(groupBy(allowedPending, function(b) return b.TerritoryID; end)) do
+        local numToBuild = #buildGroup;
+        local territory = game.ServerGame.LatestTurnStanding.Territories[territoryID];
 
-    local event = WL.GameOrderEvent.Create(playerID, message, {}, { territoryModification });
-    event.TerritoryAnnotationsOpt = { [targetTerritoryID] = WL.TerritoryAnnotation.Create("Foxhole built", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Orange)) };
-    event.Icon = "Build";
-    addNewOrder(event);
+        local structures = {};
+        for key, value in pairs(territory.Structures or {}) do
+            structures[key] = value;
+        end
+        structures[structureID] = (structures[structureID] or 0) + numToBuild;
 
-    if (Mod.Settings.FoxholeHasDuration) then
-        TrackFoxholeDuration(game, targetTerritoryID);
+        local territoryModification = WL.TerritoryModification.Create(territoryID);
+        territoryModification.SetStructuresOpt = structures;
+
+        local build = first(buildGroup);
+        if (build ~= nil) then
+            local td = game.Map.Territories[territoryID];
+            local event = WL.GameOrderEvent.Create(build.PlayerID, "Built Foxhole(s) on " .. td.Name, {}, { territoryModification });
+            event.JumpToActionSpotOpt = WL.RectangleVM.Create(td.MiddlePointX, td.MiddlePointY, td.MiddlePointX, td.MiddlePointY);
+            event.TerritoryAnnotationsOpt = { [territoryID] = WL.TerritoryAnnotation.Create("Foxhole built", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Orange)) };
+            event.Icon = "Build";
+            addNewOrder(event);
+
+            if (Mod.Settings.FoxholeHasDuration) then
+                for _ = 1, numToBuild do
+                    TrackFoxholeDuration(game, territoryID);
+                end
+            end
+        end
     end
+
+    for _, build in pairs(cappedPending) do
+        local event = WL.GameOrderEvent.Create(build.PlayerID, "Unable to build Foxhole: you already own the maximum number of Foxholes", {}, {});
+        event.TerritoryAnnotationsOpt = { [build.TerritoryID] = WL.TerritoryAnnotation.Create("Unable to build Foxhole", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Red)) };
+        event.Icon = "BuildFailed";
+        addNewOrder(event);
+    end
+
+    for territoryID, buildGroup in pairs(groupBy(removedPending, function(b) return b.TerritoryID; end)) do
+        local build = first(buildGroup);
+        if (build ~= nil) then
+            local td = game.Map.Territories[territoryID];
+            local event = WL.GameOrderEvent.Create(build.PlayerID, "Unable to build Foxhole on " .. td.Name .. ": you no longer control that territory", {}, {});
+            event.JumpToActionSpotOpt = WL.RectangleVM.Create(td.MiddlePointX, td.MiddlePointY, td.MiddlePointX, td.MiddlePointY);
+            event.TerritoryAnnotationsOpt = { [territoryID] = WL.TerritoryAnnotation.Create("Unable to build Foxhole", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Red)) };
+            event.Icon = "BuildFailed";
+            addNewOrder(event);
+        end
+    end
+
+    priv.PendingFoxholeBuilds = nil;
+    Mod.PrivateGameData = priv;
 end
 
 ---Tracks a Foxhole's expiry turn in private mod data so Server_AdvanceTurn_Start can remove it once expired.
@@ -276,7 +313,7 @@ function ResolveBombAgainstFoxhole(game, addNewOrder, order)
         table.insert(territoryModifications, territoryModification);
 
         if (message ~= nil) then
-            message = message .. ", and the Foxhole was destroyed";
+            message = message .. ". The Foxhole was destroyed";
         else
             message = "Foxhole destroyed by Bomb";
         end

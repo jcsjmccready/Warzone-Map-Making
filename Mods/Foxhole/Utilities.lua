@@ -18,6 +18,29 @@ function startsWith(str, sub)
     return string.sub(str, 1, string.len(sub)) == sub;
 end
 
+function first(array, func)
+    for _, v in pairs(array) do
+        if (func == nil or func(v)) then
+            return v;
+        end
+    end
+    return nil;
+end
+
+function groupBy(tbl, funcToGetKey)
+    local ret = {};
+    for _, v in pairs(tbl) do
+        local key = funcToGetKey(v);
+        local group = ret[key];
+        if (group == nil) then
+            group = {};
+            ret[key] = group;
+        end
+        table.insert(group, v);
+    end
+    return ret;
+end
+
 function GetButtonColors()
     return {
         Blue = "#0000FF"; 
