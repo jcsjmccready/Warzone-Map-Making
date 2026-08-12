@@ -1,0 +1,4 @@
+This mod adds the Conscription Card. Play it and select a bonus you fully control. At the end of the turn, if you still own it, receive a one-time boost to your income and permanently reduce the value of the bonus.
+A bonus can eventually be fully conscripted down to nothing.
+Territories of a conscripted bonus will have structures added to them indicating to what extent they are conscripted.
+If a territory belongs to multiple conscripted bonuses, the most severe conscription indicator will be used.
