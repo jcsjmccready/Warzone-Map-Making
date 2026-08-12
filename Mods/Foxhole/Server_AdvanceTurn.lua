@@ -52,6 +52,7 @@ end
 function BuildFoxhole(game, addNewOrder, playerID, targetTerritoryID, message, isCommerce)
     local standing = game.ServerGame.LatestTurnStanding;
     local territory = standing.Territories[targetTerritoryID];
+    local structureID = WL.StructureType.Custom("Foxhole");
 
     if (territory == nil or territory.OwnerPlayerID ~= playerID) then
         local event = WL.GameOrderEvent.Create(playerID, "Unable to build Foxhole: you no longer control that territory", {}, {});
@@ -62,7 +63,7 @@ function BuildFoxhole(game, addNewOrder, playerID, targetTerritoryID, message, i
 
     if (isCommerce) then
         local maxAllowed = Mod.Settings.FoxholeMaxPerPlayer or 0;
-        if (CountPlayerFoxholes(standing, playerID) >= maxAllowed) then
+        if (CountPlayerFoxholes(standing, playerID, structureID) >= maxAllowed) then
             local event = WL.GameOrderEvent.Create(playerID, "Unable to build Foxhole: you already own the maximum number of Foxholes", {}, {});
             event.Icon = "BuildFailed";
             addNewOrder(event);
@@ -74,7 +75,7 @@ function BuildFoxhole(game, addNewOrder, playerID, targetTerritoryID, message, i
     for key, value in pairs(territory.Structures or {}) do
         structures[key] = value;
     end
-    structures[FOXHOLE_STRUCTURE_ID] = (structures[FOXHOLE_STRUCTURE_ID] or 0) + 1;
+    structures[structureID] = (structures[structureID] or 0) + 1;
 
     local territoryModification = WL.TerritoryModification.Create(targetTerritoryID);
     territoryModification.SetStructuresOpt = structures;
@@ -130,6 +131,7 @@ function RemoveExpiredFoxholes(game, addNewOrder)
     local priv = Mod.PrivateGameData;
     local activeFoxholes = priv.ActiveFoxholes;
     if (activeFoxholes == nil or #activeFoxholes == 0) then return; end;
+    local structureID = WL.StructureType.Custom("Foxhole");
 
     local standing = game.ServerGame.LatestTurnStanding;
     local remaining = {};
@@ -138,12 +140,12 @@ function RemoveExpiredFoxholes(game, addNewOrder)
     for _, entry in ipairs(activeFoxholes) do
         if (game.Game.TurnNumber > entry.FinalTurn) then
             local territory = standing.Territories[entry.TerritoryID];
-            if (territory ~= nil and territory.Structures ~= nil and (territory.Structures[FOXHOLE_STRUCTURE_ID] or 0) > 0) then
+            if (territory ~= nil and territory.Structures ~= nil and (territory.Structures[structureID] or 0) > 0) then
                 local structures = {};
                 for key, value in pairs(territory.Structures) do
                     structures[key] = value;
                 end
-                structures[FOXHOLE_STRUCTURE_ID] = structures[FOXHOLE_STRUCTURE_ID] - 1;
+                structures[structureID] = structures[structureID] - 1;
 
                 local territoryModification = WL.TerritoryModification.Create(entry.TerritoryID);
                 territoryModification.SetStructuresOpt = structures;
@@ -178,7 +180,9 @@ function HandleBombAgainstFoxhole(game, order, addNewOrder)
 
     local territory = game.ServerGame.LatestTurnStanding.Territories[order.TargetTerritoryID];
     if (territory == nil or territory.Structures == nil) then return; end;
-    if ((territory.Structures[FOXHOLE_STRUCTURE_ID] or 0) <= 0) then return; end;
+    
+    local structureID = WL.StructureType.Custom("Foxhole");
+    if ((territory.Structures[structureID] or 0) <= 0) then return; end;
 
     local armiesBefore = territory.NumArmies.NumArmies;
     local payload = RESOLVE_BOMB_PREFIX .. order.TargetTerritoryID .. "|" .. armiesBefore;
@@ -220,12 +224,13 @@ function ResolveBombAgainstFoxhole(game, addNewOrder, order)
         end
     end
 
-    if (Mod.Settings.FoxholeDestroyedOnBomb and territory.Structures ~= nil and (territory.Structures[FOXHOLE_STRUCTURE_ID] or 0) > 0) then
+    local structureID = WL.StructureType.Custom("Foxhole");
+    if (Mod.Settings.FoxholeDestroyedOnBomb and territory.Structures ~= nil and (territory.Structures[structureID] or 0) > 0) then
         local structures = {};
         for key, value in pairs(territory.Structures) do
             structures[key] = value;
         end
-        structures[FOXHOLE_STRUCTURE_ID] = structures[FOXHOLE_STRUCTURE_ID] - 1;
+        structures[structureID] = structures[structureID] - 1;
 
         local territoryModification = WL.TerritoryModification.Create(territoryID);
         territoryModification.SetStructuresOpt = structures;
@@ -241,7 +246,7 @@ function ResolveBombAgainstFoxhole(game, addNewOrder, order)
 
     if (#territoryModifications > 0) then
         local event = WL.GameOrderEvent.Create(WL.PlayerID.Neutral, message, {}, territoryModifications);
-        event.Icon = "Destroyed";
+        event.Icon = "Triggered";
         addNewOrder(event);
     end
 end

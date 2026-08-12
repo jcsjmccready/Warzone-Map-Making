@@ -3,7 +3,6 @@ require("Utilities");
 ---Client_PresentConfigureUI hook
 ---@param rootParent RootParent
 function Client_PresentConfigureUI(rootParent)
-    MigrateModSettings();
     Create_UI_Controls(rootParent);
 end;
 
@@ -12,7 +11,7 @@ function Create_UI_Controls(rootParent)
 
     ---- Acquiring type
     local acquiringTypeHeading = UI.CreateVerticalLayoutGroup(mainModUI);
-    UI.CreateLabel(acquiringTypeHeading).SetText('How are Foxholes acquired?').SetColor(SUBHEADING_COLOUR);
+    UI.CreateLabel(acquiringTypeHeading).SetText('Acquiry Type?').SetColor(SUBHEADING_COLOUR);
     local acquiringType = UI.CreateRadioButtonGroup(acquiringTypeHeading);
 
     local acquiringSubOptionsParent = UI.CreateVerticalLayoutGroup(mainModUI);
@@ -103,7 +102,7 @@ end
 function Create_Card_SubOptions_UI(rootParent)
     acquiringSubOptionsVGroup = UI.CreateVerticalLayoutGroup(rootParent);
 
-    UI.CreateLabel(acquiringSubOptionsVGroup).SetText('Card Settings:').SetColor(BUTTON_COLOURS.LightBlue);
+    UI.CreateLabel(acquiringSubOptionsVGroup).SetText('Card Settings:').SetColor(SUBHEADING_COLOUR);
 
     local horz = UI.CreateHorizontalLayoutGroup(acquiringSubOptionsVGroup);
     UI.CreateLabel(horz).SetText('Number of pieces to divide the card into').SetPreferredWidth(290);
@@ -138,17 +137,17 @@ end
 function Create_Commerce_SubOptions_UI(rootParent)
     acquiringSubOptionsVGroup = UI.CreateVerticalLayoutGroup(rootParent);
 
-    UI.CreateLabel(acquiringSubOptionsVGroup).SetText('Commerce Settings:').SetColor(BUTTON_COLOURS.LightBlue);
+    UI.CreateLabel(acquiringSubOptionsVGroup).SetText('Commerce Settings:').SetColor(SUBHEADING_COLOUR);
 
     local horz = UI.CreateHorizontalLayoutGroup(acquiringSubOptionsVGroup);
-    UI.CreateLabel(horz).SetText('Cost of a Foxhole (gold)').SetPreferredWidth(290);
+    UI.CreateLabel(horz).SetText('Cost of a Foxhole').SetPreferredWidth(290);
     foxholeCost = UI.CreateNumberInputField(horz)
         .SetSliderMinValue(0)
         .SetSliderMaxValue(50)
         .SetValue(Mod.Settings.FoxholeCost or 5);
 
     local horz = UI.CreateHorizontalLayoutGroup(acquiringSubOptionsVGroup);
-    UI.CreateLabel(horz).SetText('Maximum Foxholes a player can own at once').SetPreferredWidth(290);
+    UI.CreateLabel(horz).SetText('Maximum number of Foxholes a player can own at once').SetPreferredWidth(290);
     foxholeMaxPerPlayer = UI.CreateNumberInputField(horz)
         .SetSliderMinValue(1)
         .SetSliderMaxValue(20)
