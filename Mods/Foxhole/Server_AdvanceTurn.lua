@@ -181,26 +181,38 @@ function TrackFoxholeDuration(game, territoryID)
     Mod.PrivateGameData = priv;
 end
 
----Removes the tracked entry for territoryID, if any - used when a Foxhole is destroyed by a Bomb before its
----duration naturally expired, so RemoveExpiredFoxholes doesn't try to remove it a second time later.
+---Removes the single tracked entry for territoryID closest to expiry (i.e. the oldest Foxhole there), if any -
+---used when a Bomb destroys one Foxhole on a territory that may have several stacked. Only ever removes one entry:
+---a Bomb only ever destroys one Foxhole (see the "- 1" in ResolveBombAgainstFoxhole), so if multiple are tracked
+---for this territory, removing all of them would desync the tracking from the actual structure count, leaving the
+---remaining Foxhole(s) untracked and never expiring.
 ---@param territoryID TerritoryID
 function UntrackFoxholeDuration(territoryID)
     local priv = Mod.PrivateGameData;
     local activeFoxholes = priv.ActiveFoxholes;
     if (activeFoxholes == nil) then return; end;
 
-    local remaining = {};
-    for _, entry in ipairs(activeFoxholes) do
-        if (entry.TerritoryID ~= territoryID) then
-            table.insert(remaining, entry);
+    local oldestIndex = nil;
+    for i, entry in ipairs(activeFoxholes) do
+        if (entry.TerritoryID == territoryID) then
+            if (oldestIndex == nil or entry.FinalTurn < activeFoxholes[oldestIndex].FinalTurn) then
+                oldestIndex = i;
+            end
         end
     end
 
-    priv.ActiveFoxholes = remaining;
-    Mod.PrivateGameData = priv;
+    if (oldestIndex ~= nil) then
+        table.remove(activeFoxholes, oldestIndex);
+        priv.ActiveFoxholes = activeFoxholes;
+        Mod.PrivateGameData = priv;
+    end
 end
 
----Removes every tracked Foxhole whose duration has expired as of the end of this turn.
+---Removes every tracked Foxhole whose duration has expired as of the end of this turn. Expired entries are
+---grouped by territory (like BuildQueuedFoxholes) rather than decremented one at a time against
+---LatestTurnStanding, since that snapshot isn't refreshed between iterations of a single hook call - if two
+---Foxholes on the same territory expired the same turn, decrementing individually would compute both from the
+---same starting count and only actually remove one.
 ---@param game GameServerHook
 ---@param addNewOrder fun(order: GameOrder)
 function RemoveExpiredFoxholes(game, addNewOrder)
@@ -211,24 +223,29 @@ function RemoveExpiredFoxholes(game, addNewOrder)
 
     local standing = game.ServerGame.LatestTurnStanding;
     local remaining = {};
-    local territoryModifications = {};
+    local expired = {};
 
     for _, entry in ipairs(activeFoxholes) do
         if (game.Game.TurnNumber >= entry.FinalTurn) then
-            local territory = standing.Territories[entry.TerritoryID];
-            if (territory ~= nil and territory.Structures ~= nil and (territory.Structures[structureID] or 0) > 0) then
-                local structures = {};
-                for key, value in pairs(territory.Structures) do
-                    structures[key] = value;
-                end
-                structures[structureID] = structures[structureID] - 1;
-
-                local territoryModification = WL.TerritoryModification.Create(entry.TerritoryID);
-                territoryModification.SetStructuresOpt = structures;
-                table.insert(territoryModifications, territoryModification);
-            end
+            table.insert(expired, entry);
         else
             table.insert(remaining, entry);
+        end
+    end
+
+    local territoryModifications = {};
+    for territoryID, expiredGroup in pairs(groupBy(expired, function(e) return e.TerritoryID; end)) do
+        local territory = standing.Territories[territoryID];
+        if (territory ~= nil and territory.Structures ~= nil and (territory.Structures[structureID] or 0) > 0) then
+            local structures = {};
+            for key, value in pairs(territory.Structures) do
+                structures[key] = value;
+            end
+            structures[structureID] = math.max(0, structures[structureID] - #expiredGroup);
+
+            local territoryModification = WL.TerritoryModification.Create(territoryID);
+            territoryModification.SetStructuresOpt = structures;
+            table.insert(territoryModifications, territoryModification);
         end
     end
 
@@ -315,7 +332,7 @@ function ResolveBombAgainstFoxhole(game, addNewOrder, order)
         if (message ~= nil) then
             message = message .. ". The Foxhole was destroyed";
         else
-            message = "Foxhole destroyed by Bomb";
+            message = "The Foxhole was destroyed.";
         end
         UntrackFoxholeDuration(territoryID);
     end

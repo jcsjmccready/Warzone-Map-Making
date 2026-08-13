@@ -5,4 +5,8 @@ function Client_CreateGame(settings, alert)
     if (settings.Cards == nil or settings.Cards[WL.CardID.Bomb] == nil) then
         alert("The Bomb card must be enabled for this mod to work.");
     end
+
+    if (Mod.Settings.IsAcquiringTypeCard ~= nil and not Mod.Settings.IsAcquiringTypeCard and not settings.CommerceGame) then
+        alert("Foxhole is set to be acquired via Commerce, but this game is not a Commerce game.");
+    end
 end
