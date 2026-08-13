@@ -2,13 +2,6 @@ require("Utilities");
 
 RESOLVE_BOMB_PREFIX = "Foxhole|ResolveBomb|";
 
----Server_AdvanceTurn_Start hook. Removes any Foxhole whose tracked duration has expired going into this turn.
----@param game GameServerHook
----@param addNewOrder fun(order: GameOrder)
-function Server_AdvanceTurn_Start(game, addNewOrder)
-    RemoveExpiredFoxholes(game, addNewOrder);
-end
-
 ---Server_AdvanceTurn_Order hook. Handles three unrelated things that all route through this same hook:
 ---1) Building a Foxhole from the Foxhole Card (GameOrderPlayCardCustom, "Foxhole_<territoryID>")
 ---2) Building a Foxhole from a Commerce purchase (GameOrderCustom, "Foxhole_<territoryID>")
@@ -39,12 +32,17 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
     HandleBombAgainstFoxhole(game, order, addNewOrder);
 end
 
----Server_AdvanceTurn_End hook. Builds every Foxhole queued this turn (via QueueFoxholeBuild) now that all of the
----turn's other orders - attacks, transfers, etc - have already resolved, so ownership is checked against the
----territory's final state for the turn rather than its state at the moment the order was submitted.
+---Server_AdvanceTurn_End hook. Removes any Foxhole whose tracked duration has expired as of this turn, then builds
+---every Foxhole queued this turn (via QueueFoxholeBuild) now that all of the turn's other orders - attacks,
+---transfers, etc - have already resolved, so ownership is checked against the territory's final state for the turn
+---rather than its state at the moment the order was submitted. Both expiry and building happen here (rather than
+---expiry at Server_AdvanceTurn_Start) because Foxholes are built at end of turn - a 1-turn duration should span
+---from the end of the turn it's built to the end of the next, giving it exactly one Start-of-turn where it can be
+---bombed before it's removed. Expiring at Start would remove it before that turn's Bomb orders ever ran.
 ---@param game GameServerHook
 ---@param addNewOrder fun(order: GameOrder)
 function Server_AdvanceTurn_End(game, addNewOrder)
+    RemoveExpiredFoxholes(game, addNewOrder);
     BuildQueuedFoxholes(game, addNewOrder);
 end
 
@@ -130,7 +128,7 @@ function BuildQueuedFoxholes(game, addNewOrder)
             local td = game.Map.Territories[territoryID];
             local event = WL.GameOrderEvent.Create(build.PlayerID, "Built Foxhole(s) on " .. td.Name, {}, { territoryModification });
             event.JumpToActionSpotOpt = WL.RectangleVM.Create(td.MiddlePointX, td.MiddlePointY, td.MiddlePointX, td.MiddlePointY);
-            event.TerritoryAnnotationsOpt = { [territoryID] = WL.TerritoryAnnotation.Create("Foxhole built", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Orange)) };
+            event.TerritoryAnnotationsOpt = { [territoryID] = WL.TerritoryAnnotation.Create("Foxhole(s) built", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Cinnamon)) };
             event.Icon = "Build";
             addNewOrder(event);
 
@@ -143,8 +141,8 @@ function BuildQueuedFoxholes(game, addNewOrder)
     end
 
     for _, build in pairs(cappedPending) do
-        local event = WL.GameOrderEvent.Create(build.PlayerID, "Unable to build Foxhole: you already own the maximum number of Foxholes", {}, {});
-        event.TerritoryAnnotationsOpt = { [build.TerritoryID] = WL.TerritoryAnnotation.Create("Unable to build Foxhole", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Red)) };
+        local event = WL.GameOrderEvent.Create(build.PlayerID, "Unable to build Foxhole(s): you already own the maximum number of Foxholes", {}, {});
+        event.TerritoryAnnotationsOpt = { [build.TerritoryID] = WL.TerritoryAnnotation.Create("Unable to build Foxhole(s)", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Red)) };
         event.Icon = "BuildFailed";
         addNewOrder(event);
     end
@@ -153,9 +151,9 @@ function BuildQueuedFoxholes(game, addNewOrder)
         local build = first(buildGroup);
         if (build ~= nil) then
             local td = game.Map.Territories[territoryID];
-            local event = WL.GameOrderEvent.Create(build.PlayerID, "Unable to build Foxhole on " .. td.Name .. ": you no longer control that territory", {}, {});
+            local event = WL.GameOrderEvent.Create(build.PlayerID, "Unable to build Foxhole(s) on " .. td.Name .. ": you no longer control that territory", {}, {});
             event.JumpToActionSpotOpt = WL.RectangleVM.Create(td.MiddlePointX, td.MiddlePointY, td.MiddlePointX, td.MiddlePointY);
-            event.TerritoryAnnotationsOpt = { [territoryID] = WL.TerritoryAnnotation.Create("Unable to build Foxhole", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Red)) };
+            event.TerritoryAnnotationsOpt = { [territoryID] = WL.TerritoryAnnotation.Create("Unable to build Foxhole(s)", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Red)) };
             event.Icon = "BuildFailed";
             addNewOrder(event);
         end
@@ -165,7 +163,9 @@ function BuildQueuedFoxholes(game, addNewOrder)
     Mod.PrivateGameData = priv;
 end
 
----Tracks a Foxhole's expiry turn in private mod data so Server_AdvanceTurn_Start can remove it once expired.
+---Tracks a Foxhole's expiry turn in private mod data so RemoveExpiredFoxholes can remove it once expired. The
+---Foxhole is built at the end of this turn, so a duration of 1 should span to the end of next turn - the turn
+---after this one is its one chance to be bombed - hence no "- 1" here (contrast the old Start-of-turn expiry).
 ---@param game GameServerHook
 ---@param territoryID TerritoryID
 function TrackFoxholeDuration(game, territoryID)
@@ -174,7 +174,7 @@ function TrackFoxholeDuration(game, territoryID)
 
     table.insert(activeFoxholes, {
         TerritoryID = territoryID,
-        FinalTurn = game.Game.TurnNumber + (Mod.Settings.FoxholeDurationTurns or 1) - 1,
+        FinalTurn = game.Game.TurnNumber + (Mod.Settings.FoxholeDurationTurns or 1),
     });
 
     priv.ActiveFoxholes = activeFoxholes;
@@ -200,7 +200,7 @@ function UntrackFoxholeDuration(territoryID)
     Mod.PrivateGameData = priv;
 end
 
----Removes every tracked Foxhole whose duration has expired as of this turn.
+---Removes every tracked Foxhole whose duration has expired as of the end of this turn.
 ---@param game GameServerHook
 ---@param addNewOrder fun(order: GameOrder)
 function RemoveExpiredFoxholes(game, addNewOrder)
@@ -214,7 +214,7 @@ function RemoveExpiredFoxholes(game, addNewOrder)
     local territoryModifications = {};
 
     for _, entry in ipairs(activeFoxholes) do
-        if (game.Game.TurnNumber > entry.FinalTurn) then
+        if (game.Game.TurnNumber >= entry.FinalTurn) then
             local territory = standing.Territories[entry.TerritoryID];
             if (territory ~= nil and territory.Structures ~= nil and (territory.Structures[structureID] or 0) > 0) then
                 local structures = {};
@@ -233,7 +233,7 @@ function RemoveExpiredFoxholes(game, addNewOrder)
     end
 
     if (#territoryModifications > 0) then
-        local event = WL.GameOrderEvent.Create(WL.PlayerID.Neutral, "Foxhole duration expired", {}, territoryModifications);
+        local event = WL.GameOrderEvent.Create(WL.PlayerID.Neutral, "Foxhole(s) duration expired", {}, territoryModifications);
         event.Icon = "Destroyed";
         addNewOrder(event);
     end
