@@ -3,8 +3,6 @@ require('Utilities')
 ---Client_PresentSettingsUI hook
 ---@param rootParent RootParent
 function Client_PresentSettingsUI(rootParent)
-    MigrateModSettings();
-
     local descriptionVGroup = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
     UI.CreateLabel(descriptionVGroup).SetText("This mod adds Bomb Shelter structures. Armies in a territory with a Bomb Shelter take reduced damage from Bomb Cards.");
 

@@ -46,6 +46,19 @@ function Client_SaveConfigureUI(alert, addCard)
             return;
         end
 
+        -- If the Bomb Shelter itself has a limited duration, feed that same duration into the played card so it
+        -- shows up as an active card (with remaining turns) for players to check, rather than looking like a
+        -- one-shot order once played. EndOfTurn matches when RemoveExpiredBombShelters actually removes the
+        -- structure, so the active card disappears the same turn the Bomb Shelter does.
+        -- Skip this when BombShelterDestroyedOnBomb is also on, though: a Bomb can then destroy the Bomb Shelter
+        -- (and its tracked duration) well before the card's own duration is up, and there's no API to force an
+        -- active card to wear off early - it would keep showing a stale countdown for a structure that's already
+        -- gone. Better to not claim a duration on the card at all than show one that can go wrong.
+        local cardDuration = nil;
+        if (Mod.Settings.BombShelterHasDuration and not Mod.Settings.BombShelterDestroyedOnBomb) then
+            cardDuration = Mod.Settings.BombShelterDurationTurns;
+        end
+
         local bombShelterCardID = addCard(
             "Bomb Shelter Card",
             "Creates a Bomb Shelter on a target friendly territory at the end of the turn. Armies in a Bomb Shelter take reduced damage from Bomb Cards.",
@@ -53,7 +66,9 @@ function Client_SaveConfigureUI(alert, addCard)
             Mod.Settings.BombShelterNumPieces,
             Mod.Settings.BombShelterMinPieces,
             Mod.Settings.BombShelterInitialPieces,
-            Mod.Settings.BombShelterCardWeight);
+            Mod.Settings.BombShelterCardWeight,
+            cardDuration,
+            WL.ActiveCardExpireBehaviorOptions.EndOfTurn);
 
         Mod.Settings.BombShelterCardID = bombShelterCardID;
     else

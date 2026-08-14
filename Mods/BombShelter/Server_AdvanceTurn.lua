@@ -129,13 +129,13 @@ function BuildQueuedBombShelters(game, addNewOrder)
             local td = game.Map.Territories[territoryID];
             local event = WL.GameOrderEvent.Create(build.PlayerID, "Built Bomb Shelter(s) on " .. td.Name, {}, { territoryModification });
             event.JumpToActionSpotOpt = WL.RectangleVM.Create(td.MiddlePointX, td.MiddlePointY, td.MiddlePointX, td.MiddlePointY);
-            event.TerritoryAnnotationsOpt = { [territoryID] = WL.TerritoryAnnotation.Create("Bomb Shelter(s) built", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Cinnamon)) };
+            event.TerritoryAnnotationsOpt = { [territoryID] = WL.TerritoryAnnotation.Create("Bomb Shelter(s) built", 8, GetColourIntegerFromHex(BUTTON_COLOURS.DarkGreen)) };
             event.Icon = "Build";
             addNewOrder(event);
 
             if (Mod.Settings.BombShelterHasDuration) then
                 for _ = 1, numToBuild do
-                    TrackBombShelterDuration(game, territoryID);
+                    TrackBombShelterDuration(game, territoryID, build.PlayerID);
                 end
             end
         end
@@ -160,22 +160,31 @@ function BuildQueuedBombShelters(game, addNewOrder)
         end
     end
 
-    priv.PendingBombShelterBuilds = nil;
-    Mod.PrivateGameData = priv;
+    -- Re-fetch rather than reuse the `priv` captured at the top of this function: TrackBombShelterDuration
+    -- (called above, inside the build loop) does its own independent PrivateGameData read-modify-write to add
+    -- ActiveBombShelters entries. Writing back the stale top-of-function `priv` here would silently overwrite
+    -- the whole PrivateGameData table with a snapshot from before those entries existed, erasing them.
+    local finalPriv = Mod.PrivateGameData;
+    finalPriv.PendingBombShelterBuilds = nil;
+    Mod.PrivateGameData = finalPriv;
 end
 
 ---Tracks a Bomb Shelter's expiry turn in private mod data so RemoveExpiredBombShelters can remove it once expired.
 ---The Bomb Shelter is built at the end of this turn, so a duration of 1 should span to the end of next turn - the
 ---turn after this one is its one chance to be bombed - hence no "- 1" here (contrast the old Start-of-turn expiry).
+---PlayerID is the player who played the card/purchased the Commerce build, recorded so RemoveExpiredBombShelters
+---can later notify them specifically (in addition to whoever owns the territory at expiry time).
 ---@param game GameServerHook
 ---@param territoryID TerritoryID
-function TrackBombShelterDuration(game, territoryID)
+---@param playerID PlayerID
+function TrackBombShelterDuration(game, territoryID, playerID)
     local priv = Mod.PrivateGameData;
     local activeBombShelters = priv.ActiveBombShelters or {};
 
     table.insert(activeBombShelters, {
         TerritoryID = territoryID,
         FinalTurn = game.Game.TurnNumber + (Mod.Settings.BombShelterDurationTurns or 1),
+        PlayerID = playerID,
     });
 
     priv.ActiveBombShelters = activeBombShelters;
@@ -209,11 +218,16 @@ function UntrackBombShelterDuration(territoryID)
     end
 end
 
----Removes every tracked Bomb Shelter whose duration has expired as of the end of this turn. Expired entries are
----grouped by territory (like BuildQueuedBombShelters) rather than decremented one at a time against
----LatestTurnStanding, since that snapshot isn't refreshed between iterations of a single hook call - if two
----Bomb Shelters on the same territory expired the same turn, decrementing individually would compute both from the
----same starting count and only actually remove one.
+---Removes every tracked Bomb Shelter whose duration has expired as of the end of this turn. The final structure
+---count for each affected territory is computed once, grouped by territory (like BuildQueuedBombShelters) rather
+---than decremented one at a time against LatestTurnStanding, since that snapshot isn't refreshed between
+---iterations of a single hook call - if two Bomb Shelters on the same territory expired the same turn, decrementing
+---individually would compute both from the same starting count and only actually remove one.
+---A separate GameOrderEvent is then created per expired Bomb Shelter (rather than one global broadcast message),
+---visible only to the current territory owner and whichever player originally built that Bomb Shelter, each with
+---its own annotation. Since SetStructuresOpt is an absolute assignment rather than a relative delta, re-applying
+---the same already-computed final structures table via each of a territory's separate events is safe/idempotent -
+---there's no risk of double-decrementing by attaching the same final count to multiple events.
 ---@param game GameServerHook
 ---@param addNewOrder fun(order: GameOrder)
 function RemoveExpiredBombShelters(game, addNewOrder)
@@ -234,26 +248,34 @@ function RemoveExpiredBombShelters(game, addNewOrder)
         end
     end
 
-    local territoryModifications = {};
     for territoryID, expiredGroup in pairs(groupBy(expired, function(e) return e.TerritoryID; end)) do
         local territory = standing.Territories[territoryID];
         if (territory ~= nil and territory.Structures ~= nil and (territory.Structures[structureID] or 0) > 0) then
-            local structures = {};
+            local finalStructures = {};
             for key, value in pairs(territory.Structures) do
-                structures[key] = value;
+                finalStructures[key] = value;
             end
-            structures[structureID] = math.max(0, structures[structureID] - #expiredGroup);
+            finalStructures[structureID] = math.max(0, finalStructures[structureID] - #expiredGroup);
 
-            local territoryModification = WL.TerritoryModification.Create(territoryID);
-            territoryModification.SetStructuresOpt = structures;
-            table.insert(territoryModifications, territoryModification);
+            local td = game.Map.Territories[territoryID];
+            local currentOwnerPlayerID = territory.OwnerPlayerID;
+
+            for _, entry in ipairs(expiredGroup) do
+                local visibleTo = { currentOwnerPlayerID };
+                if (entry.PlayerID ~= currentOwnerPlayerID) then
+                    table.insert(visibleTo, entry.PlayerID);
+                end
+
+                local territoryModification = WL.TerritoryModification.Create(territoryID);
+                territoryModification.SetStructuresOpt = finalStructures;
+
+                local event = WL.GameOrderEvent.Create(WL.PlayerID.Neutral, "Bomb Shelter on " .. td.Name .. " expired", visibleTo, { territoryModification });
+                event.JumpToActionSpotOpt = WL.RectangleVM.Create(td.MiddlePointX, td.MiddlePointY, td.MiddlePointX, td.MiddlePointY);
+                event.TerritoryAnnotationsOpt = { [territoryID] = WL.TerritoryAnnotation.Create("Bomb Shelter expired", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Red)) };
+                event.Icon = "Destroyed";
+                addNewOrder(event);
+            end
         end
-    end
-
-    if (#territoryModifications > 0) then
-        local event = WL.GameOrderEvent.Create(WL.PlayerID.Neutral, "Bomb Shelter(s) duration expired", {}, territoryModifications);
-        event.Icon = "Destroyed";
-        addNewOrder(event);
     end
 
     priv.ActiveBombShelters = remaining;
