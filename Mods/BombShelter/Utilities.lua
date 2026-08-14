@@ -1,10 +1,10 @@
 CURRENT_SETTINGS_VERSION = 1;
 
---Returns the number of Foxhole structures a player currently owns across the whole map.
+--Returns the number of Bomb Shelter structures a player currently owns across the whole map.
 ---@param standing GameStanding
 ---@param playerID PlayerID
 ---@param structureID string
-function CountPlayerFoxholes(standing, playerID, structureID)
+function CountPlayerBombShelters(standing, playerID, structureID)
     local count = 0;
     for _, territory in pairs(standing.Territories) do
         if (territory.OwnerPlayerID == playerID and territory.Structures ~= nil) then

@@ -6,7 +6,7 @@ require('Utilities')
 ---@param playCard fun(orderListMessage: string, modData: string, turnPhase: EnumTurnPhase, annotations: table<TerritoryID, TerritoryAnnotation>, viewSpot: RectangleVM) # Function that when invoked, will make the player play the card
 ---@param closeCardsDialog fun() # Function that when invoked will close this cards dialog
 function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog)
-    if (cardInstance.CardID ~= Mod.Settings.FoxholeCardID) then
+    if (cardInstance.CardID ~= Mod.Settings.BombShelterCardID) then
         return;
     end
 
@@ -35,7 +35,7 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
         TargetTerritoryInstructionLabel = UI.CreateLabel(vert).SetText("");
 
         PlayCardBtn = UI.CreateButton(buttonsHGroup)
-            .SetText("Build Foxhole")
+            .SetText("Build Bomb Shelter")
             .SetInteractable(false)
             .SetColor(BUTTON_COLOURS.DarkGreen)
             .SetFlexibleWidth(0.7)
@@ -49,7 +49,7 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
                 local td = game.Map.Territories[TargetTerritoryID];
                 local jumpToSpot = WL.RectangleVM.Create(td.MiddlePointX, td.MiddlePointY, td.MiddlePointX, td.MiddlePointY);
 
-                if (playCard("Build a Foxhole on " .. TargetTerritoryName, "Foxhole_" .. TargetTerritoryID, WL.TurnPhase.Attacks, {}, jumpToSpot)) then
+                if (playCard("Build a Bomb Shelter on " .. TargetTerritoryName, "BombShelter_" .. TargetTerritoryID, WL.TurnPhase.Attacks, {}, jumpToSpot)) then
                     Game.HighlightTerritories({});
                     close();
                 end
@@ -60,7 +60,7 @@ end
 function TargetTerritoryClicked()
     Game.HighlightTerritories({}); --clear any territories highlighted from a previous failed territory selection
     UI.InterceptNextTerritoryClick(TerritoryClicked);
-    TargetTerritoryInstructionLabel.SetText("Please click on the territory you wish to build the Foxhole on.").SetColor(TEXT_DEFAULT_COLOUR);
+    TargetTerritoryInstructionLabel.SetText("Please click on the territory you wish to build the Bomb Shelter on.").SetColor(TEXT_DEFAULT_COLOUR);
     TargetTerritoryBtn.SetInteractable(false);
     PlayCardBtn.SetInteractable(false);
 end

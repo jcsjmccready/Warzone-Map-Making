@@ -7,6 +7,6 @@ function Client_CreateGame(settings, alert)
     end
 
     if (Mod.Settings.IsAcquiringTypeCard ~= nil and not Mod.Settings.IsAcquiringTypeCard and not settings.CommerceGame) then
-        alert("Foxhole is set to be acquired via Commerce, but this game is not a Commerce game.");
+        alert("Bomb Shelter is set to be acquired via Commerce, but this game is not a Commerce game.");
     end
 end
