@@ -3,9 +3,6 @@ require("Utilities");
 RESOLVE_BOMB_PREFIX = "BombShelter|ResolveBomb|";
 
 ---Server_AdvanceTurn_Order hook. Handles three unrelated things that all route through this same hook:
----1) Building a Bomb Shelter from the Bomb Shelter Card (GameOrderPlayCardCustom, "BombShelter_<territoryID>")
----2) Building a Bomb Shelter from a Commerce purchase (GameOrderCustom, "BombShelter_<territoryID>")
----3) Reducing Bomb Card damage against a Bomb Shelter - see HandleBombAgainstBombShelter for why this is a 2-step chain
 ---@param game GameServerHook
 ---@param order GameOrder
 ---@param result GameOrderResult
@@ -32,14 +29,6 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
     HandleBombAgainstBombShelter(game, order, addNewOrder);
 end
 
----Server_AdvanceTurn_End hook. Removes any Bomb Shelter whose tracked duration has expired as of this turn, then
----builds every Bomb Shelter queued this turn (via QueueBombShelterBuild) now that all of the turn's other orders -
----attacks, transfers, etc - have already resolved, so ownership is checked against the territory's final state for
----the turn rather than its state at the moment the order was submitted. Both expiry and building happen here
----(rather than expiry at Server_AdvanceTurn_Start) because Bomb Shelters are built at end of turn - a 1-turn
----duration should span from the end of the turn it's built to the end of the next, giving it exactly one
----Start-of-turn where it can be bombed before it's removed. Expiring at Start would remove it before that turn's
----Bomb orders ever ran.
 ---@param game GameServerHook
 ---@param addNewOrder fun(order: GameOrder)
 function Server_AdvanceTurn_End(game, addNewOrder)
@@ -47,7 +36,6 @@ function Server_AdvanceTurn_End(game, addNewOrder)
     BuildQueuedBombShelters(game, addNewOrder);
 end
 
----Queues a Bomb Shelter build request to be resolved in Server_AdvanceTurn_End, once the rest of the turn's orders
 ---have played out.
 ---@param playerID PlayerID
 ---@param targetTerritoryID TerritoryID
@@ -67,10 +55,7 @@ function QueueBombShelterBuild(playerID, targetTerritoryID, isCommerce)
 end
 
 ---Builds every Bomb Shelter queued this turn, re-validating ownership (and, for Commerce, the max-per-player cap)
----server-side since the client can never be trusted to have enforced it. Follows the same pending-build shape as
----BarbedWire/DeadManSwitch's BuildStructures: split into still-owned vs no-longer-owned, then group the still-owned
----ones by territory so multiple Bomb Shelters queued on the same territory this turn stack into a single build
----(rather than each being computed against the same pre-turn structure count and clobbering each other).
+---server-side since the client can never be trusted to have enforced it.
 ---@param game GameServerHook
 ---@param addNewOrder fun(order: GameOrder)
 function BuildQueuedBombShelters(game, addNewOrder)
@@ -111,6 +96,7 @@ function BuildQueuedBombShelters(game, addNewOrder)
         end
     end
 
+    -- success build logic
     for territoryID, buildGroup in pairs(groupBy(allowedPending, function(b) return b.TerritoryID; end)) do
         local numToBuild = #buildGroup;
         local territory = game.ServerGame.LatestTurnStanding.Territories[territoryID];
@@ -141,6 +127,7 @@ function BuildQueuedBombShelters(game, addNewOrder)
         end
     end
 
+    -- limit hit logic
     for _, build in pairs(cappedPending) do
         local event = WL.GameOrderEvent.Create(build.PlayerID, "Unable to build Bomb Shelter(s): you already own the maximum number of Bomb Shelters", {}, {});
         event.TerritoryAnnotationsOpt = { [build.TerritoryID] = WL.TerritoryAnnotation.Create("Unable to build Bomb Shelter(s)", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Red)) };
@@ -148,6 +135,7 @@ function BuildQueuedBombShelters(game, addNewOrder)
         addNewOrder(event);
     end
 
+    -- ownership lost logic
     for territoryID, buildGroup in pairs(groupBy(removedPending, function(b) return b.TerritoryID; end)) do
         local build = first(buildGroup);
         if (build ~= nil) then
@@ -160,20 +148,12 @@ function BuildQueuedBombShelters(game, addNewOrder)
         end
     end
 
-    -- Re-fetch rather than reuse the `priv` captured at the top of this function: TrackBombShelterDuration
-    -- (called above, inside the build loop) does its own independent PrivateGameData read-modify-write to add
-    -- ActiveBombShelters entries. Writing back the stale top-of-function `priv` here would silently overwrite
-    -- the whole PrivateGameData table with a snapshot from before those entries existed, erasing them.
+    -- TrackBombShelterDuration uses priv, so we need to refetch
     local finalPriv = Mod.PrivateGameData;
     finalPriv.PendingBombShelterBuilds = nil;
     Mod.PrivateGameData = finalPriv;
 end
 
----Tracks a Bomb Shelter's expiry turn in private mod data so RemoveExpiredBombShelters can remove it once expired.
----The Bomb Shelter is built at the end of this turn, so a duration of 1 should span to the end of next turn - the
----turn after this one is its one chance to be bombed - hence no "- 1" here (contrast the old Start-of-turn expiry).
----PlayerID is the player who played the card/purchased the Commerce build, recorded so RemoveExpiredBombShelters
----can later notify them specifically (in addition to whoever owns the territory at expiry time).
 ---@param game GameServerHook
 ---@param territoryID TerritoryID
 ---@param playerID PlayerID
@@ -191,11 +171,6 @@ function TrackBombShelterDuration(game, territoryID, playerID)
     Mod.PrivateGameData = priv;
 end
 
----Removes the single tracked entry for territoryID closest to expiry (i.e. the oldest Bomb Shelter there), if any -
----used when a Bomb destroys one Bomb Shelter on a territory that may have several stacked. Only ever removes one
----entry: a Bomb only ever destroys one Bomb Shelter (see the "- 1" in ResolveBombAgainstBombShelter), so if
----multiple are tracked for this territory, removing all of them would desync the tracking from the actual
----structure count, leaving the remaining Bomb Shelter(s) untracked and never expiring.
 ---@param territoryID TerritoryID
 function UntrackBombShelterDuration(territoryID)
     local priv = Mod.PrivateGameData;
@@ -218,16 +193,6 @@ function UntrackBombShelterDuration(territoryID)
     end
 end
 
----Removes every tracked Bomb Shelter whose duration has expired as of the end of this turn. The final structure
----count for each affected territory is computed once, grouped by territory (like BuildQueuedBombShelters) rather
----than decremented one at a time against LatestTurnStanding, since that snapshot isn't refreshed between
----iterations of a single hook call - if two Bomb Shelters on the same territory expired the same turn, decrementing
----individually would compute both from the same starting count and only actually remove one.
----A separate GameOrderEvent is then created per expired Bomb Shelter (rather than one global broadcast message),
----visible only to the current territory owner and whichever player originally built that Bomb Shelter, each with
----its own annotation. Since SetStructuresOpt is an absolute assignment rather than a relative delta, re-applying
----the same already-computed final structures table via each of a territory's separate events is safe/idempotent -
----there's no risk of double-decrementing by attaching the same final count to multiple events.
 ---@param game GameServerHook
 ---@param addNewOrder fun(order: GameOrder)
 function RemoveExpiredBombShelters(game, addNewOrder)
@@ -282,12 +247,8 @@ function RemoveExpiredBombShelters(game, addNewOrder)
     Mod.PrivateGameData = priv;
 end
 
----Step 1 of Bomb Shelter's Bomb Card damage reduction. GameOrderPlayCardBombResult exposes no data about how much
----damage the engine's own Bomb effect did, so damage can't be read-then-adjusted after the fact. Instead, when a
----Bomb targets a Bomb Shelter territory, this lets the Bomb resolve normally (does not skip the order) and chains a
----follow-up GameOrderCustom carrying the pre-bomb army count. addNewOrder queues that follow-up to run
----immediately after the Bomb's own effect finishes (before the rest of the turn's orders), so by the time it's
----processed in ResolveBombAgainstBombShelter below, LatestTurnStanding already reflects the Bomb's real damage.
+-- Future proofing for configurable bomb card damage - create an order to track army count. Pick up the logic in the handling of that order
+-- Consider expanding this to support the Bomb+ card which does explicitly let you configure the damage it does
 ---@param game GameServerHook
 ---@param order GameOrder
 ---@param addNewOrder fun(order: GameOrder)
@@ -305,11 +266,8 @@ function HandleBombAgainstBombShelter(game, order, addNewOrder)
     addNewOrder(WL.GameOrderCustom.Create(order.PlayerID, "Bomb Shelter absorbing Bomb damage", payload, nil));
 end
 
----Step 2 of Bomb Shelter's Bomb Card damage reduction, see HandleBombAgainstBombShelter above. Compares the
----territory's armies now (post-Bomb) against the pre-Bomb count carried in the payload to find out how much the
----Bomb actually destroyed, then restores (1 - BombShelterDamagePercent) of that loss - vanilla Bomb behaviour is
----preserved exactly, just scaled down, since we never had to reimplement its formula. Optionally destroys the
----Bomb Shelter afterward.
+
+-- Use tracking payload created in HandleBombAgainstBombShelter to determine how many armies were lost to the Bomb, and restore some of them based on the configured damage percentage.
 ---@param game GameServerHook
 ---@param addNewOrder fun(order: GameOrder)
 ---@param order GameOrder

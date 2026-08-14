@@ -46,14 +46,9 @@ function Client_SaveConfigureUI(alert, addCard)
             return;
         end
 
-        -- If the Bomb Shelter itself has a limited duration, feed that same duration into the played card so it
-        -- shows up as an active card (with remaining turns) for players to check, rather than looking like a
-        -- one-shot order once played. EndOfTurn matches when RemoveExpiredBombShelters actually removes the
-        -- structure, so the active card disappears the same turn the Bomb Shelter does.
-        -- Skip this when BombShelterDestroyedOnBomb is also on, though: a Bomb can then destroy the Bomb Shelter
-        -- (and its tracked duration) well before the card's own duration is up, and there's no API to force an
-        -- active card to wear off early - it would keep showing a stale countdown for a structure that's already
-        -- gone. Better to not claim a duration on the card at all than show one that can go wrong.
+        -- Feed the Bomb Shelter's own duration into the card so it shows as an active card with a turn countdown.
+        -- Skipped when BombShelterDestroyedOnBomb is also on: a Bomb can then destroy the shelter (and its
+        -- duration) before the card's duration is up, and there's no API to force an active card to wear off early.
         local cardDuration = nil;
         if (Mod.Settings.BombShelterHasDuration and not Mod.Settings.BombShelterDestroyedOnBomb) then
             cardDuration = Mod.Settings.BombShelterDurationTurns;
