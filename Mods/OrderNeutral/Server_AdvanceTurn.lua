@@ -64,7 +64,9 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
 
         if (armiesToSend <= 0 and #specialUnitsToSend == 0) then
             -- Nothing was actually selected to send (eg. the territory lost armies/special units earlier this turn)
-            addNewOrder(WL.GameOrderEvent.Create(order.PlayerID, order.Description .. " - failed, no armies were left to send", { order.PlayerID }, {}));
+            local event = WL.GameOrderEvent.Create(order.PlayerID, order.Description .. " - failed, no armies were left to send", { order.PlayerID }, {});
+            event.Icon = "Blocked";
+            addNewOrder(event);
             return;
         end
 
@@ -91,6 +93,7 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
                 [fromTerritoryID] = WL.TerritoryAnnotation.Create("Ordered", 8, GetColourIntegerFromHex(BUTTON_COLOURS.DarkGray)),
                 [toTerritoryID] = WL.TerritoryAnnotation.Create("Target", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Cordovan)),
             };
+            event.Icon = "NeutralAttackTransfer";
 
             if (Mod.Settings.NeutralArmyGivesVision and Mod.Settings.VisionMethodManual) then
                 GrantManualVisionOfTerritory(game, event, order.PlayerID, toTerritoryID);
@@ -149,7 +152,7 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
                 [fromTerritoryID] = WL.TerritoryAnnotation.Create("Ordered", 8, GetColourIntegerFromHex(BUTTON_COLOURS.DarkGray)),
                 [toTerritoryID] = WL.TerritoryAnnotation.Create("Target", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Cordovan)),
             };
-
+            event.Icon = "NeutralAttackTransfer";
             local visionTargetTerritoryID = attackResult.IsSuccessful and toTerritoryID or fromTerritoryID;
 
             if (Mod.Settings.NeutralArmyGivesVision and Mod.Settings.VisionMethodManual) then
