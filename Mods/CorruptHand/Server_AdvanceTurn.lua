@@ -9,6 +9,10 @@ require("Utilities");
 ---@field CardID CardID # The CardID of the card that was corrupted
 ---@field IntField integer | nil # A generic integer parameter for cards that need one (eg. Armies for a reinforcement card instance); nil if the corrupted card didn't need one. Needed to reconstruct the card in full if this entry is ever recovered at 100%
 
+---@class ActiveCorruption # A single tracked Corruption card actively corrupting its owner's other cards
+---@field PlayerID PlayerID
+---@field CardInstanceID CardInstanceID
+
 ---@param game GameServerHook
 ---@param order GameOrder
 ---@param result GameOrderResult
@@ -56,6 +60,17 @@ function HandleDiscard(game, order, addNewOrder)
         end
     end
     privateGameData.BuddingCounters = remaining;
+
+    -- player discarded an active corruption, it stops corrupting further cards
+    local activeCorruptions = privateGameData.ActiveCorruptions or {};
+    local remainingActiveCorruptions = {};
+    for _, active in ipairs(activeCorruptions) do
+        if (not (active.PlayerID == order.PlayerID and active.CardInstanceID == order.CardInstanceID)) then
+            table.insert(remainingActiveCorruptions, active);
+        end
+    end
+    privateGameData.ActiveCorruptions = remainingActiveCorruptions;
+
     Mod.PrivateGameData = privateGameData;
 
     -- player discarded a corrupted card - if random recovery is enabled the random option still triggers. No kindness for player chosen tho
@@ -114,6 +129,16 @@ end
 function GrantActiveCorruption(playerID, addNewOrder)
     local instance = WL.NoParameterCardInstance.Create(Mod.Settings.CorruptionCardID);
     addNewOrder(WL.GameOrderReceiveCard.Create(playerID, { instance }));
+
+    local privateGameData = Mod.PrivateGameData;
+    local activeCorruptions = privateGameData.ActiveCorruptions or {};
+
+    ---@type ActiveCorruption
+    local activeCorruption = { PlayerID = playerID, CardInstanceID = instance.ID };
+    table.insert(activeCorruptions, activeCorruption);
+
+    privateGameData.ActiveCorruptions = activeCorruptions;
+    Mod.PrivateGameData = privateGameData;
 end
 
 function GetCorruptedPool(playerID)
@@ -222,15 +247,18 @@ end
 function CorruptCardsForActiveCorruptions(game, addNewOrder)
     local perSource = Mod.Settings.CardsCorruptedPerTurnPerSource or 1;
 
-    for playerID, playerCards in pairs(game.ServerGame.LatestTurnStanding.Cards) do
-        local numCorruptionCards = 0;
-        for _, cardInstance in pairs(playerCards.WholeCards) do
-            if (cardInstance.CardID == Mod.Settings.CorruptionCardID) then
-                numCorruptionCards = numCorruptionCards + 1;
-            end
-        end
+    -- counted from the tracked ActiveCorruptions list rather than scanning hands, since LatestTurnStanding is a
+    -- snapshot from before this turn's new orders (including a Corruption card just granted this same turn, eg.
+    -- from a 0 maturity Corrupt Hand play or a Budding Corruption maturing) are applied
+    local activeCorruptions = Mod.PrivateGameData.ActiveCorruptions or {};
+    local numCorruptionCardsByPlayer = {};
+    for _, active in ipairs(activeCorruptions) do
+        numCorruptionCardsByPlayer[active.PlayerID] = (numCorruptionCardsByPlayer[active.PlayerID] or 0) + 1;
+    end
 
-        if (numCorruptionCards > 0) then
+    for playerID, numCorruptionCards in pairs(numCorruptionCardsByPlayer) do
+        local playerCards = game.ServerGame.LatestTurnStanding.Cards[playerID];
+        if (playerCards ~= nil) then
             local playerCorruptibleCards = GetCorruptibleCards(playerCards);
             shuffleInPlace(playerCorruptibleCards);
 

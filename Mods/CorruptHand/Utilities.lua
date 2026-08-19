@@ -103,6 +103,45 @@ BUTTON_COLOURS = GetButtonColors();
 ERROR_COLOUR = BUTTON_COLOURS.Red;
 SUBHEADING_COLOUR = BUTTON_COLOURS.Yellow;
 
+BUILTIN_CARD_DISPLAY_NAMES = {
+    CardGameAbandon = "Emergency Blockade Card",
+    CardGameAirlift = "Airlift Card",
+    CardGameBlockade = "Blockade Card",
+    CardGameBomb = "Bomb Card",
+    CardGameDiplomacy = "Diplomacy Card",
+    CardGameGift = "Gift Card",
+    CardGameOrderDelay = "Order Delay Card",
+    CardGameOrderPriority = "Order Priority Card",
+    CardGameReconnaissance = "Reconnaissance Card",
+    CardGameReinforcement = "Reinforcement Card",
+    CardGameSanctions = "Sanctions Card",
+    CardGameSpy = "Spy Card",
+    CardGameSurveillance = "Surveillance Card",
+};
+
+function GetCardDisplayName(game, cardID)
+    local cardSettings = game.Settings.Cards[cardID];
+    if (cardSettings == nil) then
+        return "Card #" .. cardID;
+    end
+
+    if (cardSettings.proxyType == 'CardGameCustom') then
+        return cardSettings.Name;
+    end
+
+    return BUILTIN_CARD_DISPLAY_NAMES[cardSettings.proxyType] or ("Card #" .. cardID);
+end
+
+--number of pieces percent of cardID's card's NumPieces would award (using the exact same rounding as the server's
+--AwardCorruptedCardRecovery in Server_AdvanceTurn.lua, so the displayed amount always matches what's granted),
+--plus that card's NumPieces itself, so callers can show eg. "3/7 pieces"
+function GetPiecesForRecoveryPercent(game, cardID, percent)
+    local cardSettings = game.Settings.Cards[cardID];
+    local numPieces = (cardSettings ~= nil and cardSettings.NumPieces) or 1;
+    local piecesAwarded = math.max(math.floor(percent * numPieces + 0.5), 1);
+    return piecesAwarded, numPieces;
+end
+
 function IsCardImmuneToCorruption(cardID)
 	return cardID == Mod.Settings.BuddingCorruptionCardID
 		or cardID == Mod.Settings.CorruptionCardID
