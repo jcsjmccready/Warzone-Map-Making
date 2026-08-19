@@ -25,9 +25,6 @@ function Create_UI_Controls(rootParent)
         .SetIsChecked(Mod.Settings.SurveillanceEnabled or false)
         .SetText('');
 
-    --persistent, never-recreated parent containers so toggling a checkbox doesn't reorder these blocks
-    --relative to the rest of mainModUI; only the content inside them (reconConfigContent/surveillanceConfigContent)
-    --is created/destroyed on toggle
     local reconConfigHeading = UI.CreateVerticalLayoutGroup(mainModUI);
     local surveillanceConfigHeading = UI.CreateVerticalLayoutGroup(mainModUI);
 
@@ -156,8 +153,6 @@ function Create_ReconTerritoryIncomeMode_SubOptions_UI(rootParent)
     UI.CreateLabel(territoryIncomeModeHeading).SetText('Increased income per reconned:');
     local territoryIncomeModeGroup = UI.CreateRadioButtonGroup(territoryIncomeModeHeading);
 
-    --only one option currently exists, so it's permanently checked and non-interactable, same as BarbedWire's
-    --single-option "Acquiring type: Card" radio
     territoryIncomeModePerTerritory = UI.CreateRadioButton(territoryIncomeModeHeading).SetGroup(territoryIncomeModeGroup)
     .SetText('Territory')
     .SetIsChecked(true)
@@ -263,8 +258,6 @@ function Create_SurveillanceTerritoryIncomeMode_SubOptions_UI(rootParent)
     UI.CreateLabel(surveillanceTerritoryIncomeModeHeading).SetText('Increased income per surveilled:');
     local surveillanceTerritoryIncomeModeGroup = UI.CreateRadioButtonGroup(surveillanceTerritoryIncomeModeHeading);
 
-    --only one option currently exists, so it's permanently checked and non-interactable, same as BarbedWire's
-    --single-option "Acquiring type: Card" radio
     surveillanceTerritoryIncomeModePerTerritory = UI.CreateRadioButton(surveillanceTerritoryIncomeModeHeading).SetGroup(surveillanceTerritoryIncomeModeGroup)
     .SetText('Territory')
     .SetIsChecked(true)

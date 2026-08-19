@@ -2,14 +2,10 @@ require("Utilities");
 
 MOD_DATA_PREFIX = "BribeSpy_";
 
----@class BribedSpyInstance # An active multi-turn bribe tracked between turns
----@field TargetPlayerID PlayerID # The player being bribed
+---@class BribedSpyInstance
+---@field TargetPlayerID PlayerID
 ---@field FinalTurn integer # The last turn number the bribe should trigger for
 
----Server_AdvanceTurn_Order hook. Resolves a played Bribed Spy card the moment it's played - which happens during
----the Spying Cards (recon) phase, since that's the turn phase the card is played in. Triggers the bribe
----immediately for this turn, and if it lasts more than one turn, tracks it in private mod data so
----Server_AdvanceTurn_Start can keep re-triggering it on each subsequent turn until it expires.
 ---@param game GameServerHook
 ---@param order GameOrder
 ---@param result GameOrderResult
@@ -27,7 +23,7 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
     local targetPlayerID = tonumber(string.sub(order.ModData, string.len(MOD_DATA_PREFIX) + 1));
 
     if (game.Game.PlayingPlayers[targetPlayerID] == nil) then
-        return; -- target is no longer playing (eg. eliminated since the card was played)
+        return; -- target is no longer playing. Likely dead
     end
 
     if (targetPlayerID == order.PlayerID and not Mod.Settings.AllowTargetingSelf) then
@@ -54,8 +50,6 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
     end
 end
 
----Server_AdvanceTurn_Start hook. Re-triggers every bribe that's still active going into this turn (the turn it
----was played on is handled directly by Server_AdvanceTurn_Order above, not here).
 ---@param game GameServerHook
 ---@param addNewOrder fun(order: GameOrder)
 function Server_AdvanceTurn_Start(game, addNewOrder)
@@ -69,9 +63,6 @@ function Server_AdvanceTurn_Start(game, addNewOrder)
     end
 end
 
----Server_AdvanceTurn_End hook. Removes any tracked bribe whose final turn was this turn, since it's already
----triggered for the last time (via Server_AdvanceTurn_Start, above). Also clears this turn's spy tracker,
----since it's only needed for the duration of the turn.
 ---@param game GameServerHook
 ---@param addNewOrder fun(order: GameOrder)
 function Server_AdvanceTurn_End(game, addNewOrder)
@@ -90,9 +81,6 @@ function Server_AdvanceTurn_End(game, addNewOrder)
     Mod.PrivateGameData = priv;
 end
 
---triggers a bribe for this turn: gives every playing player other than the bribed player a fresh Spy card and
---immediately plays it against the bribed player, then grants the bribed player their bonus income for the turn.
---skipSpyCards is set when another bribe already spied on this same player this turn, so only the income is granted.
 function TriggerBribe(game, targetPlayerID, addNewOrder, skipSpyCards)
     local targetPlayer = game.Game.PlayingPlayers[targetPlayerID];
     if (targetPlayer == nil) then return; end
@@ -110,9 +98,7 @@ function TriggerBribe(game, targetPlayerID, addNewOrder, skipSpyCards)
     GrantBribeIncome(game, game.ServerGame.LatestTurnStanding, targetPlayerID, targetPlayer, addNewOrder);
 end
 
---tracks which targets have already had spy cards played against them this turn (multiple bribe cards can be
---played against the same target on the same turn), returning true if targetPlayerID was already marked, so the
---caller knows to skip playing a redundant set of spy cards for it
+-- tracks which targets have already had spy cards played against them this turn - no point doubling up
 function MarkSpiedThisTurn(targetPlayerID)
     local priv = Mod.PrivateGameData;
     local spiedTargets = priv.SpiedThisTurn or {};
@@ -126,9 +112,6 @@ function MarkSpiedThisTurn(targetPlayerID)
     return alreadySpied;
 end
 
---grants targetPlayerID bonus income for this turn: at least MinimumIncomeGain, or IncreasedIncomePercentage% of
---their current income, whichever is greater. Commerce games use gold as their currency, so the bonus is granted
---as gold there instead of as bonus reinforcement armies (which is what IncomeMod affects).
 function GrantBribeIncome(game, standing, targetPlayerID, targetPlayer, addNewOrder)
     local minimumGain = Mod.Settings.MinimumIncomeGain or 0;
     local percentage = Mod.Settings.IncreasedIncomePercentage or 0;

@@ -1,9 +1,9 @@
 
---returns the set of territoryIDs within intMaxDistance hops of targetTerritoryID (inclusive of targetTerritoryID)
+--returns the set of territoryIDs within x hops of targetTerritoryID (inclusive)
 function GetTerritoriesWithinDistance (game, targetTerritoryID, intMaxDistance)
-    local arrTerrProcessed = {}; --list of terrs already processed
-    local arrTerrResults = {}; --resultant list of terrs within specified distance
-    local arrTerrListToProcess = {}; --terrs remaining to be processed
+    local arrTerrProcessed = {};
+    local arrTerrResults = {};
+    local arrTerrListToProcess = {};
 
 	local intDepth = 0;
     arrTerrProcessed [targetTerritoryID] = true;
@@ -27,9 +27,7 @@ function GetTerritoriesWithinDistance (game, targetTerritoryID, intMaxDistance)
     return (arrTerrResults);
 end
 
---returns a table<TerritoryID, distance> for every territory within intMaxDistance hops of targetTerritoryID
---(targetTerritoryID itself included at distance 0), so callers can find territories at an exact distance rather
---than just "within" a radius
+-- inclusive of target
 function GetTerritoryDistances(game, targetTerritoryID, intMaxDistance)
     local territoryDistances = { [targetTerritoryID] = 0 };
     local arrTerrProcessed = { [targetTerritoryID] = true };
@@ -54,8 +52,6 @@ function GetTerritoryDistances(game, targetTerritoryID, intMaxDistance)
     return territoryDistances;
 end
 
---returns the territoryIDs owned by playerID; territories is a table<TerritoryID, TerritoryStanding> - either
---Game.LatestStanding.Territories (client) or game.ServerGame.LatestTurnStanding.Territories (server)
 function GetPlayerTerritoryIDs(territories, playerID)
     local ids = {};
     for territoryID, territory in pairs(territories) do

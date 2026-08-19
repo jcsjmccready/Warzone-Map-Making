@@ -6,8 +6,7 @@ require("Utilities");
 function Client_CreateGame(settings, alert)
     MigrateModSettings();
 
-    --fall back to the pre-Surveillance legacy fields when ReconnaissanceEnabled is unset, since a public game's
-    --saved Mod.Settings may not have gone through MigrateModSettings yet by the time this hook runs
+    -- fallback to the pre-Surveillance legacy fields when ReconnaissanceEnabled is unset
     local reconEnabled = Mod.Settings.ReconnaissanceEnabled or Mod.Settings.MonitorCities or Mod.Settings.MonitorTerritories;
 
     if (not reconEnabled and not Mod.Settings.SurveillanceEnabled) then

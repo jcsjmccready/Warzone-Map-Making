@@ -1,13 +1,5 @@
---bump this whenever Mod.Settings' shape changes in a way that requires reading older saved settings differently.
---Mod.Settings.Version being nil means the settings were saved before versioning was introduced - the original
---single-card, Reconnaissance-only format, which used the same unprefixed field names Reconnaissance still uses
---today (MonitorCities, EffectStrength, etc) - only Surveillance's fields and the two *Enabled flags are new.
 CURRENT_SETTINGS_VERSION = 2;
 
---normalizes Mod.Settings in-place, filling in the two new *Enabled flags that didn't exist before Surveillance
---support was added. Reconnaissance's other fields were never renamed, so they need no conversion. Existing
---games' saved settings are never migrated on disk, only ever read - so this permanent fallback must be called
---at the start of every hook that reads Mod.Settings, not just once.
 function MigrateModSettings()
     local version = Mod.Settings.Version or 1;
 
