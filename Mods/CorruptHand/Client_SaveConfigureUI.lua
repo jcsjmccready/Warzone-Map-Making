@@ -17,7 +17,7 @@ function Client_SaveConfigureUI(alert, addCard)
     Mod.Settings.RecoveryModeFullRandomCard = recoveryModeFullRandomCard.GetIsChecked();
     if (not Mod.Settings.RecoveryModeFullRandomCard) then
         Mod.Settings.PartialPiecesPercent = math.floor(partialPiecesPercent.GetValue() * 100 + 0.5) / 100;
-        if (Mod.Settings.PartialPiecesPercent <= 0 or Mod.Settings.PartialPiecesPercent > 1) then
+        if (Mod.Settings.PartialPiecesPercent < 0 or Mod.Settings.PartialPiecesPercent > 1) then
             alert("% of pieces returned must be greater than 0 and no more than 100");
             return;
         end
@@ -55,8 +55,6 @@ function Client_SaveConfigureUI(alert, addCard)
         Mod.Settings.CardWeight);
     Mod.Settings.CorruptHandCardID = corruptHandCardID;
 
-    -- the three cards below are never earned normally (0 weight, 0 pieces per turn, 0 initial pieces); they are
-    -- always handed out directly by the mod as a corruption progresses
     local buddingCorruptionCardID = addCard(
         "Budding Corruption",
         "Someone is secretly corrupting your hand. In " .. Mod.Settings.TurnsUntilCorruption .. " turn(s) this will mature into Corruption. Discard it to stop the corruption from spreading further, though any cards already corrupted must still be played to recover them.",

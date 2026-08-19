@@ -9,9 +9,7 @@ end;
 function Create_UI_Controls(rootParent)
     local mainModUI = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
 
-    UI.CreateLabel(mainModUI).SetText('Play the Corrupt Hand card and secretly select an enemy to start corrupting their hand*').SetColor(BUTTON_COLOURS.DarkGray);
-
-    UI.CreateLabel(mainModUI).SetText('Incubation:').SetColor(SUBHEADING_COLOUR);
+    UI.CreateLabel(mainModUI).SetText('Mod Behaviour:').SetColor(SUBHEADING_COLOUR);
 
     local horz = UI.CreateHorizontalLayoutGroup(mainModUI);
     UI.CreateLabel(horz).SetText('Turns until Budding Corruption matures into Corruption').SetPreferredWidth(290);
@@ -21,8 +19,6 @@ function Create_UI_Controls(rootParent)
         .SetValue(Mod.Settings.TurnsUntilCorruption or 3);
     UI.CreateLabel(mainModUI).SetText('(0 = the target receives Corruption immediately instead of Budding Corruption)').SetColor(BUTTON_COLOURS.DarkGray);
 
-    UI.CreateLabel(mainModUI).SetText('Corruption:').SetColor(SUBHEADING_COLOUR);
-
     local horz = UI.CreateHorizontalLayoutGroup(mainModUI);
     UI.CreateLabel(horz).SetText('Cards corrupted per turn, per active Corruption card').SetPreferredWidth(290);
     cardsCorruptedPerTurn = UI.CreateNumberInputField(horz)
@@ -30,30 +26,46 @@ function Create_UI_Controls(rootParent)
         .SetSliderMaxValue(5)
         .SetValue(Mod.Settings.CardsCorruptedPerTurnPerSource or 1);
 
-    UI.CreateLabel(mainModUI).SetText('Recovery (what playing a Corrupted card gives back):').SetColor(SUBHEADING_COLOUR);
+    UI.CreateLabel(mainModUI).SetText('What playing a Corrupted card gives back:').SetColor(SUBHEADING_COLOUR);
     local recoveryModeGroup = UI.CreateRadioButtonGroup(mainModUI);
 
-    recoveryModeFullRandomCard = UI.CreateRadioButton(mainModUI).SetGroup(recoveryModeGroup).SetText('A full random card from the player\'s corrupted pool')
+    -- Full random card recovery
+    local recoveryModeFullRandomCardHeading = UI.CreateVerticalLayoutGroup(mainModUI);
+    recoveryModeFullRandomCard = UI.CreateRadioButton(recoveryModeFullRandomCardHeading).SetGroup(recoveryModeGroup).SetText('A full random card from the player\'s corrupted pool')
         .SetIsChecked(Mod.Settings.RecoveryModeFullRandomCard or Mod.Settings.RecoveryModeFullRandomCard == nil);
 
-    local partialPiecesHeading = UI.CreateVerticalLayoutGroup(mainModUI);
-    recoveryModePartialPieces = UI.CreateRadioButton(mainModUI).SetGroup(recoveryModeGroup).SetText('A percentage of pieces towards a random card from the corrupted pool')
+    recoveryModeFullRandomCard.SetOnValueChanged(function()
+        if (recoveryModeFullRandomCard.GetIsChecked()) then
+            recoveryModeFullRandomCard.SetInteractable(false);
+        else
+            recoveryModeFullRandomCard.SetInteractable(true);
+        end
+    end);
+
+    -- Partial pieces recovery
+    local recoveryModePartialPiecesHeading = UI.CreateVerticalLayoutGroup(mainModUI);
+    recoveryModePartialPieces = UI.CreateRadioButton(recoveryModePartialPiecesHeading).SetGroup(recoveryModeGroup).SetText('A percentage of pieces towards a random card from the corrupted pool')
         .SetIsChecked(Mod.Settings.RecoveryModeFullRandomCard == false);
 
     recoveryModePartialPieces.SetOnValueChanged(function()
         if (recoveryModePartialPieces.GetIsChecked()) then
-            Create_PartialPieces_SubOptions_UI(partialPiecesHeading);
+            Create_PartialPieces_SubOptions_UI(recoveryModePartialPiecesHeading);
+            recoveryModePartialPieces.SetInteractable(false);
         else
             UI.Destroy(partialPiecesSubOptionsVGroup);
+            recoveryModePartialPieces.SetInteractable(true);
         end
     end);
 
-    if (recoveryModePartialPieces.GetIsChecked()) then
-        Create_PartialPieces_SubOptions_UI(partialPiecesHeading);
+    if (recoveryModeFullRandomCard.GetIsChecked()) then -- one time check for loading up from settings
+        recoveryModeFullRandomCard.SetInteractable(false);
+    end
+    if (recoveryModePartialPieces.GetIsChecked()) then -- one time check for loading up from settings
+        Create_PartialPieces_SubOptions_UI(recoveryModePartialPiecesHeading);
+        recoveryModePartialPieces.SetInteractable(false);
     end
 
     UI.CreateLabel(mainModUI).SetText('Card Settings:').SetColor(SUBHEADING_COLOUR);
-    UI.CreateLabel(mainModUI).SetText('(Only the Corrupt Hand card itself is drawn normally - Budding Corruption, Corruption and Corrupted cards are always given directly by the mod)').SetColor(BUTTON_COLOURS.DarkGray);
 
     local horz = UI.CreateHorizontalLayoutGroup(mainModUI);
     UI.CreateLabel(horz).SetText('Number of pieces to divide the Corrupt Hand card into').SetPreferredWidth(290);

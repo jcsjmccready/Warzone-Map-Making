@@ -62,8 +62,9 @@ function Create_PlayerList_UI(rootParent)
     end
     playerListContent = UI.CreateVerticalLayoutGroup(rootParent);
 
+    local allowSelf = true; -- REMOVE THIS BEFORE PRODUCTION
     for playerID, player in pairs(Game.Game.PlayingPlayers) do
-        if (playerID ~= Game.Us.ID) then
+        if (allowSelf or playerID ~= Game.Us.ID) then
             local playerName = player.DisplayName(nil, false);
             UI.CreateButton(playerListContent)
                 .SetText(playerName)
