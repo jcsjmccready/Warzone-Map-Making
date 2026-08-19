@@ -14,13 +14,27 @@ function Client_SaveConfigureUI(alert, addCard)
         return;
     end
 
-    Mod.Settings.RecoveryModeFullRandomCard = recoveryModeFullRandomCard.GetIsChecked();
-    if (not Mod.Settings.RecoveryModeFullRandomCard) then
-        Mod.Settings.PartialPiecesPercent = math.floor(partialPiecesPercent.GetValue() * 100 + 0.5) / 100;
-        if (Mod.Settings.PartialPiecesPercent < 0 or Mod.Settings.PartialPiecesPercent > 1) then
-            alert("% of pieces returned must be greater than 0 and no more than 100");
+    Mod.Settings.RecoveryAllowRandom = recoveryAllowRandom.GetIsChecked();
+    if (Mod.Settings.RecoveryAllowRandom) then
+        Mod.Settings.RecoveryRandomPercent = math.floor(recoveryRandomPercent.GetValue() * 100 + 0.5) / 100;
+        if (Mod.Settings.RecoveryRandomPercent < 0 or Mod.Settings.RecoveryRandomPercent > 1) then
+            alert("Random recovery % must be between 0 and 100");
             return;
         end
+    end
+
+    Mod.Settings.RecoveryAllowPlayerSelected = recoveryAllowPlayerSelected.GetIsChecked();
+    if (Mod.Settings.RecoveryAllowPlayerSelected) then
+        Mod.Settings.RecoveryPlayerSelectedPercent = math.floor(recoveryPlayerSelectedPercent.GetValue() * 100 + 0.5) / 100;
+        if (Mod.Settings.RecoveryPlayerSelectedPercent < 0 or Mod.Settings.RecoveryPlayerSelectedPercent > 1) then
+            alert("Player selected recovery % must be between 0 and 100");
+            return;
+        end
+    end
+
+    if (not Mod.Settings.RecoveryAllowRandom and not Mod.Settings.RecoveryAllowPlayerSelected) then
+        alert("At least one Corrupted card recovery method must be enabled");
+        return;
     end
 
     Mod.Settings.NumPieces = numPieces.GetValue();
@@ -71,7 +85,7 @@ function Client_SaveConfigureUI(alert, addCard)
 
     local corruptedCardID = addCard(
         "Corrupted",
-        "One of your cards, corrupted. Play it to recover what was lost.",
+        "One of your cards, corrupted. Play it to recover pieces towards it (the whole card, if recovering 100%) - or discard it for a reduced amount, if enabled.",
         "Corrupted.png",
         1, 0, 0, 0);
     Mod.Settings.CorruptedCardID = corruptedCardID;

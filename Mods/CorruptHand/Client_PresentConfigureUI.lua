@@ -26,43 +26,45 @@ function Create_UI_Controls(rootParent)
         .SetSliderMaxValue(5)
         .SetValue(Mod.Settings.CardsCorruptedPerTurnPerSource or 1);
 
-    UI.CreateLabel(mainModUI).SetText('What playing a Corrupted card gives back:').SetColor(SUBHEADING_COLOUR);
-    local recoveryModeGroup = UI.CreateRadioButtonGroup(mainModUI);
+    UI.CreateLabel(mainModUI).SetText('Corrupted card recovery (played for the full amount, discarded for a reduced amount):').SetColor(SUBHEADING_COLOUR);
+    UI.CreateLabel(mainModUI).SetText('(At least one of the below must be enabled)').SetColor(BUTTON_COLOURS.DarkGray);
 
-    -- Full random card recovery
-    local recoveryModeFullRandomCardHeading = UI.CreateVerticalLayoutGroup(mainModUI);
-    recoveryModeFullRandomCard = UI.CreateRadioButton(recoveryModeFullRandomCardHeading).SetGroup(recoveryModeGroup).SetText('A full random card from the player\'s corrupted pool')
-        .SetIsChecked(Mod.Settings.RecoveryModeFullRandomCard or Mod.Settings.RecoveryModeFullRandomCard == nil);
+    -- Random recovery
+    local horz = UI.CreateHorizontalLayoutGroup(mainModUI);
+    UI.CreateLabel(horz).SetText('Allow recovering a random card from the pool').SetPreferredWidth(290);
+    recoveryAllowRandom = UI.CreateCheckBox(horz).SetIsChecked(Mod.Settings.RecoveryAllowRandom or Mod.Settings.RecoveryAllowRandom == nil).SetText('');
 
-    recoveryModeFullRandomCard.SetOnValueChanged(function()
-        if (recoveryModeFullRandomCard.GetIsChecked()) then
-            recoveryModeFullRandomCard.SetInteractable(false);
+    local recoveryRandomSubOptionsParent = UI.CreateVerticalLayoutGroup(mainModUI);
+
+    recoveryAllowRandom.SetOnValueChanged(function()
+        if (recoveryAllowRandom.GetIsChecked()) then
+            Create_RecoveryRandom_SubOptions_UI(recoveryRandomSubOptionsParent);
         else
-            recoveryModeFullRandomCard.SetInteractable(true);
+            UI.Destroy(recoveryRandomSubOptionsVGroup);
         end
     end);
 
-    -- Partial pieces recovery
-    local recoveryModePartialPiecesHeading = UI.CreateVerticalLayoutGroup(mainModUI);
-    recoveryModePartialPieces = UI.CreateRadioButton(recoveryModePartialPiecesHeading).SetGroup(recoveryModeGroup).SetText('A percentage of pieces towards a random card from the corrupted pool')
-        .SetIsChecked(Mod.Settings.RecoveryModeFullRandomCard == false);
-
-    recoveryModePartialPieces.SetOnValueChanged(function()
-        if (recoveryModePartialPieces.GetIsChecked()) then
-            Create_PartialPieces_SubOptions_UI(recoveryModePartialPiecesHeading);
-            recoveryModePartialPieces.SetInteractable(false);
-        else
-            UI.Destroy(partialPiecesSubOptionsVGroup);
-            recoveryModePartialPieces.SetInteractable(true);
-        end
-    end);
-
-    if (recoveryModeFullRandomCard.GetIsChecked()) then -- one time check for loading up from settings
-        recoveryModeFullRandomCard.SetInteractable(false);
+    if (recoveryAllowRandom.GetIsChecked()) then -- one time check for loading up from settings
+        Create_RecoveryRandom_SubOptions_UI(recoveryRandomSubOptionsParent);
     end
-    if (recoveryModePartialPieces.GetIsChecked()) then -- one time check for loading up from settings
-        Create_PartialPieces_SubOptions_UI(recoveryModePartialPiecesHeading);
-        recoveryModePartialPieces.SetInteractable(false);
+
+    -- Player selected recovery
+    local horz = UI.CreateHorizontalLayoutGroup(mainModUI);
+    UI.CreateLabel(horz).SetText('Allow the player to choose which card to recover from the pool').SetPreferredWidth(290);
+    recoveryAllowPlayerSelected = UI.CreateCheckBox(horz).SetIsChecked(Mod.Settings.RecoveryAllowPlayerSelected or false).SetText('');
+
+    local recoveryPlayerSelectedSubOptionsParent = UI.CreateVerticalLayoutGroup(mainModUI);
+
+    recoveryAllowPlayerSelected.SetOnValueChanged(function()
+        if (recoveryAllowPlayerSelected.GetIsChecked()) then
+            Create_RecoveryPlayerSelected_SubOptions_UI(recoveryPlayerSelectedSubOptionsParent);
+        else
+            UI.Destroy(recoveryPlayerSelectedSubOptionsVGroup);
+        end
+    end);
+
+    if (recoveryAllowPlayerSelected.GetIsChecked()) then -- one time check for loading up from settings
+        Create_RecoveryPlayerSelected_SubOptions_UI(recoveryPlayerSelectedSubOptionsParent);
     end
 
     UI.CreateLabel(mainModUI).SetText('Card Settings:').SetColor(SUBHEADING_COLOUR);
@@ -97,14 +99,26 @@ function Create_UI_Controls(rootParent)
         .SetValue(Mod.Settings.InitialPieces or 0);
 end;
 
-function Create_PartialPieces_SubOptions_UI(rootParent)
-    partialPiecesSubOptionsVGroup = UI.CreateVerticalLayoutGroup(rootParent);
+function Create_RecoveryRandom_SubOptions_UI(rootParent)
+    recoveryRandomSubOptionsVGroup = UI.CreateVerticalLayoutGroup(rootParent);
 
-    local horz = UI.CreateHorizontalLayoutGroup(partialPiecesSubOptionsVGroup);
+    local horz = UI.CreateHorizontalLayoutGroup(recoveryRandomSubOptionsVGroup);
     UI.CreateLabel(horz).SetText('% of pieces returned').SetPreferredWidth(290);
-    partialPiecesPercent = UI.CreateNumberInputField(horz)
+    recoveryRandomPercent = UI.CreateNumberInputField(horz)
         .SetWholeNumbers(false)
         .SetSliderMinValue(0)
         .SetSliderMaxValue(1)
-        .SetValue(Mod.Settings.PartialPiecesPercent or 0.5);
+        .SetValue(Mod.Settings.RecoveryRandomPercent or 0.5);
+end;
+
+function Create_RecoveryPlayerSelected_SubOptions_UI(rootParent)
+    recoveryPlayerSelectedSubOptionsVGroup = UI.CreateVerticalLayoutGroup(rootParent);
+
+    local horz = UI.CreateHorizontalLayoutGroup(recoveryPlayerSelectedSubOptionsVGroup);
+    UI.CreateLabel(horz).SetText('% of pieces returned').SetPreferredWidth(290);
+    recoveryPlayerSelectedPercent = UI.CreateNumberInputField(horz)
+        .SetWholeNumbers(false)
+        .SetSliderMinValue(0)
+        .SetSliderMaxValue(1)
+        .SetValue(Mod.Settings.RecoveryPlayerSelectedPercent or 0.25);
 end;

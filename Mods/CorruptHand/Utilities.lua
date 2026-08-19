@@ -23,7 +23,7 @@ function filter(array, func)
 	return new_array;
 end
 
-function shuffle(tbl)
+function shuffleInPlace(tbl)
 	for i = #tbl, 2, -1 do
 		local j = math.random(i)
 		tbl[i], tbl[j] = tbl[j], tbl[i]
@@ -103,20 +103,16 @@ BUTTON_COLOURS = GetButtonColors();
 ERROR_COLOUR = BUTTON_COLOURS.Red;
 SUBHEADING_COLOUR = BUTTON_COLOURS.Yellow;
 
---true if cardID is one of the mod's own corruption-chain cards (Budding Corruption / Corruption / Corrupted) -
---these are excluded from being corrupted themselves, and are never drawn normally from the deck
-function IsCorruptionChainCardID(cardID)
+function IsCardImmuneToCorruption(cardID)
 	return cardID == Mod.Settings.BuddingCorruptionCardID
 		or cardID == Mod.Settings.CorruptionCardID
 		or cardID == Mod.Settings.CorruptedCardID;
 end
 
---returns an array of {CardInstanceID, CardInstance} entries for playerCards' whole cards that are eligible to be
---corrupted (ie. not already part of the corruption chain itself)
 function GetCorruptibleCards(playerCards)
 	local eligible = {};
 	for cardInstanceID, cardInstance in pairs(playerCards.WholeCards) do
-		if (not IsCorruptionChainCardID(cardInstance.CardID)) then
+		if (not IsCardImmuneToCorruption(cardInstance.CardID)) then
 			table.insert(eligible, { InstanceID = cardInstanceID, Instance = cardInstance });
 		end
 	end

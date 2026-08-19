@@ -81,8 +81,9 @@ function PlayerListItemClicked(playerID, playerName)
     PlayCardBtn.SetInteractable(true);
 end
 
---simple confirm dialog for playing a Corrupted card, which has no target to pick - resolving it just recovers
---something from the player's own corrupted pool
+--dialog for playing a Corrupted card: offers whichever recovery method(s) are enabled - a one-click "recover a
+--random card" button, and/or a list of the player's own corrupted pool to recover a specific one from (read from
+--Mod.PlayerGameData, which the engine already scopes to just this player)
 function PresentCorruptedUI(game, playCard, closeCardsDialog)
     if (Close ~= nil) then
         Close();
@@ -92,20 +93,41 @@ function PresentCorruptedUI(game, playCard, closeCardsDialog)
 
     game.CreateDialog(function(rootParent, setMaxSize, setScrollable, game, close)
         Close = close;
-        setMaxSize(400, 160);
+        setMaxSize(420, 360);
         setScrollable(false, true);
 
         local vert = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
-        UI.CreateLabel(vert).SetText("Play this Corrupted card to recover what was lost.");
+        UI.CreateLabel(vert).SetText("Play this Corrupted card to recover something from your corrupted pool.");
 
-        UI.CreateButton(vert)
-            .SetText("Play")
-            .SetColor(BUTTON_COLOURS.DarkGreen)
-            .SetFlexibleWidth(1)
-            .SetOnClick(function()
-                if (playCard("Corrupted card played", "RecoverCorrupted", WL.TurnPhase.SpyingCards, {}, nil)) then
-                    close();
-                end
-            end);
+        if (Mod.Settings.RecoveryAllowRandom) then
+            UI.CreateButton(vert)
+                .SetText("Recover A Random Card")
+                .SetColor(BUTTON_COLOURS.DarkGreen)
+                .SetFlexibleWidth(1)
+                .SetOnClick(function()
+                    if (playCard("Corrupted card played", "RecoverRandom", WL.TurnPhase.SpyingCards, {}, nil)) then
+                        close();
+                    end
+                end);
+        end
+
+        if (Mod.Settings.RecoveryAllowPlayerSelected) then
+            UI.CreateLabel(vert).SetText("Or choose a specific card to recover from:");
+
+            local pool = Mod.PlayerGameData.CorruptedPool or {};
+            for index, entry in ipairs(pool) do
+                local cardSettings = game.Settings.Cards[entry.CardID];
+                local label = (cardSettings ~= nil and cardSettings.FriendlyDescription) or ("Card #" .. entry.CardID);
+
+                UI.CreateButton(vert)
+                    .SetText("Recover: " .. label)
+                    .SetFlexibleWidth(1)
+                    .SetOnClick(function()
+                        if (playCard("Corrupted card played", "RecoverSelected_" .. index, WL.TurnPhase.SpyingCards, {}, nil)) then
+                            close();
+                        end
+                    end);
+            end
+        end
     end);
 end

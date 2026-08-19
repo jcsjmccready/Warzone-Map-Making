@@ -154,7 +154,7 @@ function PlayerCanSeeAnyTerritoryInBonus(standing, map, bonusID)
 	return false;
 end
 
-function shuffle(tbl)
+function shuffleInPlace(tbl)
 	for i = #tbl, 2, -1 do
 		local j = math.random(i)
 		tbl[i], tbl[j] = tbl[j], tbl[i]

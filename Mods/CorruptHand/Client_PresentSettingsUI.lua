@@ -18,11 +18,13 @@ function Client_PresentSettingsUI(rootParent)
     UI.CreateLabel(modVGroup).SetText("Cards corrupted per turn, per active Corruption card: " .. Mod.Settings.CardsCorruptedPerTurnPerSource);
 
     UI.CreateLabel(modVGroup).SetText("Recovery:").SetColor(SUBHEADING_COLOUR);
-    if (Mod.Settings.RecoveryModeFullRandomCard) then
-        UI.CreateLabel(modVGroup).SetText("Playing a Corrupted card returns a full random card from your corrupted pool");
-    else
-        UI.CreateLabel(modVGroup).SetText("Playing a Corrupted card returns " .. ((Mod.Settings.PartialPiecesPercent or 0) * 100) .. "% of pieces towards a random card from your corrupted pool");
+    if (Mod.Settings.RecoveryAllowRandom) then
+        UI.CreateLabel(modVGroup).SetText("Random: " .. ((Mod.Settings.RecoveryRandomPercent or 0) * 100) .. "% of pieces towards a random card from your corrupted pool");
     end
+    if (Mod.Settings.RecoveryAllowPlayerSelected) then
+        UI.CreateLabel(modVGroup).SetText("Player Selected: " .. ((Mod.Settings.RecoveryPlayerSelectedPercent or 0) * 100) .. "% of pieces towards a card of your choice from your corrupted pool");
+    end
+    UI.CreateLabel(modVGroup).SetText("Discarding a Corrupted card instead of playing it forfeits the recovery" .. (Mod.Settings.RecoveryAllowRandom and " (unless Random recovery is enabled, in which case a reduced amount is still recovered)" or "") .. ".");
 
     UI.CreateLabel(modVGroup).SetText("");
 

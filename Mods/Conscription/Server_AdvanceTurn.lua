@@ -235,7 +235,7 @@ function NeutraliseFullyConscriptedBonuses(game, addNewOrder)
                 numToNeutralise = math.min(numToNeutralise, numApplicable);
 
                 if (numToNeutralise > 0) then
-                    shuffle(applicableTerritoryIds);
+                    shuffleInPlace(applicableTerritoryIds);
                     for i = 1, numToNeutralise do
                         local territoryModification = WL.TerritoryModification.Create(applicableTerritoryIds[i]);
                         territoryModification.SetOwnerOpt = WL.PlayerID.Neutral;
