@@ -6,12 +6,18 @@ require("Utilities");
 ---@field TurnMatures integer
 
 ---@class CorruptedPoolEntry # A single card taken from a player that's still owed back to them
----@field CardID CardID # The CardID of the card that was corrupted
+---@field ID integer # Stable identifier for this entry, unique within its player's pool for the rest of the game. Used instead of array position so a client's "recover this specific card" selection stays valid even if other entries are added to or removed from the pool (by another Corrupted card played the same turn) before this one resolves
+---@field CardID CardID
 ---@field IntField integer | nil # A generic integer parameter for cards that need one (eg. Armies for a reinforcement card instance); nil if the corrupted card didn't need one. Needed to reconstruct the card in full if this entry is ever recovered at 100%
 
 ---@class ActiveCorruption # A single tracked Corruption card actively corrupting its owner's other cards
 ---@field PlayerID PlayerID
 ---@field CardInstanceID CardInstanceID
+
+---@class PendingRecovery # A recovery requested this turn (by playing or discarding a Corrupted card), resolved
+---@field PlayerID PlayerID
+---@field Type "Random" | "Selected" # Resolve Selected before Random
+---@field EntryID integer | nil # The CorruptedPoolEntry.ID requested, if using "Selected"
 
 ---@param game GameServerHook
 ---@param order GameOrder
@@ -39,9 +45,12 @@ end
 ---@param game GameServerHook
 ---@param addNewOrder fun(order: GameOrder)
 function Server_AdvanceTurn_End(game, addNewOrder)
-    -- ordering of functions: we want to corrupt a card the same turn we get a corruption, so the 0 maturity config actually has a chance to do something
+    -- we want to corrupt a card the same turn we get a corruption, so the 0 maturity config actually has a chance to do something - order matters
     ProgressMaturedBuddingCorruptions(game, addNewOrder);
     CorruptCardsForActiveCorruptions(game, addNewOrder);
+
+    -- order last to protect recovered cards to avoid a negative feedback loop for players
+    ResolvePendingRecoveries(game, addNewOrder);
 end
 
 ---@param game GameServerHook
@@ -73,17 +82,11 @@ function HandleDiscard(game, order, addNewOrder)
 
     Mod.PrivateGameData = privateGameData;
 
-    -- player discarded a corrupted card - if random recovery is enabled the random option still triggers. No kindness for player chosen tho
+    -- player discarded a corrupted card - if random recovery is enabled the random option still triggers.no kindness for player chosen tho
     local playerCards = game.ServerGame.LatestTurnStanding.Cards[order.PlayerID];
     local discardedInstance = playerCards ~= nil and playerCards.WholeCards[order.CardInstanceID];
-    if (discardedInstance ~= nil and discardedInstance.CardID == Mod.Settings.CorruptedCardID) then
-        local pool = GetCorruptedPool(order.PlayerID);
-        if (#pool > 0) then
-            local entry = PopEntryFromCorruptedPoolAtIndex(order.PlayerID, math.random(#pool));
-            if (entry ~= nil and Mod.Settings.RecoveryAllowRandom) then
-                AwardCorruptedCardRecovery(game, order.PlayerID, entry, Mod.Settings.RecoveryRandomPercent or 0, addNewOrder);
-            end
-        end
+    if (discardedInstance ~= nil and discardedInstance.CardID == Mod.Settings.CorruptedCardID and Mod.Settings.RecoveryAllowRandom) then
+        QueuePendingRecovery(order.PlayerID, "Random", nil);
     end
 end
 
@@ -155,21 +158,62 @@ function SetCorruptedPool(playerID, pool)
     Mod.PlayerGameData = allPlayerGameData;
 end
 
-function PopEntryFromCorruptedPoolAtIndex(playerID, index)
+-- generates ids for corrupted pool entry ids to simplify user selection of cards to recover
+function GetNextCorruptedPoolEntryID(playerID)
+    local allPlayerGameData = Mod.PlayerGameData;
+    local playerGameData = allPlayerGameData[playerID] or {};
+
+    local nextID = (playerGameData.NextCorruptedPoolEntryID or 0) + 1;
+    playerGameData.NextCorruptedPoolEntryID = nextID;
+
+    allPlayerGameData[playerID] = playerGameData;
+    Mod.PlayerGameData = allPlayerGameData;
+    return nextID;
+end
+
+function PopRandomCorruptedPoolEntry(playerID)
     local pool = GetCorruptedPool(playerID);
-    local entry = pool[index];
-    if (entry == nil) then
+    if (#pool == 0) then
         return nil;
     end
 
+    local index = math.random(#pool);
+    local entry = pool[index];
     table.remove(pool, index);
     SetCorruptedPool(playerID, pool);
     return entry;
 end
 
+function PopCorruptedPoolEntryByID(playerID, entryID)
+    local pool = GetCorruptedPool(playerID);
+    for index, entry in ipairs(pool) do
+        if (entry.ID == entryID) then
+            table.remove(pool, index);
+            SetCorruptedPool(playerID, pool);
+            return entry;
+        end
+    end
+    return nil;
+end
+
+---@param type "Random" | "Selected"
+function QueuePendingRecovery(playerID, type, entryID)
+    local privateGameData = Mod.PrivateGameData;
+    local pending = privateGameData.PendingRecoveries or {};
+
+    ---@type PendingRecovery
+    local request = { PlayerID = playerID, Type = type, EntryID = entryID };
+    table.insert(pending, request);
+
+    privateGameData.PendingRecoveries = pending;
+    Mod.PrivateGameData = privateGameData;
+end
+
 ---@param game GameServerHook
 ---@param entry CorruptedPoolEntry
 function AwardCorruptedCardRecovery(game, playerID, entry, percent, addNewOrder)
+    local cardName = GetCardDisplayName(game, entry.CardID);
+
     -- whole card logic
     if (percent >= 1) then
         local instance;
@@ -179,7 +223,7 @@ function AwardCorruptedCardRecovery(game, playerID, entry, percent, addNewOrder)
             instance = WL.NoParameterCardInstance.Create(entry.CardID);
         end
         addNewOrder(WL.GameOrderReceiveCard.Create(playerID, { instance }));
-        addNewOrder(WL.GameOrderEvent.Create(playerID,  "Corrupted removed from card", { playerID }, {}));
+        addNewOrder(WL.GameOrderEvent.Create(playerID, "Corrupted removed from card: recovered " .. cardName .. " in full", { playerID }, {}));
         return;
     end
 
@@ -188,7 +232,7 @@ function AwardCorruptedCardRecovery(game, playerID, entry, percent, addNewOrder)
     local numPieces = (cardSettings ~= nil and cardSettings.NumPieces) or 1;
     local piecesAwarded = math.max(math.floor(percent * numPieces + 0.5), 1);
 
-    local event = WL.GameOrderEvent.Create(playerID, "Corrupted removed from card", { playerID }, {});
+    local event = WL.GameOrderEvent.Create(playerID, "Corrupted removed from card: recovered " .. piecesAwarded .. "/" .. numPieces .. " pieces of " .. cardName, { playerID }, {});
     event.AddCardPiecesOpt = { [playerID] = { [entry.CardID] = piecesAwarded } };
     addNewOrder(event);
 end
@@ -197,33 +241,16 @@ end
 ---@param order GameOrder
 ---@param addNewOrder fun(order: GameOrder)
 function HandleCorruptedPlayed(game, order, addNewOrder)
-    local pool = GetCorruptedPool(order.PlayerID);
-    if (#pool == 0) then
-        return; -- shouldn't happen but safety net
-    end
-
-    local index, percent;
     if (order.ModData == "RecoverRandom" and Mod.Settings.RecoveryAllowRandom) then
-        index = math.random(#pool);
-        percent = Mod.Settings.RecoveryRandomPercent or 0;
+        QueuePendingRecovery(order.PlayerID, "Random", nil);
     elseif (startsWith(order.ModData, "RecoverSelected_") and Mod.Settings.RecoveryAllowPlayerSelected) then
-        index = tonumber(string.sub(order.ModData, string.len("RecoverSelected_") + 1));
-        percent = Mod.Settings.RecoveryPlayerSelectedPercent or 0;
-    else
-        return;
+        local entryID = tonumber(string.sub(order.ModData, string.len("RecoverSelected_") + 1));
+        QueuePendingRecovery(order.PlayerID, "Selected", entryID);
     end
-
-    local entry = PopEntryFromCorruptedPoolAtIndex(order.PlayerID, index);
-    if (entry == nil) then
-        return;
-    end
-
-    AwardCorruptedCardRecovery(game, order.PlayerID, entry, percent, addNewOrder);
 end
 
 function ProgressMaturedBuddingCorruptions(game, addNewOrder)
-    local privateGameData = Mod.PrivateGameData;
-    local counters = privateGameData.BuddingCounters or {};
+    local counters = (Mod.PrivateGameData or {}).BuddingCounters or {};
     local remaining = {};
 
     for _, counter in ipairs(counters) do
@@ -240,6 +267,7 @@ function ProgressMaturedBuddingCorruptions(game, addNewOrder)
         end
     end
 
+    local privateGameData = Mod.PrivateGameData;
     privateGameData.BuddingCounters = remaining;
     Mod.PrivateGameData = privateGameData;
 end
@@ -247,9 +275,6 @@ end
 function CorruptCardsForActiveCorruptions(game, addNewOrder)
     local perSource = Mod.Settings.CardsCorruptedPerTurnPerSource or 1;
 
-    -- counted from the tracked ActiveCorruptions list rather than scanning hands, since LatestTurnStanding is a
-    -- snapshot from before this turn's new orders (including a Corruption card just granted this same turn, eg.
-    -- from a 0 maturity Corrupt Hand play or a Budding Corruption maturing) are applied
     local activeCorruptions = Mod.PrivateGameData.ActiveCorruptions or {};
     local numCorruptionCardsByPlayer = {};
     for _, active in ipairs(activeCorruptions) do
@@ -258,11 +283,13 @@ function CorruptCardsForActiveCorruptions(game, addNewOrder)
 
     for playerID, numCorruptionCards in pairs(numCorruptionCardsByPlayer) do
         local playerCards = game.ServerGame.LatestTurnStanding.Cards[playerID];
+
         if (playerCards ~= nil) then
             local playerCorruptibleCards = GetCorruptibleCards(playerCards);
             shuffleInPlace(playerCorruptibleCards);
 
             local numToCorrupt = math.min(numCorruptionCards * perSource, #playerCorruptibleCards);
+
             if (numToCorrupt > 0) then
                 local pool = GetCorruptedPool(playerID);
 
@@ -275,9 +302,11 @@ function CorruptCardsForActiveCorruptions(game, addNewOrder)
                     if (picked.Instance.proxyType == 'ReinforcementCardInstance') then
                         intField = picked.Instance.Armies;
                     end
+                    -- do we need to consider mod cards having custom data on them.. somehow?
+                    -- todo: review.
 
                     ---@type CorruptedPoolEntry
-                    local poolEntry = { CardID = picked.Instance.CardID, IntField = intField };
+                    local poolEntry = { ID = GetNextCorruptedPoolEntryID(playerID), CardID = picked.Instance.CardID, IntField = intField };
                     table.insert(pool, poolEntry);
 
                     local corruptedInstance = WL.NoParameterCardInstance.Create(Mod.Settings.CorruptedCardID);
@@ -288,4 +317,36 @@ function CorruptCardsForActiveCorruptions(game, addNewOrder)
             end
         end
     end
+end
+
+---@param game GameServerHook
+---@param addNewOrder fun(order: GameOrder)
+function ResolvePendingRecoveries(game, addNewOrder)
+    local pending = (Mod.PrivateGameData or {}).PendingRecoveries or {};
+    if (#pending == 0) then
+        return;
+    end
+
+    for _, request in ipairs(pending) do
+        if (request.Type == "Selected") then
+            local entry = PopCorruptedPoolEntryByID(request.PlayerID, request.EntryID);
+            if (entry ~= nil) then
+                AwardCorruptedCardRecovery(game, request.PlayerID, entry, Mod.Settings.RecoveryPlayerSelectedPercent or 0, addNewOrder);
+            end
+        end
+    end
+
+    -- as we update the tracked data with each pop, this should allow random to pick from the non-player selected cases
+    for _, request in ipairs(pending) do
+        if (request.Type == "Random") then
+            local entry = PopRandomCorruptedPoolEntry(request.PlayerID);
+            if (entry ~= nil) then
+                AwardCorruptedCardRecovery(game, request.PlayerID, entry, Mod.Settings.RecoveryRandomPercent or 0, addNewOrder);
+            end
+        end
+    end
+
+    local privateGameData = Mod.PrivateGameData;
+    privateGameData.PendingRecoveries = nil;
+    Mod.PrivateGameData = privateGameData;
 end

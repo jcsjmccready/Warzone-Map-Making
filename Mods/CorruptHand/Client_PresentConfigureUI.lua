@@ -16,7 +16,7 @@ function Create_UI_Controls(rootParent)
     turnsUntilCorruption = UI.CreateNumberInputField(horz)
         .SetSliderMinValue(0)
         .SetSliderMaxValue(10)
-        .SetValue(Mod.Settings.TurnsUntilCorruption or 3);
+        .SetValue(Mod.Settings.TurnsUntilCorruption or 1);
     UI.CreateLabel(mainModUI).SetText('(0 = the target receives Corruption immediately instead of Budding Corruption)').SetColor(BUTTON_COLOURS.DarkGray);
 
     local horz = UI.CreateHorizontalLayoutGroup(mainModUI);

@@ -65,7 +65,7 @@ function Client_SaveConfigureUI(alert, addCard)
     end
 
     local corruptHandCardID = addCard(
-        "Corrupt Hand",
+        "Corrupt Hand Card",
         corruptHandMessage,
         "CorruptHand.png",
         Mod.Settings.NumPieces,
@@ -89,7 +89,7 @@ function Client_SaveConfigureUI(alert, addCard)
     Mod.Settings.CorruptionCardID = corruptionCardID;
 
     local corruptedCardID = addCard(
-        "Corrupted",
+        "Corrupted Card",
         "A card that has been corrupted.\nPlay it to recover the original card.",
         "Corrupted.png",
         1, 0, 0, 0);

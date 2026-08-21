@@ -89,7 +89,7 @@ function PlayerListItemClicked(playerID, playerName)
 end
 
 function PresentCorruptedUI(game, playCard, closeCardsDialog)
-    SelectedPoolIndex = nil;
+    SelectedPoolEntryID = nil;
     SelectedPoolLabel = nil;
 
     if (Close ~= nil) then
@@ -138,12 +138,14 @@ function PresentCorruptedUI(game, playCard, closeCardsDialog)
                 .SetColor(BUTTON_COLOURS.DarkGreen)
                 .SetFlexibleWidth(1)
                 .SetOnClick(function()
-                    if (SelectedPoolIndex == nil) then
+                    if (SelectedPoolEntryID == nil) then
                         PoolInstructionLabel.SetText("You must select a card first").SetColor(ERROR_COLOUR);
                         return;
                     end
 
-                    if (playCard("Corrupted card played", "RecoverSelected_" .. SelectedPoolIndex, WL.TurnPhase.SpyingCards, {}, nil)) then
+                    if (playCard("Corrupted card played", "RecoverSelected_" .. SelectedPoolEntryID, WL.TurnPhase.SpyingCards, {}, nil)) then
+                        ClaimedPoolEntryIDsThisTurn = ClaimedPoolEntryIDsThisTurn or {};
+                        ClaimedPoolEntryIDsThisTurn[SelectedPoolEntryID] = true;
                         close();
                     end
                 end);
@@ -151,26 +153,50 @@ function PresentCorruptedUI(game, playCard, closeCardsDialog)
     end);
 end
 
---pops up the same "Select From List" mechanic used to pick a Corrupt Hand target, listing the player's own
---corrupted pool by card name (read from Mod.PlayerGameData, which the engine already scopes to just this player)
 function SelectPoolCardClicked(game)
     local percent = Mod.Settings.RecoveryPlayerSelectedPercent or 0;
     local pool = Mod.PlayerGameData.CorruptedPool or {};
 
+    local claimedEntryIDs = {};
+    for entryID, _ in pairs(ClaimedPoolEntryIDsThisTurn or {}) do
+        claimedEntryIDs[entryID] = true;
+    end
+    for entryID, _ in pairs(GetAlreadyQueuedSelectedRecoveryEntryIDs(game)) do
+        claimedEntryIDs[entryID] = true;
+    end
+
     local options = {};
-    for index, entry in ipairs(pool) do
-        local label = GetCardDisplayName(game, entry.CardID);
-        if (percent < 1) then
-            local pieces, numPieces = GetPiecesForRecoveryPercent(game, entry.CardID, percent);
-            label = label .. " (" .. pieces .. "/" .. numPieces .. " pieces)";
+    for _, entry in ipairs(pool) do
+        if (not claimedEntryIDs[entry.ID]) then
+            local label = GetCardDisplayName(game, entry.CardID);
+            if (percent < 1) then
+                local pieces, numPieces = GetPiecesForRecoveryPercent(game, entry.CardID, percent);
+                label = label .. " (" .. pieces .. "/" .. numPieces .. " pieces)";
+            end
+            local entryID = entry.ID;
+            table.insert(options, { text = label, selected = function() PoolCardSelected(entryID, label); end });
         end
-        table.insert(options, { text = label, selected = function() PoolCardSelected(index, label); end });
     end
     UI.PromptFromList("Choose a card to recover", options);
 end
 
-function PoolCardSelected(index, label)
-    SelectedPoolIndex = index;
+function GetAlreadyQueuedSelectedRecoveryEntryIDs(game)
+    local claimed = {};
+
+    for _, order in pairs(game.Orders) do
+        if (order.proxyType == 'GameOrderPlayCardCustom' and order.CustomCardID == Mod.Settings.CorruptedCardID and startsWith(order.ModData, "RecoverSelected_")) then
+            local entryID = tonumber(string.sub(order.ModData, string.len("RecoverSelected_") + 1));
+            if (entryID ~= nil) then
+                claimed[entryID] = true;
+            end
+        end
+    end
+
+    return claimed;
+end
+
+function PoolCardSelected(entryID, label)
+    SelectedPoolEntryID = entryID;
     SelectedPoolLabel = label;
     SelectPoolCardBtn.SetText("Selected: " .. label);
     PoolInstructionLabel.SetText("");
