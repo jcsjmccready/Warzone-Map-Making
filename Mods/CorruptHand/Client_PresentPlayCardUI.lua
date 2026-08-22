@@ -70,7 +70,7 @@ end
 
 function SelectPlayerClicked()
     local options = {};
-    local TESTING_MODE = true;
+    local TESTING_MODE = false;
     for playerID, player in pairs(Game.Game.PlayingPlayers) do
         if (TESTING_MODE or playerID ~= Game.Us.ID) then
             local playerName = player.DisplayName(nil, false);
