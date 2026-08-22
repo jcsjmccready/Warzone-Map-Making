@@ -132,9 +132,6 @@ function GetCardDisplayName(game, cardID)
     return BUILTIN_CARD_DISPLAY_NAMES[cardSettings.proxyType] or ("Card #" .. cardID);
 end
 
---number of pieces percent of cardID's card's NumPieces would award (using the exact same rounding as the server's
---AwardCorruptedCardRecovery in Server_AdvanceTurn.lua, so the displayed amount always matches what's granted),
---plus that card's NumPieces itself, so callers can show eg. "3/7 pieces"
 function GetPiecesForRecoveryPercent(game, cardID, percent)
     local cardSettings = game.Settings.Cards[cardID];
     local numPieces = (cardSettings ~= nil and cardSettings.NumPieces) or 1;
