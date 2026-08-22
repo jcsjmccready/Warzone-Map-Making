@@ -161,7 +161,7 @@ function Server_AdvanceTurn_End(game, addNewOrder)
 		priv.CurrentHolder = nil;
 		priv.PriorHolder = nil;
 		priv.TurnsHeld = 0;
-		priv.TurnsUntilStart = Mod.Settings.TurnsBeforeStart;
+		priv.TurnsUntilStart = Mod.Settings.TurnsBeforeRestart;
 		Mod.PrivateGameData = priv;
 		return;
 	end
@@ -195,7 +195,7 @@ function ApplyMinorPenalty(game, addNewOrder, holderID)
 	if (player == nil) then return; end;
 
 	local income = player.Income(0, game.ServerGame.LatestTurnStanding, false, false).Total;
-	local penalty = math.max(1, math.floor(income * percent + 0.5));
+	local penalty = math.max(Mod.Settings.MinorPenaltyMinDamage or 0, math.floor(income * percent + 0.5));
 
 	local event = WL.GameOrderEvent.Create(holderID, "The Hot Potato weighs on your economy (-" .. penalty .. " income next turn)", { holderID }, {});
 	event.IncomeMods = { WL.IncomeMod.Create(holderID, -penalty, "Holding the Hot Potato") };
@@ -227,5 +227,16 @@ function Explode(game, addNewOrder, holderID, piecesHeld)
 	local event = WL.GameOrderEvent.Create(holderID, "The Hot Potato explodes in your hands!", {}, mods);
 	event.TerritoryAnnotationsOpt = annotations;
 	event.AddCardPiecesOpt = { [holderID] = { [Mod.Settings.CardID] = -piecesHeld } };
+
+	local player = game.Game.Players[holderID];
+	local incomeLossPercent = Mod.Settings.MajorPenaltyIncomeLossPercent or 0;
+	if (player ~= nil and incomeLossPercent > 0) then
+		local income = player.Income(0, game.ServerGame.LatestTurnStanding, false, false).Total;
+		local incomePenalty = math.max(Mod.Settings.MajorPenaltyIncomeLossMinDamage or 0, math.floor(income * incomeLossPercent + 0.5));
+		if (incomePenalty > 0) then
+			event.IncomeMods = { WL.IncomeMod.Create(holderID, -incomePenalty, "The Hot Potato exploded") };
+		end
+	end
+
 	addNewOrder(event);
 end

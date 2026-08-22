@@ -9,6 +9,12 @@ function Client_SaveConfigureUI(alert, addCard)
 		return;
 	end
 
+	Mod.Settings.TurnsBeforeRestart = turnsBeforeRestart.GetValue();
+	if (Mod.Settings.TurnsBeforeRestart < 1) then
+		alert("Turns before it restarts cannot be less than 1");
+		return;
+	end
+
 	Mod.Settings.FuseLength = fuseLength.GetValue();
 	if (Mod.Settings.FuseLength < 1) then
 		alert("Fuse length cannot be less than 1");
@@ -24,9 +30,18 @@ function Client_SaveConfigureUI(alert, addCard)
 	Mod.Settings.HolderSelectionBiggest = holderSelectionBiggest.GetIsChecked();
 	Mod.Settings.OnlyAttackWins = onlyAttackWins.GetIsChecked();
 
+	Mod.Settings.AnnounceHotPotatoTransfer = announceHotPotatoTransfer.GetIsChecked();
+	Mod.Settings.StateNewOwner = Mod.Settings.AnnounceHotPotatoTransfer and stateNewOwner.GetIsChecked();
+
 	Mod.Settings.MinorPenaltyPercent = minorPenaltyPercent.GetValue();
 	if (Mod.Settings.MinorPenaltyPercent < 0 or Mod.Settings.MinorPenaltyPercent > 1) then
 		alert("Minor penalty percentage must be between 0 and 1");
+		return;
+	end
+
+	Mod.Settings.MinorPenaltyMinDamage = minorPenaltyMinDamage.GetValue();
+	if (Mod.Settings.MinorPenaltyMinDamage < 0) then
+		alert("Minor penalty minimum damage cannot be less than 0");
 		return;
 	end
 
@@ -39,6 +54,30 @@ function Client_SaveConfigureUI(alert, addCard)
 	Mod.Settings.MajorPenaltyMinDamage = majorPenaltyMinDamage.GetValue();
 	if (Mod.Settings.MajorPenaltyMinDamage < 0) then
 		alert("Major penalty minimum damage cannot be less than 0");
+		return;
+	end
+
+	Mod.Settings.MajorPenaltyIncomeLossPercent = majorPenaltyIncomeLossPercent.GetValue();
+	if (Mod.Settings.MajorPenaltyIncomeLossPercent < 0 or Mod.Settings.MajorPenaltyIncomeLossPercent > 1) then
+		alert("Major penalty income loss percentage must be between 0 and 1");
+		return;
+	end
+
+	Mod.Settings.MajorPenaltyIncomeLossMinDamage = majorPenaltyIncomeLossMinDamage.GetValue();
+	if (Mod.Settings.MajorPenaltyIncomeLossMinDamage < 0) then
+		alert("Major penalty income loss minimum cannot be less than 0");
+		return;
+	end
+
+	Mod.Settings.MajorPenaltyFogPercent = majorPenaltyFogPercent.GetValue();
+	if (Mod.Settings.MajorPenaltyFogPercent < 0 or Mod.Settings.MajorPenaltyFogPercent > 1) then
+		alert("Major penalty fog percentage must be between 0 and 1");
+		return;
+	end
+
+	Mod.Settings.MajorPenaltyFogDuration = majorPenaltyFogDuration.GetValue();
+	if (Mod.Settings.MajorPenaltyFogDuration < 1) then
+		alert("Major penalty fog duration cannot be less than 1");
 		return;
 	end
 

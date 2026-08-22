@@ -1,3 +1,5 @@
-After a set number of turns, the clock starts: a random (or the biggest) player is handed the Hot Potato, represented by a piece of the Hot Potato card - one piece for every turn it has survived without being passed on. The first time each turn that the current holder wins a fight (winning an attack, and/or successfully defending one, depending on settings) against another player, the Hot Potato - and all its pieces - is passed to the loser of that fight - but it can never be passed straight back to whoever was just holding it.
-While the Hot Potato is held, the holder suffers a small income penalty every turn. If it is never passed on for long enough, it explodes: its pieces are taken away, the holder takes a heavy army penalty across all their territories, and the clock resets, counting down again before the next Hot Potato is handed out.
-Once too few players remain alive, the Hot Potato stops - any potato in play fizzles out with no explosion, and no new one is handed out.
+Based on the party game of the same name, the Hot Potato mod is about ensuring you do not hold the Hot Potato by the time the clock runs out.
+The clock is indicated through card pieces of the hot potato. Transfering the Hot Potato transfers the pieces. When a player gets the full card, it explodes!
+
+See the configurable options for the penalty for holding the hot potato and for it exploding in your hands.
+Only one hot potato can exist at a time.
