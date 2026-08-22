@@ -1,3 +1,21 @@
+CURRENT_SETTINGS_VERSION = 2;
+
+function MigrateModSettings()
+    local version = Mod.Settings.Version or 1;
+
+    if (version < 2) then
+        -- version 1: the mod only supported Reconnaissance, and had no Enabled flag for it - if the mod was
+        -- configured at all, Reconnaissance was implicitly always enabled.
+        if (Mod.Settings.ReconnaissanceEnabled == nil) then
+            Mod.Settings.ReconnaissanceEnabled = true;
+        end
+
+        if (Mod.Settings.SurveillanceEnabled == nil) then
+            Mod.Settings.SurveillanceEnabled = false;
+        end
+    end
+end
+
 --returns territoryID plus all of its directly connected neighbours, used to mimic the area a recon card reveals
 function GetTerritoryAndAdjacentIDs(game, territoryID)
     local territories = { territoryID };

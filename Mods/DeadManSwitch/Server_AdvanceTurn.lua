@@ -83,6 +83,7 @@ function Trigger_Dms_Damage(territoryModification, game, order, result, addNewOr
 
 			local event = WL.GameOrderEvent.Create(order.PlayerID, "Triggered a Dead Man's Switch", {}, {territoryModification});
 			event.TerritoryAnnotationsOpt = { [order.To] = WL.TerritoryAnnotation.Create("Triggered DMS", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany)) };
+			event.Icon = "Triggered";
 			addNewOrder(event, true);
 
 			for _ = 1, numberOfDMS do
@@ -100,6 +101,7 @@ function Trigger_Dms_Damage(territoryModification, game, order, result, addNewOr
 
 		local event = WL.GameOrderEvent.Create(order.PlayerID, "Triggered a Dead Man's Switch", {}, {territoryModification});
 		event.TerritoryAnnotationsOpt = { [order.To] = WL.TerritoryAnnotation.Create("Triggered DMS", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany)) };
+		event.Icon = "Triggered";
 		addNewOrder(event, true);
 
 	elseif (Mod.Settings.isDamageTypePercent) then
@@ -115,6 +117,7 @@ function Trigger_Dms_Damage(territoryModification, game, order, result, addNewOr
 
 		local event = WL.GameOrderEvent.Create(order.PlayerID, "Triggered a Dead Man's Switch", {}, {territoryModification});
 		event.TerritoryAnnotationsOpt = { [order.To] = WL.TerritoryAnnotation.Create("Triggered DMS", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany)) };
+		event.Icon = "Triggered";
 		addNewOrder(event, true);
 	end
 end
@@ -173,6 +176,7 @@ function BuildStructures(game, addNewOrder)
 			local td = game.Map.Territories[territoryID];
 			event.JumpToActionSpotOpt = WL.RectangleVM.Create(td.MiddlePointX, td.MiddlePointY, td.MiddlePointX, td.MiddlePointY);
 			event.TerritoryAnnotationsOpt = { [territoryID] = WL.TerritoryAnnotation.Create("Build DMS", 8, GetColourIntegerFromHex(BUTTON_COLOURS.DarkGreen)) };
+			event.Icon = "Build";
 
 			addNewOrder(event);
 		end
@@ -186,6 +190,7 @@ function BuildStructures(game, addNewOrder)
 			local td = game.Map.Territories[territoryID];
 			event.JumpToActionSpotOpt = WL.RectangleVM.Create(td.MiddlePointX, td.MiddlePointY, td.MiddlePointX, td.MiddlePointY);
 			event.TerritoryAnnotationsOpt = { [territoryID] = WL.TerritoryAnnotation.Create("Unable to build DMS", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Red)) };
+			event.Icon = "BuildFailed";
 
 			addNewOrder(event);
 		end

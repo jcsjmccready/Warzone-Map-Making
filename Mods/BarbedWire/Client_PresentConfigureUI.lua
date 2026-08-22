@@ -130,5 +130,5 @@ function Create_BarbedWireCard_SubOptions_UI(rootParent)
     barbedWireInitialPieces = UI.CreateNumberInputField(horz)
         .SetSliderMinValue(0)
         .SetSliderMaxValue(5)
-        .SetValue(Mod.Settings.BarbedWireInitialPieces or 5);
+        .SetValue(Mod.Settings.BarbedWireInitialPieces or 1);
 end

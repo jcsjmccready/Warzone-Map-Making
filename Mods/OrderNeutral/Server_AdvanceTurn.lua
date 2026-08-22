@@ -20,8 +20,6 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
     if (order.proxyType == 'GameOrderPlayCardCustom' and startsWith(order.ModData, "CreateNeutralAttackTransferOrder_")) then
 
         if (order.CustomCardID == Mod.Settings.CardID and Mod.Settings.CardDuration > 1) then
-            -- playing the original card starts its own independent countdown; if the player has other active
-            -- CommandNeutral streaks running, this is in addition to those, not a replacement for them
             local privateGameData = Mod.PrivateGameData;
             if (privateGameData.PendingTemporaryCardStreaks == nil) then privateGameData.PendingTemporaryCardStreaks = {}; end;
             table.insert(privateGameData.PendingTemporaryCardStreaks, { PlayerID = order.PlayerID, RemainingTurns = Mod.Settings.CardDuration - 1 });
@@ -42,13 +40,14 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
         end
 
         if (game.Map.Territories[fromTerritoryID].ConnectedTo[toTerritoryID] == nil) then
-            -- The client can't be trusted to only send legal orders, so verify adjacency ourselves
+            -- The client can't be trusted
             return;
         end
 
-        --the client can't be trusted to only request a legal amount, so clamp it to what's actually available
+        --the client can't be trusted
         local availableArmies = fromTerritory.NumArmies.NumArmies;
-        local armiesToSend = (armyCountStr == nil or armyCountStr == "ALL") and availableArmies or math.max(0, math.min(availableArmies, tonumber(armyCountStr) or 0));
+        local maxSendableArmies = game.Settings.OneArmyStandsGuard and math.max(0, availableArmies - 1) or availableArmies;
+        local armiesToSend = (armyCountStr == nil or armyCountStr == "ALL") and maxSendableArmies or math.max(0, math.min(maxSendableArmies, tonumber(armyCountStr) or 0));
 
         local specialUnitsToSend;
         if (specialUnitsStr == nil or specialUnitsStr == "ALL") then
@@ -62,8 +61,9 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
         end
 
         if (armiesToSend <= 0 and #specialUnitsToSend == 0) then
-            -- Nothing was actually selected to send (eg. the territory lost armies/special units earlier this turn)
-            addNewOrder(WL.GameOrderEvent.Create(order.PlayerID, order.Description .. " - failed, no armies were left to send", { order.PlayerID }, {}));
+            local event = WL.GameOrderEvent.Create(order.PlayerID, order.Description .. " - failed, no armies were left to send", { order.PlayerID }, {});
+            event.Icon = "Blocked";
+            addNewOrder(event);
             return;
         end
 
@@ -90,6 +90,7 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
                 [fromTerritoryID] = WL.TerritoryAnnotation.Create("Ordered", 8, GetColourIntegerFromHex(BUTTON_COLOURS.DarkGray)),
                 [toTerritoryID] = WL.TerritoryAnnotation.Create("Target", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Cordovan)),
             };
+            event.Icon = "NeutralAttackTransfer";
 
             if (Mod.Settings.NeutralArmyGivesVision and Mod.Settings.VisionMethodManual) then
                 GrantManualVisionOfTerritory(game, event, order.PlayerID, toTerritoryID);
@@ -102,8 +103,7 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
                 GiveFreeReconOfTerritory(order.PlayerID, toTerritoryID, addNewOrder);
             end
         else
-            -- GameOrderAttackTransfer requires a real (non-neutral) PlayerID, so we can't use it for a neutral-owned
-            -- source territory. Instead, manually resolve combat using the same damage calculation the engine uses.
+            -- not a neutral territory, ATTACK!
             local attackingArmies = armiesToSend;
             local attackingSpecialUnits = specialUnitsToSend;
             local attackingArmiesObj = WL.Armies.Create(attackingArmies, attackingSpecialUnits);
@@ -116,10 +116,6 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
             local extraFromChunks = {};
             local extraToChunks = {};
             if (attackResult.IsSuccessful) then
-                -- attack succeeds, neutral captures the territory. The entire attacking force (whether it died,
-                -- survived undamaged, or survived damaged) leaves the source territory and arrives fresh at the
-                -- destination, so remove all of it from the source rather than just the units that died/were hurt;
-                -- armies/special units that weren't sent were never part of the attack and stay behind
                 fromMod.SetArmiesTo = availableArmies - armiesToSend;
                 fromMod.RemoveSpecialUnitsOpt = map(attackingSpecialUnits, function(unit) return unit.ID end);
 
@@ -129,10 +125,6 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
                 extraToChunks = AssignAddSpecialUnits(toMod, attackResult.AttackerResult.SurvivingSpecials);
                 message = DescribeArmyMovement(attackingArmies, attackingSpecialUnits) .. " captured " .. toTerritoryName .. " from " .. fromTerritoryName;
             else
-                -- attack fails, surviving attackers return home and the defender holds the territory with whatever
-                -- survived. Units that took no damage never left their territory, so only the ones that died or were
-                -- damaged (and were cloned with their new health) need to be removed/re-added; armies/special units
-                -- that weren't sent were never part of the attack and stay behind alongside the returning survivors
                 fromMod.SetArmiesTo = (availableArmies - armiesToSend) + attackResult.AttackerResult.RemainingArmies;
                 fromMod.RemoveSpecialUnitsOpt = attackResult.AttackerResult.KilledSpecials;
                 extraFromChunks = AssignAddSpecialUnits(fromMod, attackResult.AttackerResult.ClonedSpecials);
@@ -148,7 +140,7 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
                 [fromTerritoryID] = WL.TerritoryAnnotation.Create("Ordered", 8, GetColourIntegerFromHex(BUTTON_COLOURS.DarkGray)),
                 [toTerritoryID] = WL.TerritoryAnnotation.Create("Target", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Cordovan)),
             };
-
+            event.Icon = "NeutralAttackTransfer";
             local visionTargetTerritoryID = attackResult.IsSuccessful and toTerritoryID or fromTerritoryID;
 
             if (Mod.Settings.NeutralArmyGivesVision and Mod.Settings.VisionMethodManual) then
@@ -175,8 +167,7 @@ function Server_AdvanceTurn_End(game, addNewOrder)
     GiveTemporaryCommandNeutralCards(game, addNewOrder);
 end
 
---discards any Temporary Command Neutral cards still sitting unused in a player's hand, so they don't carry over
---into the next turn before this turn's active streaks hand out fresh ones
+-- todo: we should see if we can put this into a commit hook
 function DiscardUnusedTemporaryCommandNeutralCards(game, addNewOrder)
     for playerID, playerCards in pairs(game.ServerGame.LatestTurnStanding.Cards) do
         for cardInstanceID, cardInstance in pairs(playerCards.WholeCards) do
@@ -187,8 +178,6 @@ function DiscardUnusedTemporaryCommandNeutralCards(game, addNewOrder)
     end
 end
 
---gives out a Temporary Command Neutral card for each still-active CommandNeutral streak, one card per streak (a player
---with multiple active streaks receives multiple temporary cards), then ticks each streak's remaining turns down
 function GiveTemporaryCommandNeutralCards(game, addNewOrder)
     local privateGameData = Mod.PrivateGameData;
     local streaks = privateGameData.PendingTemporaryCardStreaks;
