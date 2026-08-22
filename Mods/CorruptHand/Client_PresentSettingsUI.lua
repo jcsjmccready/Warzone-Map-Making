@@ -7,7 +7,7 @@ function Client_PresentSettingsUI(rootParent)
     UI.CreateLabel(descriptionVGroup).SetText("This mod adds the Corrupt Hand card which provides the ability to block players from playing their cards if they are inattentive.");
 
     local modVGroup = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
-    if (Mod.Settings.TurnsUntilCorruption == 0) then
+    if (Mod.Settings.CorruptHandGivesCorruptionImmediately) then
         UI.CreateLabel(modVGroup).SetText("Playing a Corrupt Hand card gives the target player a Corruption card immediately.");
     else
         UI.CreateLabel(modVGroup).SetText("Playing a Corrupt Hand card gives the target player a Budding Corruption, that matures into an active Corruption after " .. Mod.Settings.TurnsUntilCorruption .. " turns.");

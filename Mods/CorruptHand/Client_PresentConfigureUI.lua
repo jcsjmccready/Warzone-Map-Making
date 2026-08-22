@@ -12,19 +12,58 @@ function Create_UI_Controls(rootParent)
     UI.CreateLabel(mainModUI).SetText('Corruption Behaviour:').SetColor(SUBHEADING_COLOUR);
 
     local horz = UI.CreateHorizontalLayoutGroup(mainModUI);
-    UI.CreateLabel(horz).SetText('Turns until Budding Corruption matures into Corruption').SetPreferredWidth(290);
-    turnsUntilCorruption = UI.CreateNumberInputField(horz)
-        .SetSliderMinValue(0)
-        .SetSliderMaxValue(10)
-        .SetValue(Mod.Settings.TurnsUntilCorruption or 1);
-    UI.CreateLabel(mainModUI).SetText('(0 = the target receives Corruption immediately instead of Budding Corruption)').SetColor(BUTTON_COLOURS.DarkGray);
-
-    local horz = UI.CreateHorizontalLayoutGroup(mainModUI);
     UI.CreateLabel(horz).SetText('Cards corrupted per turn, per active Corruption card').SetPreferredWidth(290);
     cardsCorruptedPerTurn = UI.CreateNumberInputField(horz)
         .SetSliderMinValue(1)
         .SetSliderMaxValue(5)
         .SetValue(Mod.Settings.CardsCorruptedPerTurnPerSource or 1);
+
+    UI.CreateLabel(mainModUI).SetText('Playing a Corrupt Hand gives:');
+    local corruptHandGivesGroup = UI.CreateRadioButtonGroup(mainModUI);
+
+    -- Corruption immediately
+    local corruptHandGivesCorruptionHeading = UI.CreateVerticalLayoutGroup(mainModUI);
+    corruptHandGivesCorruption = UI.CreateRadioButton(corruptHandGivesCorruptionHeading).SetGroup(corruptHandGivesGroup).SetText('Corruption card')
+        .SetIsChecked(Mod.Settings.CorruptHandGivesCorruptionImmediately or false);
+
+    corruptHandGivesCorruption.SetOnValueChanged(function()
+        if (corruptHandGivesCorruption.GetIsChecked()) then
+            corruptHandGivesCorruption.SetInteractable(false);
+        else
+            corruptHandGivesCorruption.SetInteractable(true);
+        end
+    end);
+
+    -- Budding Corruption, matures later
+    local corruptHandGivesBuddingHeading = UI.CreateVerticalLayoutGroup(mainModUI);
+    corruptHandGivesBudding = UI.CreateRadioButton(corruptHandGivesBuddingHeading).SetGroup(corruptHandGivesGroup).SetText('Budding Corruption card (which matures into a Corruption Card later)')
+        .SetIsChecked(not (Mod.Settings.CorruptHandGivesCorruptionImmediately or false));
+
+    corruptHandGivesBudding.SetOnValueChanged(function()
+        if (corruptHandGivesBudding.GetIsChecked()) then
+            Create_TurnsUntilCorruption_SubOptions_UI(corruptHandGivesBuddingHeading);
+            corruptHandGivesBudding.SetInteractable(false);
+        else
+            UI.Destroy(turnsUntilCorruptionSubOptionsVGroup);
+            corruptHandGivesBudding.SetInteractable(true);
+        end
+    end);
+
+    if (corruptHandGivesCorruption.GetIsChecked()) then -- one time check for loading up from settings
+        corruptHandGivesCorruption.SetInteractable(false);
+    end
+    if (corruptHandGivesBudding.GetIsChecked()) then -- one time check for loading up from settings
+        Create_TurnsUntilCorruption_SubOptions_UI(corruptHandGivesBuddingHeading);
+        corruptHandGivesBudding.SetInteractable(false);
+    end
+
+    local horz = UI.CreateHorizontalLayoutGroup(mainModUI);
+    UI.CreateLabel(horz).SetText('Difficulty to spot Budding Corruption').SetPreferredWidth(290);
+    buddingCorruptionDifficulty = Mod.Settings.BuddingCorruptionDifficulty or "Medium";
+    buddingCorruptionDifficultyBtn = UI.CreateButton(horz)
+        .SetText(buddingCorruptionDifficulty)
+        .SetOnClick(SelectBuddingCorruptionDifficultyClicked)
+        .SetFlexibleWidth(1);
 
     UI.CreateLabel(mainModUI).SetText('Playing a Corrupted Card:').SetColor(SUBHEADING_COLOUR);
 
@@ -96,6 +135,30 @@ function Create_UI_Controls(rootParent)
         .SetSliderMinValue(0)
         .SetSliderMaxValue(5)
         .SetValue(Mod.Settings.InitialPieces or 0);
+end;
+
+function SelectBuddingCorruptionDifficultyClicked()
+    local options = {};
+    for _, difficulty in ipairs({ "VeryEasy", "Easy", "Medium", "Hard" }) do
+        table.insert(options, { text = difficulty, selected = function() BuddingCorruptionDifficultySelected(difficulty); end });
+    end
+    UI.PromptFromList("Choose a difficulty to spot Budding Corruption", options);
+end
+
+function BuddingCorruptionDifficultySelected(difficulty)
+    buddingCorruptionDifficulty = difficulty;
+    buddingCorruptionDifficultyBtn.SetText(difficulty);
+end
+
+function Create_TurnsUntilCorruption_SubOptions_UI(rootParent)
+    turnsUntilCorruptionSubOptionsVGroup = UI.CreateVerticalLayoutGroup(rootParent);
+
+    local horz = UI.CreateHorizontalLayoutGroup(turnsUntilCorruptionSubOptionsVGroup);
+    UI.CreateLabel(horz).SetText('Turns until Budding Corruption matures into Corruption').SetPreferredWidth(290);
+    turnsUntilCorruption = UI.CreateNumberInputField(horz)
+        .SetSliderMinValue(1)
+        .SetSliderMaxValue(10)
+        .SetValue(Mod.Settings.TurnsUntilCorruption or 1, 1);
 end;
 
 function Create_RecoveryRandom_SubOptions_UI(rootParent)
