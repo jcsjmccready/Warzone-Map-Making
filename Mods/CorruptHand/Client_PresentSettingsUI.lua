@@ -4,27 +4,24 @@ require("Utilities");
 ---@param rootParent RootParent
 function Client_PresentSettingsUI(rootParent)
     local descriptionVGroup = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
-    UI.CreateLabel(descriptionVGroup).SetText("Play the Corrupt Hand card and secretly select an enemy player to start corrupting their hand.");
+    UI.CreateLabel(descriptionVGroup).SetText("This mod adds the Corrupt Hand card which provides the ability to block players from playing their cards if they are inattentive.");
 
     local modVGroup = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
-    UI.CreateLabel(modVGroup).SetText("Incubation:").SetColor(SUBHEADING_COLOUR);
     if (Mod.Settings.TurnsUntilCorruption == 0) then
-        UI.CreateLabel(modVGroup).SetText("Target receives Corruption immediately");
+        UI.CreateLabel(modVGroup).SetText("Playing a Corrupt Hand card gives the target player a Corruption card immediately.");
     else
-        UI.CreateLabel(modVGroup).SetText("Turns until Budding Corruption matures into Corruption: " .. Mod.Settings.TurnsUntilCorruption);
+        UI.CreateLabel(modVGroup).SetText("Playing a Corrupt Hand card gives the target player a Budding Corruption, that matures into an active Corruption after " .. Mod.Settings.TurnsUntilCorruption .. " turns.");
     end
+    UI.CreateLabel(modVGroup).SetText("At the end of a turn, if a Corruption Card is in a players hand (including the turn it enters their hand), it corrupts " .. Mod.Settings.CardsCorruptedPerTurnPerSource .. " cards.");
 
-    UI.CreateLabel(modVGroup).SetText("Corruption:").SetColor(SUBHEADING_COLOUR);
-    UI.CreateLabel(modVGroup).SetText("Cards corrupted per turn, per active Corruption card: " .. Mod.Settings.CardsCorruptedPerTurnPerSource);
-
-    UI.CreateLabel(modVGroup).SetText("Recovery:").SetColor(SUBHEADING_COLOUR);
+    UI.CreateLabel(modVGroup).SetText("Playing a corrupted card:").SetColor(SUBHEADING_COLOUR);
     if (Mod.Settings.RecoveryAllowRandom) then
-        UI.CreateLabel(modVGroup).SetText("Random: " .. ((Mod.Settings.RecoveryRandomPercent or 0) * 100) .. "% of pieces towards a random card from your corrupted pool");
+        UI.CreateLabel(modVGroup).SetText("Allows the option to recover " .. ((Mod.Settings.RecoveryRandomPercent or 0) * 100) .. "% of pieces towards a random card from your corrupted pool");
     end
     if (Mod.Settings.RecoveryAllowPlayerSelected) then
-        UI.CreateLabel(modVGroup).SetText("Player Selected: " .. ((Mod.Settings.RecoveryPlayerSelectedPercent or 0) * 100) .. "% of pieces towards a card of your choice from your corrupted pool");
+        UI.CreateLabel(modVGroup).SetText("Allows the option to recover " .. ((Mod.Settings.RecoveryPlayerSelectedPercent or 0) * 100) .. "% of pieces towards a card of your choice from your corrupted pool");
     end
-    UI.CreateLabel(modVGroup).SetText("Discarding a Corrupted card instead of playing it forfeits the recovery" .. (Mod.Settings.RecoveryAllowRandom and " (unless Random recovery is enabled, in which case a reduced amount is still recovered)" or "") .. ".");
+    UI.CreateLabel(modVGroup).SetText("Discarding a Corrupted card instead of playing it forfeits the recovery" .. (Mod.Settings.RecoveryAllowRandom and " (unless Random recovery is enabled, in which case the random option is chosen)" or "") .. ".");
 
     UI.CreateLabel(modVGroup).SetText("");
 

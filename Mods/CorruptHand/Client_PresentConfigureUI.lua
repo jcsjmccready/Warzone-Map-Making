@@ -9,7 +9,7 @@ end;
 function Create_UI_Controls(rootParent)
     local mainModUI = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
 
-    UI.CreateLabel(mainModUI).SetText('Mod Behaviour:').SetColor(SUBHEADING_COLOUR);
+    UI.CreateLabel(mainModUI).SetText('Corruption Behaviour:').SetColor(SUBHEADING_COLOUR);
 
     local horz = UI.CreateHorizontalLayoutGroup(mainModUI);
     UI.CreateLabel(horz).SetText('Turns until Budding Corruption matures into Corruption').SetPreferredWidth(290);
@@ -26,12 +26,11 @@ function Create_UI_Controls(rootParent)
         .SetSliderMaxValue(5)
         .SetValue(Mod.Settings.CardsCorruptedPerTurnPerSource or 1);
 
-    UI.CreateLabel(mainModUI).SetText('Corrupted card recovery (played for the full amount, discarded for a reduced amount):').SetColor(SUBHEADING_COLOUR);
-    UI.CreateLabel(mainModUI).SetText('(At least one of the below must be enabled)').SetColor(BUTTON_COLOURS.DarkGray);
+    UI.CreateLabel(mainModUI).SetText('Playing a Corrupted Card:').SetColor(SUBHEADING_COLOUR);
 
     -- Random recovery
     local horz = UI.CreateHorizontalLayoutGroup(mainModUI);
-    UI.CreateLabel(horz).SetText('Allow recovering a random card from the pool').SetPreferredWidth(290);
+    UI.CreateLabel(horz).SetText('Allows the option to recover a random card from your pool of corrupted cards').SetPreferredWidth(290);
     recoveryAllowRandom = UI.CreateCheckBox(horz).SetIsChecked(Mod.Settings.RecoveryAllowRandom or Mod.Settings.RecoveryAllowRandom == nil).SetText('');
 
     local recoveryRandomSubOptionsParent = UI.CreateVerticalLayoutGroup(mainModUI);
@@ -50,7 +49,7 @@ function Create_UI_Controls(rootParent)
 
     -- Player selected recovery
     local horz = UI.CreateHorizontalLayoutGroup(mainModUI);
-    UI.CreateLabel(horz).SetText('Allow the player to choose which card to recover from the pool').SetPreferredWidth(290);
+    UI.CreateLabel(horz).SetText('Allows the option to recover a specific card from your pool of corrupted cards').SetPreferredWidth(290);
     recoveryAllowPlayerSelected = UI.CreateCheckBox(horz).SetIsChecked(Mod.Settings.RecoveryAllowPlayerSelected or false).SetText('');
 
     local recoveryPlayerSelectedSubOptionsParent = UI.CreateVerticalLayoutGroup(mainModUI);

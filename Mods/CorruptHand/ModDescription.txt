@@ -1,7 +1,12 @@
-This mod adds the Corrupt Hand card. Play it and secretly select an enemy player to begin corrupting their hand.
+This mod adds the Corrupt Hand card which provides the ability to block players from playing their cards if they are inattentive.
 
-The target is given a Budding Corruption card. After a configurable number of turns it matures into a Corruption card (or they receive Corruption immediately if that number is set to 0). While a player holds a Corruption card, one of their other cards is corrupted at the end of every turn - replaced with a Corrupted card - for as long as that Corruption card remains in their hand. A player can be corrupted by multiple sources at once, and each active Corruption card corrupts cards independently.
+Play the Corrupt Hand card on a chosen player to begin corrupting their hand.
+The chosen player will receive a Budding Corruption card or Corruption card dependent on config. A Budding Corruption card transforms into a Corruption card after a configurable number of turns.
 
-Discarding a Budding Corruption or Corruption card stops any further corruption from that source, but any Corrupted cards already received must still be played (or discarded) to deal with them.
+If a player holds a Corruption card, then each turn (including the turn it is given), it will transform a configurable number of cards into Corrupted cards (denying them from being able to use them for their original effect).
 
-Playing a Corrupted card recovers a configurable percentage of pieces towards a card from that player's own corrupted pool (the whole card outright if that percentage is 100%) - either a random one, or (if enabled) one the player chooses themselves, each with their own configurable percentage. Discarding a Corrupted card instead of playing it forfeits it entirely, unless random recovery is enabled, in which case a reduced amount is still recovered.
+Corrupted cards can be played to recover a percentage of pieces of the original card. Dependent on configuration a random card or a user chosen card will be recovered.
+
+Discarding/playing a Budding/Corruption card stops any further corruption from that source.
+
+The Budding Corruption Card is not very obvious so you'll need to pay attention to card entering your hand.
