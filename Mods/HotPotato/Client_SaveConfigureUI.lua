@@ -28,7 +28,14 @@ function Client_SaveConfigureUI(alert, addCard)
 	end
 
 	Mod.Settings.HolderSelectionBiggest = holderSelectionBiggest.GetIsChecked();
-	Mod.Settings.OnlyAttackWins = onlyAttackWins.GetIsChecked();
+
+	if (fightWinConditionAttack.GetIsChecked()) then
+		Mod.Settings.FightWinCondition = 'Attack';
+	elseif (fightWinConditionKillDifferential.GetIsChecked()) then
+		Mod.Settings.FightWinCondition = 'KillDifferential';
+	else
+		Mod.Settings.FightWinCondition = 'AttackOrDefend';
+	end
 
 	Mod.Settings.AnnounceHotPotatoTransfer = announceHotPotatoTransfer.GetIsChecked();
 	Mod.Settings.StateNewOwner = Mod.Settings.AnnounceHotPotatoTransfer and stateNewOwner.GetIsChecked();
@@ -82,8 +89,10 @@ function Client_SaveConfigureUI(alert, addCard)
 	end
 
 	local winMessage = "ERROR";
-	if(Mod.Settings.OnlyAttackWins) then
+	if (Mod.Settings.FightWinCondition == 'Attack') then
 		winMessage = "Succeed in an attack order you initiate to pass it to the loser"
+	elseif (Mod.Settings.FightWinCondition == 'KillDifferential') then
+		winMessage = "Kill more armies than you lose in a fight to pass it to the loser"
 	else
 		winMessage = "Succeed in an attack/defence to pass it to the loser"
 	end

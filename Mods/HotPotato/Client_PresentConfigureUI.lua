@@ -6,6 +6,8 @@ function Client_PresentConfigureUI(rootParent)
 	Create_UI_Controls(rootParent);
 end;
 
+local SPACER_HEIGHT = 6;
+
 function Create_UI_Controls(rootParent)
 	local mainModUI = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
 	
@@ -44,6 +46,7 @@ function Create_UI_Controls(rootParent)
 		.SetValue(Mod.Settings.MinPlayersRemaining or 2);
 
 	---- Who gets it
+	UI.CreateEmpty(mainModUI).SetPreferredHeight(SPACER_HEIGHT);
 	local holderHeading = UI.CreateVerticalLayoutGroup(mainModUI);
 	UI.CreateLabel(holderHeading).SetText('Who gets handed the Hot Potato when the clock starts:');
 
@@ -55,6 +58,7 @@ function Create_UI_Controls(rootParent)
 
 
 	---- Ownership announcement
+	UI.CreateEmpty(mainModUI).SetPreferredHeight(SPACER_HEIGHT);
 	local announcementHeading = UI.CreateVerticalLayoutGroup(mainModUI);
 	UI.CreateLabel(announcementHeading).SetText('Ownership announcement:');
 
@@ -73,11 +77,15 @@ function Create_UI_Controls(rootParent)
 	end);
 
 	---- Fights
+	UI.CreateEmpty(mainModUI).SetPreferredHeight(SPACER_HEIGHT);
 	local fightsHeading = UI.CreateVerticalLayoutGroup(mainModUI);
 	UI.CreateLabel(fightsHeading).SetText('Fights that pass the Hot Potato on:');
 	UI.CreateLabel(fightsHeading).SetText('One transfer per turn*').SetColor(BUTTON_COLOURS.DarkGray);
 	UI.CreateLabel(fightsHeading).SetText('Win a fight to transfer ownership of the potato').SetColor(BUTTON_COLOURS.DarkGray);
-	onlyAttackWins = UI.CreateCheckBox(fightsHeading).SetText("Only count the holder attacking and winning (not defending)").SetIsChecked(Mod.Settings.OnlyAttackWins or false);
+	local fightWinConditionGroup = UI.CreateRadioButtonGroup(fightsHeading);
+	fightWinConditionAttack = UI.CreateRadioButton(fightsHeading).SetGroup(fightWinConditionGroup).SetText('First successful attack').SetIsChecked(Mod.Settings.FightWinCondition == 'Attack');
+	fightWinConditionAttackOrDefend = UI.CreateRadioButton(fightsHeading).SetGroup(fightWinConditionGroup).SetText('First successful attack/defend').SetIsChecked(Mod.Settings.FightWinCondition == 'AttackOrDefend' or Mod.Settings.FightWinCondition == nil);
+	fightWinConditionKillDifferential = UI.CreateRadioButton(fightsHeading).SetGroup(fightWinConditionGroup).SetText('Kill more armies than you lose').SetIsChecked(Mod.Settings.FightWinCondition == 'KillDifferential');
 
 	UI.CreateLabel(mainModUI).SetText('Penalty Settings:').SetColor(SUBHEADING_COLOUR);
 
@@ -101,6 +109,7 @@ function Create_UI_Controls(rootParent)
 		.SetValue(Mod.Settings.MinorPenaltyMinDamage or 1);
 
 	---- Major penalty
+	UI.CreateEmpty(mainModUI).SetPreferredHeight(SPACER_HEIGHT);
 	local majorPenaltyHeading = UI.CreateVerticalLayoutGroup(mainModUI);
 	UI.CreateLabel(majorPenaltyHeading).SetText('Penalty for Potato exploding in your hands:').SetColor(BUTTON_COLOURS.OrangeRed);
 

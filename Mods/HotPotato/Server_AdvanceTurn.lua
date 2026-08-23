@@ -85,12 +85,23 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
 	local potatoHolder = priv.CurrentHolder;
 	local targetPlayerID = game.ServerGame.LatestTurnStanding.Territories[order.To].OwnerPlayerID;
 	local loserPlayerID = nil;
+	local condition = Mod.Settings.FightWinCondition or 'AttackOrDefend';
 
-	-- if successful attack by potato holder
-	if (result.IsSuccessful and order.PlayerID == potatoHolder
+	if (condition == 'KillDifferential') then
+		-- doesn't matter whether the fight was won or lost - only whether the holder came out of it having
+		-- killed more of the other side's armies than they lost themselves
+		if (order.PlayerID == potatoHolder
+			and targetPlayerID ~= nil and targetPlayerID ~= WL.PlayerID.Neutral and targetPlayerID ~= potatoHolder
+			and result.DefendingArmieskilled.NumArmies > result.AttackingArmiesKilled.NumArmies) then
+			loserPlayerID = targetPlayerID; -- the holder attacked and came out ahead on kills
+		elseif (targetPlayerID == potatoHolder and order.PlayerID ~= potatoHolder
+			and result.AttackingArmiesKilled.NumArmies > result.DefendingArmieskilled.NumArmies) then
+			loserPlayerID = order.PlayerID; -- the holder defended and came out ahead on kills
+		end
+	elseif (result.IsSuccessful and order.PlayerID == potatoHolder
 		and targetPlayerID ~= nil and targetPlayerID ~= WL.PlayerID.Neutral and targetPlayerID ~= potatoHolder) then
 		loserPlayerID = targetPlayerID; -- the holder attacked and captured another player's territory
-	elseif (not Mod.Settings.OnlyAttackWins and not result.IsSuccessful
+	elseif (condition == 'AttackOrDefend' and not result.IsSuccessful
 		and targetPlayerID == potatoHolder and order.PlayerID ~= potatoHolder) then
 		loserPlayerID = order.PlayerID; -- the holder successfully defended against an attacker
 	end
