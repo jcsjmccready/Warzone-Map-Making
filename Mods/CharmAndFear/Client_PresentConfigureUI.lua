@@ -117,7 +117,7 @@ function Create_FearCard_SubOptions_UI(rootParent)
         .SetWholeNumbers(false)
         .SetSliderMinValue(0)
         .SetSliderMaxValue(5)
-        .SetValue(Mod.Settings.FearWeight or 1.0);
+        .SetValue(Mod.Settings.FearCardWeight or 1.0);
     
     local horz = UI.CreateHorizontalLayoutGroup(fearCardVHeading);
     UI.CreateLabel(horz).SetText('Minimum pieces awarded per turn').SetPreferredWidth(290);
@@ -203,7 +203,7 @@ function Create_CharmCard_SubOptions_UI(rootParent)
         .SetWholeNumbers(false)
         .SetSliderMinValue(0)
         .SetSliderMaxValue(5)
-        .SetValue(Mod.Settings.CharmWeight or 1.0);
+        .SetValue(Mod.Settings.CharmCardWeight or 1.0);
     
     local horz = UI.CreateHorizontalLayoutGroup(charmCardVHeading);
     UI.CreateLabel(horz).SetText('Minimum pieces awarded per turn').SetPreferredWidth(290);

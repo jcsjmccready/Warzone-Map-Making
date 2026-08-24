@@ -128,7 +128,7 @@ function Create_Card_SubOptions_UI(rootParent)
         .SetWholeNumbers(false)
         .SetSliderMinValue(0)
         .SetSliderMaxValue(5)
-        .SetValue(Mod.Settings.Weight or 1.0);
+        .SetValue(Mod.Settings.CardWeight or 1.0);
 
     local horz = UI.CreateHorizontalLayoutGroup(cardOptionsHeading);
     UI.CreateLabel(horz).SetText('Minimum pieces awarded per turn').SetPreferredWidth(290);
