@@ -7,6 +7,7 @@ require("Utilities");
 ---@param skipThisOrder fun(modOrderControl: EnumModOrderControl) # Allows you to skip the current order
 ---@param addNewOrder fun(order: GameOrder) # Adds a game order, will be processed before any of the rest of the orders
 function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrder)
+    MigrateModSettings();
 
     if (order.proxyType == 'GameOrderPlayCardCustom' and startsWith(order.ModData, "CreateBarbedWire_")) then
 
@@ -36,6 +37,7 @@ end
 ---@param game GameServerHook
 ---@param addNewOrder fun(order: GameOrder) # Adds a game order, will be processed before any of the rest of the orders
 function Server_AdvanceTurn_End(game, addNewOrder)
+	MigrateModSettings();
 	BuildStructures(game, addNewOrder);
 	ResetTriggeredBarbedWire(game, addNewOrder);
 end
@@ -255,8 +257,13 @@ function ResetTriggeredBarbedWire(game, addNewOrder)
 		if not triggeredTerritorySet[territory.ID] then
 			local structures = territory.Structures;
 			if (structures ~= nil and structures[triggeredBarbedWireStructId] ~= nil and structures[triggeredBarbedWireStructId] > 0) then
-				structures[primedBarbedWireStructId] = (structures[primedBarbedWireStructId] or 0) + structures[triggeredBarbedWireStructId];
-				structures[triggeredBarbedWireStructId] = 0;
+				if (Mod.Settings.BarbedWireSingleUse) then
+					-- single use: the barbed wire is spent after triggering once, rather than resetting to primed
+					structures[triggeredBarbedWireStructId] = 0;
+				else
+					structures[primedBarbedWireStructId] = (structures[primedBarbedWireStructId] or 0) + structures[triggeredBarbedWireStructId];
+					structures[triggeredBarbedWireStructId] = 0;
+				end
 				anyReset = true;
 				local territoryModification = WL.TerritoryModification.Create(territory.ID);
 				territoryModification.SetStructuresOpt = structures;
@@ -266,8 +273,9 @@ function ResetTriggeredBarbedWire(game, addNewOrder)
 		end
 	end
 	if (anyReset) then
-		local event = WL.GameOrderEvent.Create(WL.PlayerID.Neutral, "Reset Barbed Wire", {}, territoryModifications);
-		event.Icon = "Reset";
+		local eventMessage = Mod.Settings.BarbedWireSingleUse and "Destroyed Barbed Wire" or "Reset Barbed Wire";
+		local event = WL.GameOrderEvent.Create(WL.PlayerID.Neutral, eventMessage, {}, territoryModifications);
+		event.Icon = Mod.Settings.BarbedWireSingleUse and "Destroyed" or "Reset";
 		addNewOrder(event);
 	end
 

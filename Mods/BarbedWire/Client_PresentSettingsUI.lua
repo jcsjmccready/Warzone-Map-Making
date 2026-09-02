@@ -1,10 +1,25 @@
+require("Utilities");
+
 ---Client_PresentSettingsUI hook
 ---@param rootParent RootParent
 function Client_PresentSettingsUI(rootParent)
+    MigrateModSettings();
 
     local descriptionVGroup = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
 
+    UI.CreateLabel(descriptionVGroup).SetText("Mod Settings Version: " .. GetSettingsVersionForDisplay()).SetColor(BUTTON_COLOURS.DarkGray);
+
     UI.CreateLabel(descriptionVGroup).SetText("If a territory containing a Barbed Wire is successfully captured, on the following turn, attack/transfer orders out of that territory will be blocked.");
+
+    UI.CreateLabel(descriptionVGroup).SetText("Trigger Duration: " .. (Mod.Settings.BarbedWireTriggerDuration or 1));
+
+    if(Mod.Settings.BarbedWireSingleUse) then
+        UI.CreateLabel(descriptionVGroup).SetText("Barbed wire is destroyed instead of resetting");
+    end
+
+    if(Mod.Settings.BarbedWireHasLimitedLifespan) then
+        UI.CreateLabel(descriptionVGroup).SetText("Turns before expires (unless triggered): " .. Mod.Settings.BarbedWireLifespan);
+    end
 
     if(Mod.Settings.BarbedWireTanksDestroy) then
         UI.CreateLabel(descriptionVGroup).SetText("Tanks destroy Barbed Wire on entry/exit");

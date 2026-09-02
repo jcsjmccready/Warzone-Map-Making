@@ -1,4 +1,41 @@
 
+LATEST_SETTINGS_VERSION = 2;
+
+function MigrateModSettings()
+    local version = Mod.Settings.Version or 1;
+
+    -- version 1 is the baseline shape (all settings that existed before Version was introduced).
+
+    if (version < 2) then
+        -- version 2 introduced BarbedWireTriggerDuration, BarbedWireSingleUse and BarbedWireHasLimitedLifespan -
+        -- games saved under version 1 have none of these set, so default them to the pre-version-2 behaviour.
+        if (Mod.Settings.BarbedWireTriggerDuration == nil) then
+            Mod.Settings.BarbedWireTriggerDuration = 1;
+        end
+        if (Mod.Settings.BarbedWireSingleUse == nil) then
+            Mod.Settings.BarbedWireSingleUse = false;
+        end
+        if (Mod.Settings.BarbedWireHasLimitedLifespan == nil) then
+            Mod.Settings.BarbedWireHasLimitedLifespan = false;
+        end
+    end
+end
+
+--Mod.Settings.Version is nil both for a mod that has never been saved yet, and for one saved before
+--the Version field was introduced. Mod.Settings.IncludeBarbedWire is written on every save, so its
+--presence tells the two cases apart - use this (rather than Mod.Settings.Version directly) anywhere
+--the version needs to be shown to the player, so a never-configured mod correctly shows the current
+--version instead of looking like an out-of-date save.
+function GetSettingsVersionForDisplay()
+    if (Mod.Settings.Version ~= nil) then
+        return Mod.Settings.Version;
+    end
+    if (Mod.Settings.IncludeBarbedWire == nil) then
+        return LATEST_SETTINGS_VERSION;
+    end
+    return 1;
+end
+
 function NewIdentity()
 	local data = Mod.PublicGameData;
 	local ret = data.Identity or 1;

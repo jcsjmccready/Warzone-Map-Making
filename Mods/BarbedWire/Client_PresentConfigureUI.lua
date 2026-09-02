@@ -3,13 +3,14 @@ require("Utilities");
 ---Client_PresentConfigureUI hook
 ---@param rootParent RootParent
 function Client_PresentConfigureUI(rootParent)
+MigrateModSettings();
 Create_UI_Controls(rootParent);
 
 end;
 
 function Create_UI_Controls(rootParent)
     local mainModUI = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
-    UI.CreateLabel(mainModUI).SetText("Multiple barbed wires in a single territory do not increase the effect*");
+    UI.CreateLabel(mainModUI).SetText("Mod Settings Version: " .. GetSettingsVersionForDisplay() .. "/" .. LATEST_SETTINGS_VERSION).SetColor(BUTTON_COLOURS.DarkGray);
 
     ---- Acquiring type
     local acquiringTypeHeading = UI.CreateVerticalLayoutGroup(mainModUI);
@@ -22,7 +23,6 @@ function Create_UI_Controls(rootParent)
 
     ---- include cards
     local includeCardsHeading = UI.CreateVerticalLayoutGroup(mainModUI);
-    UI.CreateLabel(includeCardsHeading).SetText('Include mods:').SetColor(SUBHEADING_COLOUR);
     
     includeBarbedWire = true;
     local barbedWireParentVHeading = UI.CreateVerticalLayoutGroup(includeCardsHeading);
@@ -45,13 +45,40 @@ function Create_BarbedWire_SubOptions_UI(rootParent)
 
     local optionalsHeading = UI.CreateVerticalLayoutGroup(barbedWireVHeading);
     UI.CreateLabel(optionalsHeading).SetText('Behaviour:').SetColor(BUTTON_COLOURS.LightBlue);
+
+    local triggerDurationHorz = UI.CreateHorizontalLayoutGroup(optionalsHeading);
+    UI.CreateLabel(triggerDurationHorz).SetText('Trigger duration').SetPreferredWidth(290);
+    barbedWireTriggerDuration = UI.CreateNumberInputField(triggerDurationHorz)
+        .SetSliderMinValue(1)
+        .SetSliderMaxValue(10)
+        .SetValue(Mod.Settings.BarbedWireTriggerDuration or 1);
+
     barbedWireAllyTriggers = UI.CreateCheckBox(optionalsHeading).SetText("Allies trigger barbed wire").SetIsChecked(Mod.Settings.BarbedWireAllyTriggers or false);
+    barbedWireSingleUse = UI.CreateCheckBox(optionalsHeading).SetText("Single use - Destroyed instead of resets").SetIsChecked(Mod.Settings.BarbedWireSingleUse or false);
+    barbedWireHasLimitedLifespan = UI.CreateCheckBox(optionalsHeading).SetText("Has limited lifespan").SetIsChecked(Mod.Settings.BarbedWireHasLimitedLifespan or false);
+    local barbedWireLifespanContainer = UI.CreateVerticalLayoutGroup(optionalsHeading);
+
     barbedWireIsTankSpecialBehaviour = UI.CreateCheckBox(optionalsHeading).SetText("Include Tank special behaviour").SetIsChecked(Mod.Settings.BarbedWireIsTankSpecialBehaviour or false);
+    local barbedWireTankContainer = UI.CreateVerticalLayoutGroup(optionalsHeading);
+
+    -- Lifespan sub-options
+    barbedWireHasLimitedLifespan.SetOnValueChanged(function()
+        if(barbedWireHasLimitedLifespan.GetIsChecked()) then
+            Create_BarbedWire_Lifespan_SubOptions_UI(barbedWireLifespanContainer);
+        else
+           UI.Destroy(barbedWireLifespanHeading);
+        end
+    end);
+
+     -- one time check for loading up from settings
+    if(barbedWireHasLimitedLifespan.GetIsChecked()) then
+        Create_BarbedWire_Lifespan_SubOptions_UI(barbedWireLifespanContainer);
+    end
 
     -- Tank sub-options
-    barbedWireIsTankSpecialBehaviour.SetOnValueChanged(function() 
+    barbedWireIsTankSpecialBehaviour.SetOnValueChanged(function()
         if(barbedWireIsTankSpecialBehaviour.GetIsChecked()) then
-            Create_BarbedWire_Tank_SubOptions_UI(optionalsHeading);
+            Create_BarbedWire_Tank_SubOptions_UI(barbedWireTankContainer);
         else
            UI.Destroy(barbedWireTankSupportHeading);
            barbedWireTanksIgnore.SetIsChecked(false);
@@ -61,8 +88,19 @@ function Create_BarbedWire_SubOptions_UI(rootParent)
 
      -- one time check for loading up from settings
     if(barbedWireIsTankSpecialBehaviour.GetIsChecked()) then
-        Create_BarbedWire_Tank_SubOptions_UI(optionalsHeading);
+        Create_BarbedWire_Tank_SubOptions_UI(barbedWireTankContainer);
     end
+end
+
+function Create_BarbedWire_Lifespan_SubOptions_UI(rootParent)
+    barbedWireLifespanHeading = UI.CreateVerticalLayoutGroup(rootParent);
+
+    local horz = UI.CreateHorizontalLayoutGroup(barbedWireLifespanHeading);
+    UI.CreateLabel(horz).SetText('Lifespan').SetPreferredWidth(290);
+    barbedWireLifespan = UI.CreateNumberInputField(horz)
+        .SetSliderMinValue(2)
+        .SetSliderMaxValue(20)
+        .SetValue(Mod.Settings.BarbedWireLifespan or 2);
 end
 
 function Create_BarbedWire_Tank_SubOptions_UI(rootParent)
