@@ -35,10 +35,6 @@ function Client_SaveConfigureUI(alert, addCard)
                 alert("Barbed wire lifespan cannot be less than 2");
                 return;
             end
-            if (Mod.Settings.BarbedWireLifespan < Mod.Settings.BarbedWireTriggerDuration + 1) then
-                alert("Barbed wire lifespan must be at least 1 greater than the trigger duration");
-                return;
-            end
         end
 
         if(Mod.Settings.isAcquiringTypeCard) then

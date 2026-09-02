@@ -21,11 +21,6 @@ function MigrateModSettings()
     end
 end
 
---Mod.Settings.Version is nil both for a mod that has never been saved yet, and for one saved before
---the Version field was introduced. Mod.Settings.IncludeBarbedWire is written on every save, so its
---presence tells the two cases apart - use this (rather than Mod.Settings.Version directly) anywhere
---the version needs to be shown to the player, so a never-configured mod correctly shows the current
---version instead of looking like an out-of-date save.
 function GetSettingsVersionForDisplay()
     if (Mod.Settings.Version ~= nil) then
         return Mod.Settings.Version;
