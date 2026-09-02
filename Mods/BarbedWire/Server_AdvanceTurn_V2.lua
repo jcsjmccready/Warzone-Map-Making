@@ -307,6 +307,7 @@ function V2.ExpireBarbedWire(game, addNewOrder)
 
 	local anyExpired = false;
 	local territoryModifications = {};
+	local territoryAnnotations = {};
 	for _, territory in pairs(game.ServerGame.LatestTurnStanding.Territories) do
 		local duePrimed = duePrimedByTerritory[territory.ID];
 		local dueTriggered = dueTriggeredByTerritory[territory.ID];
@@ -336,12 +337,14 @@ function V2.ExpireBarbedWire(game, addNewOrder)
 				territoryModification.SetStructuresOpt = structures;
 
 				table.insert(territoryModifications, territoryModification);
+				territoryAnnotations[territory.ID] = WL.TerritoryAnnotation.Create("Barbed wire expired", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany));
 			end
 		end
 	end
 
 	if (anyExpired) then
 		local event = WL.GameOrderEvent.Create(WL.PlayerID.Neutral, "Barbed Wire Expired", {}, territoryModifications);
+		event.TerritoryAnnotationsOpt = territoryAnnotations;
 		event.Icon = "Destroyed";
 		addNewOrder(event);
 	end
@@ -407,7 +410,7 @@ function V2.ResetTriggeredBarbedWire(game, addNewOrder)
 	end
 
 	if (anyReset) then
-		local eventMessage = Mod.Settings.BarbedWireSingleUse and "Destroyed Barbed Wire" or "Reset Barbed Wire";
+		local eventMessage = Mod.Settings.BarbedWireSingleUse and "Barbed Wire expires" or "Reset Barbed Wire";
 		local event = WL.GameOrderEvent.Create(WL.PlayerID.Neutral, eventMessage, {}, territoryModifications);
 		event.Icon = Mod.Settings.BarbedWireSingleUse and "Destroyed" or "Reset";
 		addNewOrder(event);

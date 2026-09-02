@@ -18,7 +18,7 @@ function Client_PresentSettingsUI(rootParent)
     end
 
     if(Mod.Settings.BarbedWireHasLimitedLifespan) then
-        UI.CreateLabel(descriptionVGroup).SetText("Turns before expires (unless triggered): " .. Mod.Settings.BarbedWireLifespan);
+        UI.CreateLabel(descriptionVGroup).SetText("Turns before expires: " .. Mod.Settings.BarbedWireLifespan);
     end
 
     if(Mod.Settings.BarbedWireTanksDestroy) then
