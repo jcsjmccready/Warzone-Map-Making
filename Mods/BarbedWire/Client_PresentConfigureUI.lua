@@ -76,7 +76,7 @@ function Create_BarbedWire_SubOptions_UI(rootParent)
         .SetText("Wire is single use (destroyed instead of resetting) ")
         .SetIsChecked(Mod.Settings.BarbedWireSingleUse or false);
     barbedWireHasLimitedLifespan = UI.CreateCheckBox(optionalsHeading)
-        .SetText("Number of turns wire lasts")
+        .SetText("Wire has a limited lifespan?")
         .SetIsChecked(Mod.Settings.BarbedWireHasLimitedLifespan or false);
     local barbedWireLifespanContainer = UI.CreateVerticalLayoutGroup(optionalsHeading);
 
@@ -120,7 +120,7 @@ function Create_BarbedWire_Lifespan_SubOptions_UI(rootParent)
     barbedWireLifespanHeading = UI.CreateVerticalLayoutGroup(rootParent);
 
     local horz = UI.CreateHorizontalLayoutGroup(barbedWireLifespanHeading);
-    UI.CreateLabel(horz).SetText('Lifespan').SetPreferredWidth(290);
+    UI.CreateLabel(horz).SetText('Number of turns before wire is destroyed').SetPreferredWidth(290);
     barbedWireLifespan = UI.CreateNumberInputField(horz)
         .SetSliderMinValue(2)
         .SetSliderMaxValue(20)
