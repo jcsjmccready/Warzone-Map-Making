@@ -17,44 +17,119 @@ function Create_UI_Controls(rootParent)
 
     ---- Acquiring type
     local acquiringTypeHeading = UI.CreateVerticalLayoutGroup(mainModUI);
-    local acquiringType = UI.CreateRadioButtonGroup(acquiringTypeHeading);
-    
     UI.CreateLabel(acquiringTypeHeading)
         .SetText('Acquiring type:')
         .SetColor(SUBHEADING_COLOUR);
+    local acquiringType = UI.CreateRadioButtonGroup(acquiringTypeHeading);
 
-    -- Card acquiring type
-    local acquiringTypeCardHeading = UI.CreateVerticalLayoutGroup(acquiringTypeHeading);
+    local acquiringSubOptionsParent = UI.CreateVerticalLayoutGroup(mainModUI);
 
-    isAcquiringTypeCard = UI.CreateRadioButton(acquiringTypeCardHeading).SetGroup(acquiringType)
+    isAcquiringTypeCard = UI.CreateRadioButton(acquiringTypeHeading).SetGroup(acquiringType)
         .SetText('Card')
-        .SetIsChecked(Mod.Settings.isAcquiringTypeCard or true)
-        .SetInteractable(false);
+        .SetIsChecked(Mod.Settings.isAcquiringTypeCard == nil or Mod.Settings.isAcquiringTypeCard);
+
+    isAcquiringTypeCommerce = UI.CreateRadioButton(acquiringTypeHeading).SetGroup(acquiringType)
+        .SetText('Commerce')
+        .SetIsChecked(Mod.Settings.isAcquiringTypeCard ~= nil and not Mod.Settings.isAcquiringTypeCard);
+
+    isAcquiringTypeCard.SetOnValueChanged(function()
+        if (isAcquiringTypeCard.GetIsChecked()) then
+            isAcquiringTypeCard.SetInteractable(false);
+            isAcquiringTypeCommerce.SetInteractable(true);
+            UI.Destroy(acquiringSubOptionsVGroup);
+            Create_BarbedWireCard_SubOptions_UI(acquiringSubOptionsParent);
+        end
+    end);
+
+    isAcquiringTypeCommerce.SetOnValueChanged(function()
+        if (isAcquiringTypeCommerce.GetIsChecked()) then
+            isAcquiringTypeCommerce.SetInteractable(false);
+            isAcquiringTypeCard.SetInteractable(true);
+            UI.Destroy(acquiringSubOptionsVGroup);
+            Create_BarbedWireCommerce_SubOptions_UI(acquiringSubOptionsParent);
+        end
+    end);
+
+    -- one time check for loading up from settings
+    if (isAcquiringTypeCard.GetIsChecked()) then
+        isAcquiringTypeCard.SetInteractable(false);
+        Create_BarbedWireCard_SubOptions_UI(acquiringSubOptionsParent);
+    else
+        isAcquiringTypeCommerce.SetInteractable(false);
+        Create_BarbedWireCommerce_SubOptions_UI(acquiringSubOptionsParent);
+    end
 
     ---- include cards
     local includeCardsHeading = UI.CreateVerticalLayoutGroup(mainModUI);
-    
+
     includeBarbedWire = true;
     local barbedWireParentVHeading = UI.CreateVerticalLayoutGroup(includeCardsHeading);
 
-    -- Commerce acquiring type
-    isAcquiringTypeCommerce = false;
-
      -- one time check for loading up from settings
     if(includeBarbedWire) then
-        Create_BarbedWire_SubOptions_UI(barbedWireParentVHeading);
+        Create_BarbedWire_Behaviour_UI(barbedWireParentVHeading);
     end
 end
 
-function Create_BarbedWire_SubOptions_UI(rootParent)
+function Create_BarbedWireCard_SubOptions_UI(rootParent)
+    acquiringSubOptionsVGroup = UI.CreateVerticalLayoutGroup(rootParent);
+
+    UI.CreateLabel(acquiringSubOptionsVGroup).SetText('Card:').SetColor(BUTTON_COLOURS.LightBlue);
+    local horz = UI.CreateHorizontalLayoutGroup(acquiringSubOptionsVGroup);
+    UI.CreateLabel(horz).SetText('Number of pieces to divide the card into').SetPreferredWidth(290);
+    barbedWireNumPieces = UI.CreateNumberInputField(horz)
+        .SetSliderMinValue(1)
+        .SetSliderMaxValue(11)
+        .SetValue(Mod.Settings.BarbedWireNumPieces or 5);
+
+    local horz = UI.CreateHorizontalLayoutGroup(acquiringSubOptionsVGroup);
+    UI.CreateLabel(horz).SetText('Card weight (how common the card is)').SetPreferredWidth(290);
+    barbedWireCardWeight = UI.CreateNumberInputField(horz)
+        .SetWholeNumbers(false)
+        .SetSliderMinValue(0)
+        .SetSliderMaxValue(5)
+        .SetValue(Mod.Settings.BarbedWireCardWeight or 1.0);
+
+    local horz = UI.CreateHorizontalLayoutGroup(acquiringSubOptionsVGroup);
+    UI.CreateLabel(horz).SetText('Minimum pieces awarded per turn').SetPreferredWidth(290);
+    barbedWireMinPieces = UI.CreateNumberInputField(horz)
+        .SetSliderMinValue(0)
+        .SetSliderMaxValue(5)
+        .SetValue(Mod.Settings.BarbedWireMinPieces or 1);
+
+    local horz = UI.CreateHorizontalLayoutGroup(acquiringSubOptionsVGroup);
+    UI.CreateLabel(horz).SetText('Pieces given to each player at the start').SetPreferredWidth(290);
+    barbedWireInitialPieces = UI.CreateNumberInputField(horz)
+        .SetSliderMinValue(0)
+        .SetSliderMaxValue(5)
+        .SetValue(Mod.Settings.BarbedWireInitialPieces or 1);
+end
+
+function Create_BarbedWireCommerce_SubOptions_UI(rootParent)
+    acquiringSubOptionsVGroup = UI.CreateVerticalLayoutGroup(rootParent);
+
+    UI.CreateLabel(acquiringSubOptionsVGroup).SetText('Commerce:').SetColor(BUTTON_COLOURS.LightBlue);
+
+    local horz = UI.CreateHorizontalLayoutGroup(acquiringSubOptionsVGroup);
+    UI.CreateLabel(horz).SetText('Cost of a Barbed Wire').SetPreferredWidth(290);
+    barbedWireCost = UI.CreateNumberInputField(horz)
+        .SetSliderMinValue(0)
+        .SetSliderMaxValue(50)
+        .SetValue(Mod.Settings.BarbedWireCost or 5);
+
+    local horz = UI.CreateHorizontalLayoutGroup(acquiringSubOptionsVGroup);
+    UI.CreateLabel(horz).SetText('Maximum number of Barbed Wire a player can own at once').SetPreferredWidth(290);
+    barbedWireMaxPerPlayer = UI.CreateNumberInputField(horz)
+        .SetSliderMinValue(1)
+        .SetSliderMaxValue(20)
+        .SetValue(Mod.Settings.BarbedWireMaxPerPlayer or 3);
+end
+
+function Create_BarbedWire_Behaviour_UI(rootParent)
     barbedWireVHeading = UI.CreateVerticalLayoutGroup(rootParent);
 
-    if(isAcquiringTypeCard.GetIsChecked()) then
-        Create_BarbedWireCard_SubOptions_UI(barbedWireVHeading);
-    end
-
     local optionalsHeading = UI.CreateVerticalLayoutGroup(barbedWireVHeading);
-   
+
     UI.CreateLabel(optionalsHeading)
         .SetText('Behaviour:')
         .SetColor(BUTTON_COLOURS.LightBlue);
@@ -130,7 +205,7 @@ end
 function Create_BarbedWire_Tank_SubOptions_UI(rootParent)
     barbedWireTankSupportHeading = UI.CreateVerticalLayoutGroup(rootParent);
     barbedWireTankSpecialBehaviourGroup = UI.CreateRadioButtonGroup(barbedWireTankSupportHeading);
-    
+
     barbedWireTanksIgnore = UI.CreateRadioButton(barbedWireTankSupportHeading).SetGroup(barbedWireTankSpecialBehaviourGroup)
         .SetText('Armies with Tanks ignore triggered barbed wire')
         .SetIsChecked(Mod.Settings.BarbedWireTanksIgnore or true);
@@ -139,15 +214,15 @@ function Create_BarbedWire_Tank_SubOptions_UI(rootParent)
         .SetText('Tanks destroy barbed wire on entry/exit')
         .SetIsChecked(Mod.Settings.BarbedWireTanksDestroy or false);
 
-    barbedWireTanksIgnore.SetOnValueChanged(function() 
+    barbedWireTanksIgnore.SetOnValueChanged(function()
         if(barbedWireTanksIgnore.GetIsChecked()) then
             barbedWireTanksIgnore.SetInteractable(false);
         else
            barbedWireTanksIgnore.SetInteractable(true);
         end
     end);
-    
-    barbedWireTanksDestroy.SetOnValueChanged(function() 
+
+    barbedWireTanksDestroy.SetOnValueChanged(function()
         if(barbedWireTanksDestroy.GetIsChecked()) then
             barbedWireTanksDestroy.SetInteractable(false);
         else
@@ -163,39 +238,4 @@ function Create_BarbedWire_Tank_SubOptions_UI(rootParent)
         barbedWireTanksIgnore.SetInteractable(true);
         barbedWireTanksDestroy.SetInteractable(false);
     end
-end
-
-
-function Create_BarbedWireCard_SubOptions_UI(rootParent)
-    barbedWireCardOptionsHeading = UI.CreateVerticalLayoutGroup(rootParent);
-
-    UI.CreateLabel(barbedWireCardOptionsHeading).SetText('Card:').SetColor(BUTTON_COLOURS.LightBlue);
-    local horz = UI.CreateHorizontalLayoutGroup(barbedWireCardOptionsHeading);
-    UI.CreateLabel(horz).SetText('Number of pieces to divide the card into').SetPreferredWidth(290);
-    barbedWireNumPieces = UI.CreateNumberInputField(horz)
-        .SetSliderMinValue(1)
-        .SetSliderMaxValue(11)
-        .SetValue(Mod.Settings.BarbedWireNumPieces or 5);
-
-    local horz = UI.CreateHorizontalLayoutGroup(barbedWireCardOptionsHeading);
-    UI.CreateLabel(horz).SetText('Card weight (how common the card is)').SetPreferredWidth(290);
-    barbedWireCardWeight = UI.CreateNumberInputField(horz)
-        .SetWholeNumbers(false)
-        .SetSliderMinValue(0)
-        .SetSliderMaxValue(5)
-        .SetValue(Mod.Settings.BarbedWireCardWeight or 1.0);
-    
-    local horz = UI.CreateHorizontalLayoutGroup(barbedWireCardOptionsHeading);
-    UI.CreateLabel(horz).SetText('Minimum pieces awarded per turn').SetPreferredWidth(290);
-    barbedWireMinPieces = UI.CreateNumberInputField(horz)
-        .SetSliderMinValue(0)
-        .SetSliderMaxValue(5)
-        .SetValue(Mod.Settings.BarbedWireMinPieces or 1);
-    
-    local horz = UI.CreateHorizontalLayoutGroup(barbedWireCardOptionsHeading);
-    UI.CreateLabel(horz).SetText('Pieces given to each player at the start').SetPreferredWidth(290);
-    barbedWireInitialPieces = UI.CreateNumberInputField(horz)
-        .SetSliderMinValue(0)
-        .SetSliderMaxValue(5)
-        .SetValue(Mod.Settings.BarbedWireInitialPieces or 1);
 end

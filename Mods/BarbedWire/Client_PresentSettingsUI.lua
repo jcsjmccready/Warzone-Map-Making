@@ -44,5 +44,11 @@ function Client_PresentSettingsUI(rootParent)
         UI.CreateLabel(cardVGroup).SetText("Card Weight: " .. Mod.Settings.BarbedWireCardWeight);
         UI.CreateLabel(cardVGroup).SetText("Minimum Pieces: " .. Mod.Settings.BarbedWireMinPieces);
         UI.CreateLabel(cardVGroup).SetText("Initial Pieces: " .. Mod.Settings.BarbedWireInitialPieces);
+    else
+        local commerceVGroup = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
+
+        UI.CreateLabel(commerceVGroup).SetText("Barbed Wire Commerce:");
+        UI.CreateLabel(commerceVGroup).SetText("Cost: " .. Mod.Settings.BarbedWireCost .. " gold");
+        UI.CreateLabel(commerceVGroup).SetText("Limit: " .. Mod.Settings.BarbedWireMaxPerPlayer .. " per player");
     end
 end

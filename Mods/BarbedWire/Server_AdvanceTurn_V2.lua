@@ -6,6 +6,7 @@ require("Utilities");
 ---@field PlayerID PlayerID
 ---@field Message string
 ---@field TerritoryID TerritoryID
+---@field IsCommerce boolean # True if bought via the Commerce menu - subject to BarbedWireMaxPerPlayer, re-checked at build time
 
 ---@class V2_BarbedWire
 ---@field TerritoryID TerritoryID
@@ -27,29 +28,40 @@ V2 = {}
 function V2.Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrder)
 
     if (order.proxyType == 'GameOrderPlayCardCustom' and startsWith(order.ModData, "CreateBarbedWire_")) then
-
         local targetTerritoryID = tonumber(string.sub(order.ModData, 18)) --[[@as TerritoryID]]
-		if (game.ServerGame.LatestTurnStanding.Territories[targetTerritoryID].OwnerPlayerID ~= order.PlayerID) then
-			return; --not our territory
-		end
+        V2.QueuePendingBarbedWire(order.PlayerID, targetTerritoryID, (order --[[@as GameOrderPlayCardCustom]]).Description, false);
+        return;
+    end
 
-		-- store pending build orders for end of turn
-		---@type V2_PendingBarbedWire
-		local pendingBarbedWire = {
-			PlayerID = order.PlayerID,
-			Message = order.Description,
-			TerritoryID = targetTerritoryID 
-		};
-
-		local privateGameData = Mod.PrivateGameData --[[@as V2_PrivateGameData]];
-		if (privateGameData.PendingBarbedWire == nil) then privateGameData.PendingBarbedWire = {}; end;
-		table.insert(privateGameData.PendingBarbedWire, pendingBarbedWire);
-
-		Mod.PrivateGameData = privateGameData;
+    if (order.proxyType == 'GameOrderCustom' and startsWith((order --[[@as GameOrderCustom]]).Payload, "CreateBarbedWireCommerce_")) then
+        ---@cast order GameOrderCustom
+        local targetTerritoryID = tonumber(string.sub(order.Payload, 26)) --[[@as TerritoryID]]
+        V2.QueuePendingBarbedWire(order.PlayerID, targetTerritoryID, "Built a Barbed Wire", true);
+        return;
     end
 
 	V2.HandleAttackTransferInTriggeredBarbedWire(game, order, result, skipThisOrder, addNewOrder);
 	V2.HandleAttackTransferToBarbedWire(game, order, result, addNewOrder);
+end
+
+---@param playerID PlayerID
+---@param targetTerritoryID TerritoryID
+---@param message string
+---@param isCommerce boolean
+function V2.QueuePendingBarbedWire(playerID, targetTerritoryID, message, isCommerce)
+	---@type V2_PendingBarbedWire
+	local pendingBarbedWire = {
+		PlayerID = playerID,
+		Message = message,
+		TerritoryID = targetTerritoryID,
+		IsCommerce = isCommerce,
+	};
+
+	local privateGameData = Mod.PrivateGameData --[[@as V2_PrivateGameData]];
+	if (privateGameData.PendingBarbedWire == nil) then privateGameData.PendingBarbedWire = {}; end;
+	table.insert(privateGameData.PendingBarbedWire, pendingBarbedWire);
+
+	Mod.PrivateGameData = privateGameData;
 end
 
 ---@param game GameServerHook
@@ -442,7 +454,28 @@ function V2.BuildStructures(game, addNewOrder)
 		end
 	end
 
-	pending = remainingPendingBarbedWire;
+	-- Cap the number of barbed wire being built
+	local triggeredBarbedWireStructId = WL.StructureType.Custom("TriggeredBarbedWire");
+	local builtCountByPlayer = {};
+	local allowedPending = {};
+	local cappedPending = {};
+	for _, pendingDms in pairs(remainingPendingBarbedWire) do
+		if (pendingDms.IsCommerce) then
+			local maxAllowed = Mod.Settings.BarbedWireMaxPerPlayer or 0;
+			local existingCount = CountPlayerBarbedWire(game.ServerGame.LatestTurnStanding, pendingDms.PlayerID, structureID, triggeredBarbedWireStructId);
+			local builtSoFar = builtCountByPlayer[pendingDms.PlayerID] or 0;
+			if (existingCount + builtSoFar >= maxAllowed) then
+				table.insert(cappedPending, pendingDms);
+			else
+				builtCountByPlayer[pendingDms.PlayerID] = builtSoFar + 1;
+				table.insert(allowedPending, pendingDms);
+			end
+		else
+			table.insert(allowedPending, pendingDms);
+		end
+	end
+
+	pending = allowedPending;
 
 	-- We will now build a barbed wire for each pending barbed wire. However, we need to take care to ensure that if there are two build orders for the same territory that we build both of them,
 	--	so we first group by the territory ID so we get all build orders for the same territory together.
@@ -500,6 +533,13 @@ function V2.BuildStructures(game, addNewOrder)
 
 			addNewOrder(event);
 		end
+	end
+
+	for _, pendingDms in pairs(cappedPending) do
+		local event = WL.GameOrderEvent.Create(pendingDms.PlayerID, "Unable to build Barbed Wire: you already own the maximum number of Barbed Wire", {}, {});
+		event.TerritoryAnnotationsOpt = { [pendingDms.TerritoryID] = WL.TerritoryAnnotation.Create("Unable to build Barbed Wire", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Red)) };
+		event.Icon = "BuildFailed";
+		addNewOrder(event);
 	end
 
 	privateGameData.PendingBarbedWire = nil;

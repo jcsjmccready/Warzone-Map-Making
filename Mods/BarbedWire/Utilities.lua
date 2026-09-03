@@ -31,6 +31,21 @@ function GetSettingsVersionForDisplay()
     return 1;
 end
 
+--Returns the number of Barbed Wire pieces (Primed or Triggered) a player currently owns across the whole map.
+---@param standing GameStanding
+---@param playerID PlayerID
+---@param primedStructureID string
+---@param triggeredStructureID string
+function CountPlayerBarbedWire(standing, playerID, primedStructureID, triggeredStructureID)
+    local count = 0;
+    for _, territory in pairs(standing.Territories) do
+        if (territory.OwnerPlayerID == playerID and territory.Structures ~= nil) then
+            count = count + (territory.Structures[primedStructureID] or 0) + (territory.Structures[triggeredStructureID] or 0);
+        end
+    end
+    return count;
+end
+
 function NewIdentity()
 	local data = Mod.PublicGameData;
 	local ret = data.Identity or 1;

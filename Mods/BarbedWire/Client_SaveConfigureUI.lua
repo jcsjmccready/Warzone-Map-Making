@@ -5,7 +5,6 @@ function Client_SaveConfigureUI(alert, addCard)
 
     Mod.Settings.Version = LATEST_SETTINGS_VERSION;
 
-    Mod.Settings.isAcquiringTypeCommerce = isAcquiringTypeCommerce;
     Mod.Settings.isAcquiringTypeCard = isAcquiringTypeCard.GetIsChecked();
 
     -- GetSettingsVersionForDisplay() (Utilities.lua) relies on this being written unconditionally on every
@@ -70,6 +69,18 @@ function Client_SaveConfigureUI(alert, addCard)
                 Mod.Settings.BarbedWireCardWeight);
 
             Mod.Settings.BarbedWireCardID = barbedWireCardID;
+        else
+            Mod.Settings.BarbedWireCost = barbedWireCost.GetValue();
+            Mod.Settings.BarbedWireMaxPerPlayer = barbedWireMaxPerPlayer.GetValue();
+
+            if (Mod.Settings.BarbedWireCost < 0) then
+                alert("Cost of a Barbed Wire cannot be less than 0");
+                return;
+            end
+            if (Mod.Settings.BarbedWireMaxPerPlayer < 1) then
+                alert("Maximum Barbed Wire a player can own at once must be at least 1");
+                return;
+            end
         end
     end
 
