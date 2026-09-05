@@ -6,9 +6,10 @@ function Client_SaveConfigureUI(alert, addCard)
 
     Mod.Settings.IsAcquiringTypeCard = isAcquiringTypeCard.GetIsChecked();
 
+    -- negative values explicitly allowed for fun opportunities
     Mod.Settings.BombShelterDamagePercent = math.floor(bombShelterDamagePercent.GetValue() * 100 + 0.5) / 100;
-    if (Mod.Settings.BombShelterDamagePercent < 0 or Mod.Settings.BombShelterDamagePercent > 1) then
-        alert("% of Bomb Card damage armies in a Bomb Shelter take must be between 0 and 1");
+    if (Mod.Settings.BombShelterDamagePercent > 1) then
+        alert("% damage Bomb Card deals to armies in a Bomb Shelter must be no greater than 100%");
         return;
     end
 
@@ -56,7 +57,7 @@ function Client_SaveConfigureUI(alert, addCard)
 
         local bombShelterCardID = addCard(
             "Bomb Shelter Card",
-            "Creates a Bomb Shelter on a target friendly territory at the end of the turn. Armies in a Bomb Shelter take reduced damage from Bomb Cards.",
+            "Creates a Bomb Shelter on a target friendly territory at the end of the turn. Armies in a Bomb Shelter take modified damage from Bomb Cards.",
             "BombShelterCard.png",
             Mod.Settings.BombShelterNumPieces,
             Mod.Settings.BombShelterMinPieces,

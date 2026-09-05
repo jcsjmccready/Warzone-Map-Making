@@ -54,8 +54,6 @@ function QueueBombShelterBuild(playerID, targetTerritoryID, isCommerce)
     Mod.PrivateGameData = priv;
 end
 
----Builds every Bomb Shelter queued this turn, re-validating ownership (and, for Commerce, the max-per-player cap)
----server-side since the client can never be trusted to have enforced it.
 ---@param game GameServerHook
 ---@param addNewOrder fun(order: GameOrder)
 function BuildQueuedBombShelters(game, addNewOrder)
@@ -247,8 +245,7 @@ function RemoveExpiredBombShelters(game, addNewOrder)
     Mod.PrivateGameData = priv;
 end
 
--- Future proofing for configurable bomb card damage - create an order to track army count. Pick up the logic in the handling of that order
--- Consider expanding this to support the Bomb+ card which does explicitly let you configure the damage it does
+-- Future proofing - instead of just skipping orders we add an order to track the damage and handle it later.
 ---@param game GameServerHook
 ---@param order GameOrder
 ---@param addNewOrder fun(order: GameOrder)
@@ -263,11 +260,10 @@ function HandleBombAgainstBombShelter(game, order, addNewOrder)
 
     local armiesBefore = territory.NumArmies.NumArmies;
     local payload = RESOLVE_BOMB_PREFIX .. order.TargetTerritoryID .. "|" .. armiesBefore;
-    addNewOrder(WL.GameOrderCustom.Create(order.PlayerID, "Bomb Shelter absorbing Bomb damage", payload, nil));
+    addNewOrder(WL.GameOrderCustom.Create(order.PlayerID, "Bomb Shelter modifying Bomb damage", payload, nil));
 end
 
-
--- Use tracking payload created in HandleBombAgainstBombShelter to determine how many armies were lost to the Bomb, and restore some of them based on the configured damage percentage.
+-- Use tracking payload created in HandleBombAgainstBombShelter to modify dmg
 ---@param game GameServerHook
 ---@param addNewOrder fun(order: GameOrder)
 ---@param order GameOrder
@@ -281,21 +277,31 @@ function ResolveBombAgainstBombShelter(game, addNewOrder, order)
     local territory = standing.Territories[territoryID];
     if (territory == nil) then return; end;
 
-    local armiesAfter = territory.NumArmies.NumArmies;
+    local armiesAfter = territory.NumArmies.NumArmies; -- realistically this is just half the before but future proof configurable bombs
     local armiesLost = armiesBefore - armiesAfter;
 
     local territoryModifications = {};
     local message = nil;
 
-    if (armiesLost > 0) then
+    if (armiesBefore > 0) then
         local damagePercent = Mod.Settings.BombShelterDamagePercent or 0.5;
-        local armiesToRestore = math.floor(armiesLost * (1 - damagePercent) + 0.5);
+        local targetArmiesLost = math.min(armiesBefore, math.floor(armiesBefore * damagePercent + 0.5));
+        local armiesDiff = armiesLost - targetArmiesLost;
 
-        if (armiesToRestore > 0) then
+        if (armiesDiff > 0) then
             local territoryModification = WL.TerritoryModification.Create(territoryID);
-            territoryModification.AddArmies = armiesToRestore;
+            territoryModification.AddArmies = armiesDiff;
             table.insert(territoryModifications, territoryModification);
-            message = "Bomb Shelter absorbed Bomb damage, restoring " .. armiesToRestore .. " armies";
+            message = "Bomb Shelter modified Bomb damage, adding " .. armiesDiff .. " armies";
+        elseif (armiesDiff < 0) then
+            local extraArmies = math.min(-armiesDiff, math.max(0, armiesAfter));
+
+            if (extraArmies > 0) then
+                local territoryModification = WL.TerritoryModification.Create(territoryID);
+                territoryModification.AddArmies = -extraArmies;
+                table.insert(territoryModifications, territoryModification);
+                message = "Bomb Shelter increased Bomb damage, destroying an additional " .. extraArmies .. " armies";
+            end
         end
     end
 

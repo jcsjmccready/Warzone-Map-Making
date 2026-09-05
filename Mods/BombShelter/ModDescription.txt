@@ -1,3 +1,3 @@
-This mod adds Bomb Shelter structures. Armies in a territory with a Bomb Shelter take reduced damage from Bomb Cards.
+This mod adds Bomb Shelter structures. Armies in a territory with a Bomb Shelter take configurable damage from Bomb Cards.
 Bomb Shelters can be acquired either through the Bomb Shelter Card or by purchasing them through the commerce system, depending on how the mod is configured.
-Optionally, a Bomb Shelter can be destroyed the moment it is bombed, and/or only last for a limited number of turns before being removed.
+Optionally, a Bomb Shelter can be destroyed the moment it is bombed, and/or only last for a limited number of turns before expiring.

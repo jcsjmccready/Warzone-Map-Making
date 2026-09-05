@@ -4,7 +4,7 @@ require('Utilities')
 ---@param rootParent RootParent
 function Client_PresentSettingsUI(rootParent)
     local descriptionVGroup = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
-    UI.CreateLabel(descriptionVGroup).SetText("This mod adds Bomb Shelter structures. Armies in a territory with a Bomb Shelter take reduced damage from Bomb Cards.");
+    UI.CreateLabel(descriptionVGroup).SetText("This mod adds Bomb Shelter structures. Armies in a territory with a Bomb Shelter take modified damage from Bomb Cards.");
 
     local modVGroup = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
     UI.CreateLabel(modVGroup).SetText("Mod Behaviour:").SetColor(SUBHEADING_COLOUR);
@@ -18,7 +18,7 @@ function Client_PresentSettingsUI(rootParent)
     end
 
     UI.CreateLabel(modVGroup).SetText("");
-    UI.CreateLabel(modVGroup).SetText("% of Bomb Card damage armies in a Bomb Shelter take: " .. ((Mod.Settings.BombShelterDamagePercent or 0) * 100) .. "%");
+    UI.CreateLabel(modVGroup).SetText("% damage Bomb Card deals to armies in a Bomb Shelter: " .. ((Mod.Settings.BombShelterDamagePercent or 0) * 100) .. "%");
     UI.CreateLabel(modVGroup).SetText("Bomb Shelter destroyed when bombed: " .. tostring(Mod.Settings.BombShelterDestroyedOnBomb or false));
     UI.CreateLabel(modVGroup).SetText("Bomb Shelter has a limited duration: " .. tostring(Mod.Settings.BombShelterHasDuration or false));
     if (Mod.Settings.BombShelterHasDuration) then

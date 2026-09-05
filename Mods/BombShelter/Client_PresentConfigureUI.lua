@@ -8,6 +8,7 @@ end;
 
 function Create_UI_Controls(rootParent)
     local mainModUI = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
+    UI.CreateLabel(mainModUI).SetText('Multiple bomb shelters do not stack the effect*').SetColor(BUTTON_COLOURS.DarkGray);
 
     ---- Acquiring type
     local acquiringTypeHeading = UI.CreateVerticalLayoutGroup(mainModUI);
@@ -58,10 +59,10 @@ function Create_UI_Controls(rootParent)
     local behaviourVGroup = UI.CreateVerticalLayoutGroup(mainModUI);
 
     local horz = UI.CreateHorizontalLayoutGroup(behaviourVGroup);
-    UI.CreateLabel(horz).SetText('% of Bomb Card damage armies in a Bomb Shelter take').SetPreferredWidth(290);
+    UI.CreateLabel(horz).SetText('% damage Bomb Card deals to armies in a Bomb Shelter').SetPreferredWidth(290);
     bombShelterDamagePercent = UI.CreateNumberInputField(horz)
         .SetWholeNumbers(false)
-        .SetSliderMinValue(0)
+        .SetSliderMinValue(-1)
         .SetSliderMaxValue(1)
         .SetValue(Mod.Settings.BombShelterDamagePercent or 0.5);
 
