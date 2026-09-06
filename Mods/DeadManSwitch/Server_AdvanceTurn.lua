@@ -75,16 +75,25 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
     end
 end
 
+function Add_Dms_Triggered_Event(order, territoryModification, addNewOrder)
+	local event = WL.GameOrderEvent.Create(order.PlayerID, "Triggered a Dead Man's Switch", {}, {territoryModification});
+	event.TerritoryAnnotationsOpt = { [order.To] = WL.TerritoryAnnotation.Create("Triggered DMS", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany)) };
+	event.Icon = "Triggered";
+	addNewOrder(event, true);
+end
+
+function Add_Dms_Cancelled_Event(order, territoryModification, addNewOrder, cardName)
+	-- this should be impossible to reach but safety net, in case the required card isn't enabled in the game settings
+	addNewOrder(WL.GameOrderEvent.Create(order.PlayerID, cardName .. " card not available - DMS cancelled", {}, {territoryModification}), true);
+end
+
 function Trigger_Dms_Damage(territoryModification, game, order, result, addNewOrder, numberOfDMS)
 	if (Mod.Settings.isDamageTypeBomb) then
 		-- unable to programatically play cards without them being enabled
         if game.Settings.Cards ~= nil and game.Settings.Cards[WL.CardID.Bomb] ~= nil then
         	local defendingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.To].OwnerPlayerID;
 
-			local event = WL.GameOrderEvent.Create(order.PlayerID, "Triggered a Dead Man's Switch", {}, {territoryModification});
-			event.TerritoryAnnotationsOpt = { [order.To] = WL.TerritoryAnnotation.Create("Triggered DMS", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany)) };
-			event.Icon = "Triggered";
-			addNewOrder(event, true);
+			Add_Dms_Triggered_Event(order, territoryModification, addNewOrder);
 
 			for _ = 1, numberOfDMS do
 				local instance = WL.NoParameterCardInstance.Create(WL.CardID.Bomb);
@@ -92,17 +101,14 @@ function Trigger_Dms_Damage(territoryModification, game, order, result, addNewOr
 				addNewOrder(WL.GameOrderPlayCardBomb.Create(instance.ID, defendingPlayer, order.To));
 			end
 		else
-			addNewOrder(WL.GameOrderEvent.Create(order.PlayerID, "Bomb card not available - DMS cancelled", {}, {territoryModification}), true); -- this should be impossible to reach but safety net
+			Add_Dms_Cancelled_Event(order, territoryModification, addNewOrder, "Bomb");
         end
 	elseif (Mod.Settings.isDamageTypeFlat) then
 		local damageAmount = Mod.Settings.FlatDamage * numberOfDMS;
 		local damageArmies = WL.Armies.Create(damageAmount + result.AttackingArmiesKilled.NumArmies);
 		territoryModification.SetArmiesTo = result.ActualArmies.Subtract(damageArmies).NumArmies;
 
-		local event = WL.GameOrderEvent.Create(order.PlayerID, "Triggered a Dead Man's Switch", {}, {territoryModification});
-		event.TerritoryAnnotationsOpt = { [order.To] = WL.TerritoryAnnotation.Create("Triggered DMS", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany)) };
-		event.Icon = "Triggered";
-		addNewOrder(event, true);
+		Add_Dms_Triggered_Event(order, territoryModification, addNewOrder);
 
 	elseif (Mod.Settings.isDamageTypeSanction) then
 		-- unable to programatically play cards without them being enabled
@@ -110,10 +116,7 @@ function Trigger_Dms_Damage(territoryModification, game, order, result, addNewOr
         	local defendingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.To].OwnerPlayerID;
         	local attackingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.From].OwnerPlayerID;
 
-			local event = WL.GameOrderEvent.Create(order.PlayerID, "Triggered a Dead Man's Switch", {}, {territoryModification});
-			event.TerritoryAnnotationsOpt = { [order.To] = WL.TerritoryAnnotation.Create("Triggered DMS", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany)) };
-			event.Icon = "Triggered";
-			addNewOrder(event, true);
+			Add_Dms_Triggered_Event(order, territoryModification, addNewOrder);
 
 			for _ = 1, numberOfDMS do
 				local instance = WL.NoParameterCardInstance.Create(WL.CardID.Sanctions);
@@ -121,17 +124,14 @@ function Trigger_Dms_Damage(territoryModification, game, order, result, addNewOr
 				addNewOrder(WL.GameOrderPlayCardSanctions.Create(instance.ID, defendingPlayer, attackingPlayer));
 			end
 		else
-			addNewOrder(WL.GameOrderEvent.Create(order.PlayerID, "Sanction card not available - DMS cancelled", {}, {territoryModification}), true); -- this should be impossible to reach but safety net
+			Add_Dms_Cancelled_Event(order, territoryModification, addNewOrder, "Sanction");
         end
 	elseif (Mod.Settings.isDamageTypeBlockade) then
 		-- unable to programatically play cards without them being enabled
         if game.Settings.Cards ~= nil and game.Settings.Cards[WL.CardID.Blockade] ~= nil then
         	local attackingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.From].OwnerPlayerID;
 
-			local event = WL.GameOrderEvent.Create(order.PlayerID, "Triggered a Dead Man's Switch", {}, {territoryModification});
-			event.TerritoryAnnotationsOpt = { [order.To] = WL.TerritoryAnnotation.Create("Triggered DMS", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany)) };
-			event.Icon = "Triggered";
-			addNewOrder(event, true);
+			Add_Dms_Triggered_Event(order, territoryModification, addNewOrder);
 
 			-- blockade cards are normally played at the end of the turn, so store them for end of turn instead of playing them immediately
 			local privateGameData = Mod.PrivateGameData;
@@ -143,17 +143,14 @@ function Trigger_Dms_Damage(territoryModification, game, order, result, addNewOr
 
 			Mod.PrivateGameData = privateGameData;
 		else
-			addNewOrder(WL.GameOrderEvent.Create(order.PlayerID, "Blockade card not available - DMS cancelled", {}, {territoryModification}), true); -- this should be impossible to reach but safety net
+			Add_Dms_Cancelled_Event(order, territoryModification, addNewOrder, "Blockade");
         end
 	elseif (Mod.Settings.isDamageTypeEmergencyBlockade) then
 		-- unable to programatically play cards without them being enabled
         if game.Settings.Cards ~= nil and game.Settings.Cards[WL.CardID.EmergencyBlockade] ~= nil then
         	local attackingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.From].OwnerPlayerID;
 
-			local event = WL.GameOrderEvent.Create(order.PlayerID, "Triggered a Dead Man's Switch", {}, {territoryModification});
-			event.TerritoryAnnotationsOpt = { [order.To] = WL.TerritoryAnnotation.Create("Triggered DMS", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany)) };
-			event.Icon = "Triggered";
-			addNewOrder(event, true);
+			Add_Dms_Triggered_Event(order, territoryModification, addNewOrder);
 
 			for _ = 1, numberOfDMS do
 				local instance = WL.NoParameterCardInstance.Create(WL.CardID.EmergencyBlockade);
@@ -161,7 +158,7 @@ function Trigger_Dms_Damage(territoryModification, game, order, result, addNewOr
 				addNewOrder(WL.GameOrderPlayCardAbandon.Create(instance.ID, attackingPlayer, order.To));
 			end
 		else
-			addNewOrder(WL.GameOrderEvent.Create(order.PlayerID, "Emergency Blockade card not available - DMS cancelled", {}, {territoryModification}), true); -- this should be impossible to reach but safety net
+			Add_Dms_Cancelled_Event(order, territoryModification, addNewOrder, "Emergency Blockade");
         end
 	elseif (Mod.Settings.isDamageTypeDiplomacy) then
 		-- unable to programatically play cards without them being enabled
@@ -169,10 +166,7 @@ function Trigger_Dms_Damage(territoryModification, game, order, result, addNewOr
         	local defendingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.To].OwnerPlayerID;
         	local attackingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.From].OwnerPlayerID;
 
-			local event = WL.GameOrderEvent.Create(order.PlayerID, "Triggered a Dead Man's Switch", {}, {territoryModification});
-			event.TerritoryAnnotationsOpt = { [order.To] = WL.TerritoryAnnotation.Create("Triggered DMS", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany)) };
-			event.Icon = "Triggered";
-			addNewOrder(event, true);
+			Add_Dms_Triggered_Event(order, territoryModification, addNewOrder);
 
 			-- diplomacy cards are normally played at the end of the turn, so store them for end of turn instead of playing them immediately
 			local privateGameData = Mod.PrivateGameData;
@@ -184,7 +178,7 @@ function Trigger_Dms_Damage(territoryModification, game, order, result, addNewOr
 
 			Mod.PrivateGameData = privateGameData;
 		else
-			addNewOrder(WL.GameOrderEvent.Create(order.PlayerID, "Diplomacy card not available - DMS cancelled", {}, {territoryModification}), true); -- this should be impossible to reach but safety net
+			Add_Dms_Cancelled_Event(order, territoryModification, addNewOrder, "Diplomacy");
         end
 	elseif (Mod.Settings.isDamageTypeSpy) then
 		-- unable to programatically play cards without them being enabled
@@ -192,10 +186,7 @@ function Trigger_Dms_Damage(territoryModification, game, order, result, addNewOr
         	local defendingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.To].OwnerPlayerID;
         	local attackingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.From].OwnerPlayerID;
 
-			local event = WL.GameOrderEvent.Create(order.PlayerID, "Triggered a Dead Man's Switch", {}, {territoryModification});
-			event.TerritoryAnnotationsOpt = { [order.To] = WL.TerritoryAnnotation.Create("Triggered DMS", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany)) };
-			event.Icon = "Triggered";
-			addNewOrder(event, true);
+			Add_Dms_Triggered_Event(order, territoryModification, addNewOrder);
 
 			for _ = 1, numberOfDMS do
 				local instance = WL.NoParameterCardInstance.Create(WL.CardID.Spy);
@@ -203,7 +194,7 @@ function Trigger_Dms_Damage(territoryModification, game, order, result, addNewOr
 				addNewOrder(WL.GameOrderPlayCardSpy.Create(instance.ID, defendingPlayer, attackingPlayer));
 			end
 		else
-			addNewOrder(WL.GameOrderEvent.Create(order.PlayerID, "Spy card not available - DMS cancelled", {}, {territoryModification}), true); -- this should be impossible to reach but safety net
+			Add_Dms_Cancelled_Event(order, territoryModification, addNewOrder, "Spy");
         end
 	elseif (Mod.Settings.isDamageTypePercent) then
 		local armiesAfterAttack = result.ActualArmies.NumArmies - result.AttackingArmiesKilled.NumArmies;
@@ -216,10 +207,7 @@ function Trigger_Dms_Damage(territoryModification, game, order, result, addNewOr
 		local minimumRemainingArmies = math.max(0, armiesAfterAttack - (Mod.Settings.PercentageMinDamage * numberOfDMS));
 		territoryModification.SetArmiesTo = math.min(remainingArmies, minimumRemainingArmies);
 
-		local event = WL.GameOrderEvent.Create(order.PlayerID, "Triggered a Dead Man's Switch", {}, {territoryModification});
-		event.TerritoryAnnotationsOpt = { [order.To] = WL.TerritoryAnnotation.Create("Triggered DMS", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany)) };
-		event.Icon = "Triggered";
-		addNewOrder(event, true);
+		Add_Dms_Triggered_Event(order, territoryModification, addNewOrder);
 	end
 end
 
