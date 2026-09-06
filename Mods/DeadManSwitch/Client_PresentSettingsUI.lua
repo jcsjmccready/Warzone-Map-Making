@@ -15,6 +15,26 @@ function Client_PresentSettingsUI(rootParent)
         damageTypeMessage = math.floor(Mod.Settings.PercentageDamage * 100) .. "% of the armies (with a minimum of " .. Mod.Settings.PercentageMinDamage .. " armies) are killed.";
     end
 
+    if(Mod.Settings.isDamageTypeSanction) then
+        damageTypeMessage = "a sanction card is automatically played on its owner.";
+    end
+
+    if(Mod.Settings.isDamageTypeBlockade) then
+        damageTypeMessage = "a blockade card is automatically played on it.";
+    end
+
+    if(Mod.Settings.isDamageTypeEmergencyBlockade) then
+        damageTypeMessage = "an emergency blockade card is automatically played on it.";
+    end
+
+    if(Mod.Settings.isDamageTypeDiplomacy) then
+        damageTypeMessage = "a diplomacy card is automatically played between the attacker and defender.";
+    end
+
+    if(Mod.Settings.isDamageTypeSpy) then
+        damageTypeMessage = "a spy card is automatically played on the attacker.";
+    end
+
     local descriptionVGroup = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
 
     UI.CreateLabel(descriptionVGroup).SetText("If a territory containing a Dead Man's Switch is successfully captured, afterwards, it is destroyed and " .. damageTypeMessage);

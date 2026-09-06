@@ -24,6 +24,31 @@ function Client_SaveConfigureUI(alert, addCard)
         damageTypeMessage = math.floor(Mod.Settings.PercentageDamage * 100) .. "% of the armies (with a minimum of " .. Mod.Settings.PercentageMinDamage .. " armies) are killed.";
     end
 
+    Mod.Settings.isDamageTypeSanction = isDamageTypeSanction.GetIsChecked();
+    if(Mod.Settings.isDamageTypeSanction) then
+        damageTypeMessage = "a sanction card is automatically played on its owner.";
+    end
+
+    Mod.Settings.isDamageTypeBlockade = isDamageTypeBlockade.GetIsChecked();
+    if(Mod.Settings.isDamageTypeBlockade) then
+        damageTypeMessage = "a blockade card is automatically played on it.";
+    end
+
+    Mod.Settings.isDamageTypeEmergencyBlockade = isDamageTypeEmergencyBlockade.GetIsChecked();
+    if(Mod.Settings.isDamageTypeEmergencyBlockade) then
+        damageTypeMessage = "an emergency blockade card is automatically played on it.";
+    end
+
+    Mod.Settings.isDamageTypeDiplomacy = isDamageTypeDiplomacy.GetIsChecked();
+    if(Mod.Settings.isDamageTypeDiplomacy) then
+        damageTypeMessage = "a diplomacy card is automatically played between the attacker and defender.";
+    end
+
+    Mod.Settings.isDamageTypeSpy = isDamageTypeSpy.GetIsChecked();
+    if(Mod.Settings.isDamageTypeSpy) then
+        damageTypeMessage = "a spy card is automatically played on the attacker.";
+    end
+
     Mod.Settings.AllyTriggers = allyTriggers.GetIsChecked();
 
     Mod.Settings.isAcquiringTypeCard = isAcquiringTypeCard.GetIsChecked();

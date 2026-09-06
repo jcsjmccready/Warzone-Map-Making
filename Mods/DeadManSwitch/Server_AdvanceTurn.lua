@@ -104,6 +104,107 @@ function Trigger_Dms_Damage(territoryModification, game, order, result, addNewOr
 		event.Icon = "Triggered";
 		addNewOrder(event, true);
 
+	elseif (Mod.Settings.isDamageTypeSanction) then
+		-- unable to programatically play cards without them being enabled
+        if game.Settings.Cards ~= nil and game.Settings.Cards[WL.CardID.Sanctions] ~= nil then
+        	local defendingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.To].OwnerPlayerID;
+        	local attackingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.From].OwnerPlayerID;
+
+			local event = WL.GameOrderEvent.Create(order.PlayerID, "Triggered a Dead Man's Switch", {}, {territoryModification});
+			event.TerritoryAnnotationsOpt = { [order.To] = WL.TerritoryAnnotation.Create("Triggered DMS", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany)) };
+			event.Icon = "Triggered";
+			addNewOrder(event, true);
+
+			for _ = 1, numberOfDMS do
+				local instance = WL.NoParameterCardInstance.Create(WL.CardID.Sanctions);
+				addNewOrder(WL.GameOrderReceiveCard.Create(defendingPlayer, {instance}));
+				addNewOrder(WL.GameOrderPlayCardSanctions.Create(instance.ID, defendingPlayer, attackingPlayer));
+			end
+		else
+			addNewOrder(WL.GameOrderEvent.Create(order.PlayerID, "Sanction card not available - DMS cancelled", {}, {territoryModification}), true); -- this should be impossible to reach but safety net
+        end
+	elseif (Mod.Settings.isDamageTypeBlockade) then
+		-- unable to programatically play cards without them being enabled
+        if game.Settings.Cards ~= nil and game.Settings.Cards[WL.CardID.Blockade] ~= nil then
+        	local attackingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.From].OwnerPlayerID;
+
+			local event = WL.GameOrderEvent.Create(order.PlayerID, "Triggered a Dead Man's Switch", {}, {territoryModification});
+			event.TerritoryAnnotationsOpt = { [order.To] = WL.TerritoryAnnotation.Create("Triggered DMS", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany)) };
+			event.Icon = "Triggered";
+			addNewOrder(event, true);
+
+			-- blockade cards are normally played at the end of the turn, so store them for end of turn instead of playing them immediately
+			local privateGameData = Mod.PrivateGameData;
+			if (privateGameData.PendingBlockade == nil) then privateGameData.PendingBlockade = {}; end;
+
+			for _ = 1, numberOfDMS do
+				table.insert(privateGameData.PendingBlockade, { PlayerID = attackingPlayer, TerritoryID = order.To });
+			end
+
+			Mod.PrivateGameData = privateGameData;
+		else
+			addNewOrder(WL.GameOrderEvent.Create(order.PlayerID, "Blockade card not available - DMS cancelled", {}, {territoryModification}), true); -- this should be impossible to reach but safety net
+        end
+	elseif (Mod.Settings.isDamageTypeEmergencyBlockade) then
+		-- unable to programatically play cards without them being enabled
+        if game.Settings.Cards ~= nil and game.Settings.Cards[WL.CardID.EmergencyBlockade] ~= nil then
+        	local attackingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.From].OwnerPlayerID;
+
+			local event = WL.GameOrderEvent.Create(order.PlayerID, "Triggered a Dead Man's Switch", {}, {territoryModification});
+			event.TerritoryAnnotationsOpt = { [order.To] = WL.TerritoryAnnotation.Create("Triggered DMS", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany)) };
+			event.Icon = "Triggered";
+			addNewOrder(event, true);
+
+			for _ = 1, numberOfDMS do
+				local instance = WL.NoParameterCardInstance.Create(WL.CardID.EmergencyBlockade);
+				addNewOrder(WL.GameOrderReceiveCard.Create(attackingPlayer, {instance}));
+				addNewOrder(WL.GameOrderPlayCardAbandon.Create(instance.ID, attackingPlayer, order.To));
+			end
+		else
+			addNewOrder(WL.GameOrderEvent.Create(order.PlayerID, "Emergency Blockade card not available - DMS cancelled", {}, {territoryModification}), true); -- this should be impossible to reach but safety net
+        end
+	elseif (Mod.Settings.isDamageTypeDiplomacy) then
+		-- unable to programatically play cards without them being enabled
+        if game.Settings.Cards ~= nil and game.Settings.Cards[WL.CardID.Diplomacy] ~= nil then
+        	local defendingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.To].OwnerPlayerID;
+        	local attackingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.From].OwnerPlayerID;
+
+			local event = WL.GameOrderEvent.Create(order.PlayerID, "Triggered a Dead Man's Switch", {}, {territoryModification});
+			event.TerritoryAnnotationsOpt = { [order.To] = WL.TerritoryAnnotation.Create("Triggered DMS", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany)) };
+			event.Icon = "Triggered";
+			addNewOrder(event, true);
+
+			-- diplomacy cards are normally played at the end of the turn, so store them for end of turn instead of playing them immediately
+			local privateGameData = Mod.PrivateGameData;
+			if (privateGameData.PendingDiplomacy == nil) then privateGameData.PendingDiplomacy = {}; end;
+
+			for _ = 1, numberOfDMS do
+				table.insert(privateGameData.PendingDiplomacy, { PlayerID = defendingPlayer, PlayerOne = defendingPlayer, PlayerTwo = attackingPlayer });
+			end
+
+			Mod.PrivateGameData = privateGameData;
+		else
+			addNewOrder(WL.GameOrderEvent.Create(order.PlayerID, "Diplomacy card not available - DMS cancelled", {}, {territoryModification}), true); -- this should be impossible to reach but safety net
+        end
+	elseif (Mod.Settings.isDamageTypeSpy) then
+		-- unable to programatically play cards without them being enabled
+        if game.Settings.Cards ~= nil and game.Settings.Cards[WL.CardID.Spy] ~= nil then
+        	local defendingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.To].OwnerPlayerID;
+        	local attackingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.From].OwnerPlayerID;
+
+			local event = WL.GameOrderEvent.Create(order.PlayerID, "Triggered a Dead Man's Switch", {}, {territoryModification});
+			event.TerritoryAnnotationsOpt = { [order.To] = WL.TerritoryAnnotation.Create("Triggered DMS", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany)) };
+			event.Icon = "Triggered";
+			addNewOrder(event, true);
+
+			for _ = 1, numberOfDMS do
+				local instance = WL.NoParameterCardInstance.Create(WL.CardID.Spy);
+				addNewOrder(WL.GameOrderReceiveCard.Create(defendingPlayer, {instance}));
+				addNewOrder(WL.GameOrderPlayCardSpy.Create(instance.ID, defendingPlayer, attackingPlayer));
+			end
+		else
+			addNewOrder(WL.GameOrderEvent.Create(order.PlayerID, "Spy card not available - DMS cancelled", {}, {territoryModification}), true); -- this should be impossible to reach but safety net
+        end
 	elseif (Mod.Settings.isDamageTypePercent) then
 		local armiesAfterAttack = result.ActualArmies.NumArmies - result.AttackingArmiesKilled.NumArmies;
 		local remainingArmies = armiesAfterAttack;
@@ -127,6 +228,42 @@ end
 ---@param addNewOrder fun(order: GameOrder) # Adds a game order, will be processed before any of the rest of the orders
 function Server_AdvanceTurn_End(game, addNewOrder)
 	BuildStructures(game, addNewOrder);
+	PlayPendingBlockades(addNewOrder);
+	PlayPendingDiplomacy(addNewOrder);
+end
+
+function PlayPendingBlockades(addNewOrder)
+
+	local privateGameData = Mod.PrivateGameData;
+	local pending = privateGameData.PendingBlockade;
+
+	if (pending == nil) then return; end;
+
+	for _,pendingBlockade in pairs(pending) do
+		local instance = WL.NoParameterCardInstance.Create(WL.CardID.Blockade);
+		addNewOrder(WL.GameOrderReceiveCard.Create(pendingBlockade.PlayerID, {instance}));
+		addNewOrder(WL.GameOrderPlayCardBlockade.Create(instance.ID, pendingBlockade.PlayerID, pendingBlockade.TerritoryID));
+	end
+
+	privateGameData.PendingBlockade = nil;
+	Mod.PrivateGameData = privateGameData;
+end
+
+function PlayPendingDiplomacy(addNewOrder)
+
+	local privateGameData = Mod.PrivateGameData;
+	local pending = privateGameData.PendingDiplomacy;
+
+	if (pending == nil) then return; end;
+
+	for _,pendingDiplomacy in pairs(pending) do
+		local instance = WL.NoParameterCardInstance.Create(WL.CardID.Diplomacy);
+		addNewOrder(WL.GameOrderReceiveCard.Create(pendingDiplomacy.PlayerID, {instance}));
+		addNewOrder(WL.GameOrderPlayCardDiplomacy.Create(instance.ID, pendingDiplomacy.PlayerID, pendingDiplomacy.PlayerOne, pendingDiplomacy.PlayerTwo));
+	end
+
+	privateGameData.PendingDiplomacy = nil;
+	Mod.PrivateGameData = privateGameData;
 end
 
 function BuildStructures(game, addNewOrder)

@@ -37,7 +37,7 @@ function Create_UI_Controls(rootParent)
     ---- Damage type
     local damageTypeHeading = UI.CreateVerticalLayoutGroup(mainModUI);
 
-    UI.CreateLabel(damageTypeHeading).SetText('Damage type when triggered:').SetColor(SUBHEADING_COLOUR);
+    UI.CreateLabel(damageTypeHeading).SetText('Trigger actions:').SetColor(SUBHEADING_COLOUR);
 
     triggerDamageType = UI.CreateRadioButtonGroup(damageTypeHeading);
 
@@ -74,7 +74,7 @@ function Create_UI_Controls(rootParent)
     isDamageTypePercent = UI.CreateRadioButton(damageTypePercentHeading).SetGroup(triggerDamageType).SetText('% Damage').SetIsChecked(Mod.Settings.isDamageTypePercent or false);
 
 
-    isDamageTypePercent.SetOnValueChanged(function() 
+    isDamageTypePercent.SetOnValueChanged(function()
 
         if(isDamageTypePercent.GetIsChecked()) then
             Create_PercentageDamage_SubOptions_UI(damageTypePercentHeading);
@@ -82,6 +82,71 @@ function Create_UI_Controls(rootParent)
         else
            UI.Destroy(percentageDamageHeading);
            isDamageTypePercent.SetInteractable(true);
+        end
+    end);
+
+    -- sanction damage
+    local damageTypeSanctionHeading = UI.CreateVerticalLayoutGroup(damageTypeHeading);
+    isDamageTypeSanction = UI.CreateRadioButton(damageTypeSanctionHeading).SetGroup(triggerDamageType).SetText('Play Sanction Card').SetIsChecked(Mod.Settings.isDamageTypeSanction or false);
+
+    isDamageTypeSanction.SetOnValueChanged(function()
+
+        if(isDamageTypeSanction.GetIsChecked()) then
+            isDamageTypeSanction.SetInteractable(false);
+        else
+           isDamageTypeSanction.SetInteractable(true);
+        end
+    end);
+
+    -- blockade damage
+    local damageTypeBlockadeHeading = UI.CreateVerticalLayoutGroup(damageTypeHeading);
+    isDamageTypeBlockade = UI.CreateRadioButton(damageTypeBlockadeHeading).SetGroup(triggerDamageType).SetText('Play Blockade Card').SetIsChecked(Mod.Settings.isDamageTypeBlockade or false);
+
+    isDamageTypeBlockade.SetOnValueChanged(function()
+
+        if(isDamageTypeBlockade.GetIsChecked()) then
+            isDamageTypeBlockade.SetInteractable(false);
+        else
+           isDamageTypeBlockade.SetInteractable(true);
+        end
+    end);
+
+    -- emergency blockade damage
+    local damageTypeEmergencyBlockadeHeading = UI.CreateVerticalLayoutGroup(damageTypeHeading);
+    isDamageTypeEmergencyBlockade = UI.CreateRadioButton(damageTypeEmergencyBlockadeHeading).SetGroup(triggerDamageType).SetText('Play Emergency Blockade Card').SetIsChecked(Mod.Settings.isDamageTypeEmergencyBlockade or false);
+
+    isDamageTypeEmergencyBlockade.SetOnValueChanged(function()
+
+        if(isDamageTypeEmergencyBlockade.GetIsChecked()) then
+            isDamageTypeEmergencyBlockade.SetInteractable(false);
+        else
+           isDamageTypeEmergencyBlockade.SetInteractable(true);
+        end
+    end);
+
+    -- diplomacy damage
+    local damageTypeDiplomacyHeading = UI.CreateVerticalLayoutGroup(damageTypeHeading);
+    isDamageTypeDiplomacy = UI.CreateRadioButton(damageTypeDiplomacyHeading).SetGroup(triggerDamageType).SetText('Play Diplomacy Card').SetIsChecked(Mod.Settings.isDamageTypeDiplomacy or false);
+
+    isDamageTypeDiplomacy.SetOnValueChanged(function()
+
+        if(isDamageTypeDiplomacy.GetIsChecked()) then
+            isDamageTypeDiplomacy.SetInteractable(false);
+        else
+           isDamageTypeDiplomacy.SetInteractable(true);
+        end
+    end);
+
+    -- spy damage
+    local damageTypeSpyHeading = UI.CreateVerticalLayoutGroup(damageTypeHeading);
+    isDamageTypeSpy = UI.CreateRadioButton(damageTypeSpyHeading).SetGroup(triggerDamageType).SetText('Play Spy Card').SetIsChecked(Mod.Settings.isDamageTypeSpy or false);
+
+    isDamageTypeSpy.SetOnValueChanged(function()
+
+        if(isDamageTypeSpy.GetIsChecked()) then
+            isDamageTypeSpy.SetInteractable(false);
+        else
+           isDamageTypeSpy.SetInteractable(true);
         end
     end);
 
@@ -104,6 +169,21 @@ function Create_UI_Controls(rootParent)
     end
     if(isDamageTypeBomb.GetIsChecked()) then -- one time check for loading up from settings
         isDamageTypeBomb.SetInteractable(false);
+    end
+    if(isDamageTypeSanction.GetIsChecked()) then -- one time check for loading up from settings
+        isDamageTypeSanction.SetInteractable(false);
+    end
+    if(isDamageTypeBlockade.GetIsChecked()) then -- one time check for loading up from settings
+        isDamageTypeBlockade.SetInteractable(false);
+    end
+    if(isDamageTypeEmergencyBlockade.GetIsChecked()) then -- one time check for loading up from settings
+        isDamageTypeEmergencyBlockade.SetInteractable(false);
+    end
+    if(isDamageTypeDiplomacy.GetIsChecked()) then -- one time check for loading up from settings
+        isDamageTypeDiplomacy.SetInteractable(false);
+    end
+    if(isDamageTypeSpy.GetIsChecked()) then -- one time check for loading up from settings
+        isDamageTypeSpy.SetInteractable(false);
     end
 end;
 
