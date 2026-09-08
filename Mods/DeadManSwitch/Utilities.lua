@@ -118,6 +118,16 @@ function groupBy(tbl, funcToGetKey)
 	return ret;
 end
 
+function JoinWithAnd(array)
+	local count = #array;
+	if (count == 0) then return ""; end;
+	if (count == 1) then return array[1]; end;
+	if (count == 2) then return array[1] .. " and " .. array[2]; end;
+
+	local result = table.concat(array, ", ", 1, count - 1);
+	return result .. ", and " .. array[count];
+end
+
 function TrimWhitespace(s)
     return s:match "^%s*(.-)%s*$"
 end

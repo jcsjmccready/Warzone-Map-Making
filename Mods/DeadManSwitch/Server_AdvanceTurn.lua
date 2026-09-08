@@ -71,7 +71,8 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
 		local territoryModification = WL.TerritoryModification.Create(order.To);
 		territoryModification.SetStructuresOpt = structures;
 
-		Trigger_Dms_Damage(territoryModification, game, order, result, addNewOrder, numberOfDMS);
+		Trigger_Primary_Action(territoryModification, game, order, result, addNewOrder, numberOfDMS);
+		Trigger_Secondary_Actions(territoryModification, game, order, result, addNewOrder, numberOfDMS);
     end
 end
 
@@ -82,12 +83,12 @@ function Add_Dms_Triggered_Event(order, territoryModification, addNewOrder)
 	addNewOrder(event, true);
 end
 
-function Add_Dms_Cancelled_Event(order, territoryModification, addNewOrder, cardName)
+function Add_Dms_Cancelled_Card_Action_Event(order, territoryModification, addNewOrder, cardName)
 	-- this should be impossible to reach but safety net, in case the required card isn't enabled in the game settings
-	addNewOrder(WL.GameOrderEvent.Create(order.PlayerID, cardName .. " card not available - DMS cancelled", {}, {territoryModification}), true);
+	addNewOrder(WL.GameOrderEvent.Create(order.PlayerID, cardName .. " card not available - DMS action cancelled", {}, {territoryModification}), true);
 end
 
-function Trigger_Dms_Damage(territoryModification, game, order, result, addNewOrder, numberOfDMS)
+function Trigger_Primary_Action(territoryModification, game, order, result, addNewOrder, numberOfDMS)
 	if (Mod.Settings.isDamageTypeBomb) then
 		-- unable to programatically play cards without them being enabled
         if game.Settings.Cards ~= nil and game.Settings.Cards[WL.CardID.Bomb] ~= nil then
@@ -101,7 +102,7 @@ function Trigger_Dms_Damage(territoryModification, game, order, result, addNewOr
 				addNewOrder(WL.GameOrderPlayCardBomb.Create(instance.ID, defendingPlayer, order.To));
 			end
 		else
-			Add_Dms_Cancelled_Event(order, territoryModification, addNewOrder, "Bomb");
+			Add_Dms_Cancelled_Card_Action_Event(order, territoryModification, addNewOrder, "Bomb");
         end
 	elseif (Mod.Settings.isDamageTypeFlat) then
 		local damageAmount = Mod.Settings.FlatDamage * numberOfDMS;
@@ -110,22 +111,6 @@ function Trigger_Dms_Damage(territoryModification, game, order, result, addNewOr
 
 		Add_Dms_Triggered_Event(order, territoryModification, addNewOrder);
 
-	elseif (Mod.Settings.isDamageTypeSanction) then
-		-- unable to programatically play cards without them being enabled
-        if game.Settings.Cards ~= nil and game.Settings.Cards[WL.CardID.Sanctions] ~= nil then
-        	local defendingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.To].OwnerPlayerID;
-        	local attackingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.From].OwnerPlayerID;
-
-			Add_Dms_Triggered_Event(order, territoryModification, addNewOrder);
-
-			for _ = 1, numberOfDMS do
-				local instance = WL.NoParameterCardInstance.Create(WL.CardID.Sanctions);
-				addNewOrder(WL.GameOrderReceiveCard.Create(defendingPlayer, {instance}));
-				addNewOrder(WL.GameOrderPlayCardSanctions.Create(instance.ID, defendingPlayer, attackingPlayer));
-			end
-		else
-			Add_Dms_Cancelled_Event(order, territoryModification, addNewOrder, "Sanction");
-        end
 	elseif (Mod.Settings.isDamageTypeBlockade) then
 		-- unable to programatically play cards without them being enabled
         if game.Settings.Cards ~= nil and game.Settings.Cards[WL.CardID.Blockade] ~= nil then
@@ -143,7 +128,7 @@ function Trigger_Dms_Damage(territoryModification, game, order, result, addNewOr
 
 			Mod.PrivateGameData = privateGameData;
 		else
-			Add_Dms_Cancelled_Event(order, territoryModification, addNewOrder, "Blockade");
+			Add_Dms_Cancelled_Card_Action_Event(order, territoryModification, addNewOrder, "Blockade");
         end
 	elseif (Mod.Settings.isDamageTypeEmergencyBlockade) then
 		-- unable to programatically play cards without them being enabled
@@ -158,43 +143,7 @@ function Trigger_Dms_Damage(territoryModification, game, order, result, addNewOr
 				addNewOrder(WL.GameOrderPlayCardAbandon.Create(instance.ID, attackingPlayer, order.To));
 			end
 		else
-			Add_Dms_Cancelled_Event(order, territoryModification, addNewOrder, "Emergency Blockade");
-        end
-	elseif (Mod.Settings.isDamageTypeDiplomacy) then
-		-- unable to programatically play cards without them being enabled
-        if game.Settings.Cards ~= nil and game.Settings.Cards[WL.CardID.Diplomacy] ~= nil then
-        	local defendingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.To].OwnerPlayerID;
-        	local attackingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.From].OwnerPlayerID;
-
-			Add_Dms_Triggered_Event(order, territoryModification, addNewOrder);
-
-			-- diplomacy cards are normally played at the end of the turn, so store them for end of turn instead of playing them immediately
-			local privateGameData = Mod.PrivateGameData;
-			if (privateGameData.PendingDiplomacy == nil) then privateGameData.PendingDiplomacy = {}; end;
-
-			for _ = 1, numberOfDMS do
-				table.insert(privateGameData.PendingDiplomacy, { PlayerID = defendingPlayer, PlayerOne = defendingPlayer, PlayerTwo = attackingPlayer });
-			end
-
-			Mod.PrivateGameData = privateGameData;
-		else
-			Add_Dms_Cancelled_Event(order, territoryModification, addNewOrder, "Diplomacy");
-        end
-	elseif (Mod.Settings.isDamageTypeSpy) then
-		-- unable to programatically play cards without them being enabled
-        if game.Settings.Cards ~= nil and game.Settings.Cards[WL.CardID.Spy] ~= nil then
-        	local defendingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.To].OwnerPlayerID;
-        	local attackingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.From].OwnerPlayerID;
-
-			Add_Dms_Triggered_Event(order, territoryModification, addNewOrder);
-
-			for _ = 1, numberOfDMS do
-				local instance = WL.NoParameterCardInstance.Create(WL.CardID.Spy);
-				addNewOrder(WL.GameOrderReceiveCard.Create(defendingPlayer, {instance}));
-				addNewOrder(WL.GameOrderPlayCardSpy.Create(instance.ID, defendingPlayer, attackingPlayer));
-			end
-		else
-			Add_Dms_Cancelled_Event(order, territoryModification, addNewOrder, "Spy");
+			Add_Dms_Cancelled_Card_Action_Event(order, territoryModification, addNewOrder, "Emergency Blockade");
         end
 	elseif (Mod.Settings.isDamageTypePercent) then
 		local armiesAfterAttack = result.ActualArmies.NumArmies - result.AttackingArmiesKilled.NumArmies;
@@ -208,6 +157,61 @@ function Trigger_Dms_Damage(territoryModification, game, order, result, addNewOr
 		territoryModification.SetArmiesTo = math.min(remainingArmies, minimumRemainingArmies);
 
 		Add_Dms_Triggered_Event(order, territoryModification, addNewOrder);
+	end
+end
+
+function Trigger_Secondary_Actions(territoryModification, game, order, result, addNewOrder, numberOfDMS)
+	-- these trigger actions are independent toggles and can stack with each other and with the damage type above
+	if (Mod.Settings.isDamageTypeSanction) then
+		-- unable to programatically play cards without them being enabled
+        if game.Settings.Cards ~= nil and game.Settings.Cards[WL.CardID.Sanctions] ~= nil then
+        	local defendingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.To].OwnerPlayerID;
+        	local attackingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.From].OwnerPlayerID;
+
+			for _ = 1, numberOfDMS do
+				local instance = WL.NoParameterCardInstance.Create(WL.CardID.Sanctions);
+				addNewOrder(WL.GameOrderReceiveCard.Create(defendingPlayer, {instance}));
+				addNewOrder(WL.GameOrderPlayCardSanctions.Create(instance.ID, defendingPlayer, attackingPlayer));
+			end
+		else
+			Add_Dms_Cancelled_Card_Action_Event(order, territoryModification, addNewOrder, "Sanction");
+        end
+	end
+
+	if (Mod.Settings.isDamageTypeDiplomacy) then
+		-- unable to programatically play cards without them being enabled
+        if game.Settings.Cards ~= nil and game.Settings.Cards[WL.CardID.Diplomacy] ~= nil then
+        	local defendingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.To].OwnerPlayerID;
+        	local attackingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.From].OwnerPlayerID;
+
+			-- diplomacy cards are normally played at the end of the turn, so store them for end of turn instead of playing them immediately
+			local privateGameData = Mod.PrivateGameData;
+			if (privateGameData.PendingDiplomacy == nil) then privateGameData.PendingDiplomacy = {}; end;
+
+			for _ = 1, numberOfDMS do
+				table.insert(privateGameData.PendingDiplomacy, { PlayerID = defendingPlayer, PlayerOne = defendingPlayer, PlayerTwo = attackingPlayer });
+			end
+
+			Mod.PrivateGameData = privateGameData;
+		else
+			Add_Dms_Cancelled_Card_Action_Event(order, territoryModification, addNewOrder, "Diplomacy");
+        end
+	end
+
+	if (Mod.Settings.isDamageTypeSpy) then
+		-- unable to programatically play cards without them being enabled
+        if game.Settings.Cards ~= nil and game.Settings.Cards[WL.CardID.Spy] ~= nil then
+        	local defendingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.To].OwnerPlayerID;
+        	local attackingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.From].OwnerPlayerID;
+
+			for _ = 1, numberOfDMS do
+				local instance = WL.NoParameterCardInstance.Create(WL.CardID.Spy);
+				addNewOrder(WL.GameOrderReceiveCard.Create(defendingPlayer, {instance}));
+				addNewOrder(WL.GameOrderPlayCardSpy.Create(instance.ID, defendingPlayer, attackingPlayer));
+			end
+		else
+			Add_Dms_Cancelled_Card_Action_Event(order, territoryModification, addNewOrder, "Spy");
+        end
 	end
 end
 

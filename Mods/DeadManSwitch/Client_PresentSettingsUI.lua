@@ -1,3 +1,5 @@
+require("Utilities");
+
 ---Client_PresentSettingsUI hook
 ---@param rootParent RootParent
 function Client_PresentSettingsUI(rootParent)
@@ -15,10 +17,6 @@ function Client_PresentSettingsUI(rootParent)
         damageTypeMessage = math.floor(Mod.Settings.PercentageDamage * 100) .. "% of the armies (with a minimum of " .. Mod.Settings.PercentageMinDamage .. " armies) are killed.";
     end
 
-    if(Mod.Settings.isDamageTypeSanction) then
-        damageTypeMessage = "a sanction card is automatically played on its owner.";
-    end
-
     if(Mod.Settings.isDamageTypeBlockade) then
         damageTypeMessage = "a blockade card is automatically played on it.";
     end
@@ -27,12 +25,19 @@ function Client_PresentSettingsUI(rootParent)
         damageTypeMessage = "an emergency blockade card is automatically played on it.";
     end
 
+    local additionalActions = {};
+    if(Mod.Settings.isDamageTypeSanction) then
+        table.insert(additionalActions, "a sanction card is automatically played on its owner");
+    end
     if(Mod.Settings.isDamageTypeDiplomacy) then
-        damageTypeMessage = "a diplomacy card is automatically played between the attacker and defender.";
+        table.insert(additionalActions, "a diplomacy card is automatically played between the attacker and defender");
+    end
+    if(Mod.Settings.isDamageTypeSpy) then
+        table.insert(additionalActions, "a spy card is automatically played on the attacker");
     end
 
-    if(Mod.Settings.isDamageTypeSpy) then
-        damageTypeMessage = "a spy card is automatically played on the attacker.";
+    if(#additionalActions > 0) then
+        damageTypeMessage = damageTypeMessage .. " Additionally, " .. JoinWithAnd(additionalActions) .. ".";
     end
 
     local descriptionVGroup = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);

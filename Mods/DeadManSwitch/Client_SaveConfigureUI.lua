@@ -1,3 +1,5 @@
+require("Utilities");
+
 ---Client_SaveConfigureUI hook
 ---@param alert fun(message: string) # Alert the player that something is wrong, for example, when a setting is not configured correctly. When invoked, cancels the player from saving and returning
 ---@param addCard fun(name: string, description: string, filename: string, piecesForWholeCard: integer, piecesPerTurn: integer, initialPieces: integer, cardWeight: number, duration: integer | nil, expireBehaviour: ActiveCardExpireBehaviorOptions): CardID # Creates a custom card. Can be invoked multiple times to create multiple cards. Every invokation will return the CardID of the just created card, make sure to save this in the settings of your mod
@@ -24,11 +26,6 @@ function Client_SaveConfigureUI(alert, addCard)
         damageTypeMessage = math.floor(Mod.Settings.PercentageDamage * 100) .. "% of the armies (with a minimum of " .. Mod.Settings.PercentageMinDamage .. " armies) are killed.";
     end
 
-    Mod.Settings.isDamageTypeSanction = isDamageTypeSanction.GetIsChecked();
-    if(Mod.Settings.isDamageTypeSanction) then
-        damageTypeMessage = "a sanction card is automatically played on its owner.";
-    end
-
     Mod.Settings.isDamageTypeBlockade = isDamageTypeBlockade.GetIsChecked();
     if(Mod.Settings.isDamageTypeBlockade) then
         damageTypeMessage = "a blockade card is automatically played on it.";
@@ -39,14 +36,23 @@ function Client_SaveConfigureUI(alert, addCard)
         damageTypeMessage = "an emergency blockade card is automatically played on it.";
     end
 
+    Mod.Settings.isDamageTypeSanction = isDamageTypeSanction.GetIsChecked();
     Mod.Settings.isDamageTypeDiplomacy = isDamageTypeDiplomacy.GetIsChecked();
+    Mod.Settings.isDamageTypeSpy = isDamageTypeSpy.GetIsChecked();
+
+    local additionalActions = {};
+    if(Mod.Settings.isDamageTypeSanction) then
+        table.insert(additionalActions, "a sanction card is automatically played on its owner");
+    end
     if(Mod.Settings.isDamageTypeDiplomacy) then
-        damageTypeMessage = "a diplomacy card is automatically played between the attacker and defender.";
+        table.insert(additionalActions, "a diplomacy card is automatically played between the attacker and defender");
+    end
+    if(Mod.Settings.isDamageTypeSpy) then
+        table.insert(additionalActions, "a spy card is automatically played on the attacker");
     end
 
-    Mod.Settings.isDamageTypeSpy = isDamageTypeSpy.GetIsChecked();
-    if(Mod.Settings.isDamageTypeSpy) then
-        damageTypeMessage = "a spy card is automatically played on the attacker.";
+    if(#additionalActions > 0) then
+        damageTypeMessage = damageTypeMessage .. " Additionally, " .. JoinWithAnd(additionalActions) .. ".";
     end
 
     Mod.Settings.AllyTriggers = allyTriggers.GetIsChecked();
@@ -75,7 +81,13 @@ function Client_SaveConfigureUI(alert, addCard)
             return;
         end
 
-    addCard("Dead Man's Switch Card", "Play this card to create a Dead Man's Switch on any territory you control (at the end of the turn). If this territory is successfully captured, afterwards, " .. damageTypeMessage, "DmsCard.png", Mod.Settings.NumPieces, Mod.Settings.MinPieces, Mod.Settings.InitialPieces, Mod.Settings.CardWeight);
+    addCard("Dead Man's Switch Card", 
+        "Play this card to create a Dead Man's Switch on any territory you control (at the end of the turn). If this territory is successfully captured, afterwards, " .. damageTypeMessage, 
+        "DmsCard.png",
+        Mod.Settings.NumPieces,
+        Mod.Settings.MinPieces, 
+        Mod.Settings.InitialPieces, 
+        Mod.Settings.CardWeight);
     end
 end
 
