@@ -25,6 +25,10 @@ function Client_PresentSettingsUI(rootParent)
         damageTypeMessage = "an emergency blockade card is automatically played on it.";
     end
 
+    if(Mod.Settings.isDamageTypeNuke) then
+        damageTypeMessage = "it is nuked.";
+    end
+
     local additionalActions = {};
     if(Mod.Settings.isDamageTypeSanction) then
         table.insert(additionalActions, "a sanction card is automatically played on its owner");

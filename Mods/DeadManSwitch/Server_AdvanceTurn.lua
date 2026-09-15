@@ -145,6 +145,16 @@ function Trigger_Primary_Action(territoryModification, game, order, result, addN
 		else
 			Add_Dms_Cancelled_Card_Action_Event(order, territoryModification, addNewOrder, "Emergency Blockade");
         end
+	elseif (Mod.Settings.isDamageTypeNuke) then
+		local defendingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.To].OwnerPlayerID;
+		local attackingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.From].OwnerPlayerID;
+
+		Add_Dms_Triggered_Event(order, territoryModification, addNewOrder);
+
+		for _ = 1, numberOfDMS do
+			local payload = "Nuke|Invoke|" .. defendingPlayer .. "|" .. attackingPlayer .. "|" .. order.To;
+			addNewOrder(WL.GameOrderCustom.Create(defendingPlayer, "Nuke", payload, nil));
+		end
 	elseif (Mod.Settings.isDamageTypePercent) then
 		local armiesAfterAttack = result.ActualArmies.NumArmies - result.AttackingArmiesKilled.NumArmies;
 		local remainingArmies = armiesAfterAttack;

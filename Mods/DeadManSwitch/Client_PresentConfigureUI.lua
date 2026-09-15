@@ -111,6 +111,23 @@ function Create_UI_Controls(rootParent)
         end
     end);
 
+    -- nuke damage
+    local damageTypeNukeHeading = UI.CreateVerticalLayoutGroup(damageTypeHeading);
+    isDamageTypeNuke = UI.CreateRadioButton(damageTypeNukeHeading).SetGroup(triggerDamageType)
+    .SetText('Play Nuke Card')
+    .SetIsChecked(Mod.Settings.isDamageTypeNuke or false);
+
+    UI.CreateLabel(damageTypeNukeHeading).SetText('Requires and configured via Nuke mod by Krinid').SetColor(BUTTON_COLOURS.DarkGray);
+
+    isDamageTypeNuke.SetOnValueChanged(function()
+
+        if(isDamageTypeNuke.GetIsChecked()) then
+            isDamageTypeNuke.SetInteractable(false);
+        else
+           isDamageTypeNuke.SetInteractable(true);
+        end
+    end);
+
     ---- Additional trigger actions (can stack with each other and with the trigger action above)
     local additionalActionsHeading = UI.CreateVerticalLayoutGroup(mainModUI);
     UI.CreateLabel(additionalActionsHeading).SetText('Additional trigger actions:').SetColor(SUBHEADING_COLOUR);
@@ -143,6 +160,9 @@ function Create_UI_Controls(rootParent)
     end
     if(isDamageTypeEmergencyBlockade.GetIsChecked()) then -- one time check for loading up from settings
         isDamageTypeEmergencyBlockade.SetInteractable(false);
+    end
+    if(isDamageTypeNuke.GetIsChecked()) then -- one time check for loading up from settings
+        isDamageTypeNuke.SetInteractable(false);
     end
 end;
 

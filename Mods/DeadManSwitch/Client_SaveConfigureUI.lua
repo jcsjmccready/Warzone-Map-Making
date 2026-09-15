@@ -36,6 +36,11 @@ function Client_SaveConfigureUI(alert, addCard)
         damageTypeMessage = "an emergency blockade card is automatically played on it.";
     end
 
+    Mod.Settings.isDamageTypeNuke = isDamageTypeNuke.GetIsChecked();
+    if(Mod.Settings.isDamageTypeNuke) then
+        damageTypeMessage = "it is nuked.";
+    end
+
     Mod.Settings.isDamageTypeSanction = isDamageTypeSanction.GetIsChecked();
     Mod.Settings.isDamageTypeDiplomacy = isDamageTypeDiplomacy.GetIsChecked();
     Mod.Settings.isDamageTypeSpy = isDamageTypeSpy.GetIsChecked();
