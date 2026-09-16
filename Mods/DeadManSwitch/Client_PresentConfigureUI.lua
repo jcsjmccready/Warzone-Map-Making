@@ -44,6 +44,7 @@ function Create_UI_Controls(rootParent)
     -- bomb damage
     local damageTypeBombHeading = UI.CreateVerticalLayoutGroup(damageTypeHeading);
     isDamageTypeBomb = UI.CreateRadioButton(damageTypeBombHeading).SetGroup(triggerDamageType).SetText('Play Bomb Card').SetIsChecked(Mod.Settings.isDamageTypeBomb or true);
+    UI.CreateLabel(damageTypeBombHeading).SetText('Does not work if DMS owner is neutral*').SetColor(BUTTON_COLOURS.DarkGray);
 
     isDamageTypeBomb.SetOnValueChanged(function() 
 
@@ -117,7 +118,7 @@ function Create_UI_Controls(rootParent)
     .SetText('Play Nuke Card')
     .SetIsChecked(Mod.Settings.isDamageTypeNuke or false);
 
-    UI.CreateLabel(damageTypeNukeHeading).SetText('Requires and configured via Nuke mod by Krinid').SetColor(BUTTON_COLOURS.DarkGray);
+    UI.CreateLabel(damageTypeNukeHeading).SetText('Requires and configured via Nuke mod by Krinid*').SetColor(BUTTON_COLOURS.DarkGray);
 
     isDamageTypeNuke.SetOnValueChanged(function()
 
@@ -134,7 +135,11 @@ function Create_UI_Controls(rootParent)
 
     isDamageTypeSanction = UI.CreateCheckBox(additionalActionsHeading).SetText('Play Sanction Card').SetIsChecked(Mod.Settings.isDamageTypeSanction or false);
     isDamageTypeDiplomacy = UI.CreateCheckBox(additionalActionsHeading).SetText('Play Diplomacy Card').SetIsChecked(Mod.Settings.isDamageTypeDiplomacy or false);
+    UI.CreateLabel(additionalActionsHeading).SetText('Does not work if DMS owner is neutral*').SetColor(BUTTON_COLOURS.DarkGray);
+
     isDamageTypeSpy = UI.CreateCheckBox(additionalActionsHeading).SetText('Play Spy Card').SetIsChecked(Mod.Settings.isDamageTypeSpy or false);
+    UI.CreateLabel(additionalActionsHeading).SetText('Does not work if DMS owner is neutral*').SetColor(BUTTON_COLOURS.DarkGray);
+
 
     local optionalsHeading = UI.CreateVerticalLayoutGroup(mainModUI);
     UI.CreateLabel(optionalsHeading).SetText('Optionals:').SetColor(SUBHEADING_COLOUR);

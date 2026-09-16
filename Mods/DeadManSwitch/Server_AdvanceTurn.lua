@@ -93,13 +93,18 @@ function Trigger_Primary_Action(territoryModification, game, order, result, addN
 		-- unable to programatically play cards without them being enabled
         if game.Settings.Cards ~= nil and game.Settings.Cards[WL.CardID.Bomb] ~= nil then
         	local defendingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.To].OwnerPlayerID;
+        	local attackingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.From].OwnerPlayerID;
+
+			-- if the DMS's territory was already neutral, there's no real defending player to give the card to, so let the attacker bomb themself instead
+			local bombPlayer = defendingPlayer;
+			if (defendingPlayer == WL.PlayerID.Neutral) then bombPlayer = attackingPlayer; end
 
 			Add_Dms_Triggered_Event(order, territoryModification, addNewOrder);
 
 			for _ = 1, numberOfDMS do
 				local instance = WL.NoParameterCardInstance.Create(WL.CardID.Bomb);
-				addNewOrder(WL.GameOrderReceiveCard.Create(defendingPlayer, {instance}));
-				addNewOrder(WL.GameOrderPlayCardBomb.Create(instance.ID, defendingPlayer, order.To));
+				addNewOrder(WL.GameOrderReceiveCard.Create(bombPlayer, {instance}));
+				addNewOrder(WL.GameOrderPlayCardBomb.Create(instance.ID, bombPlayer, order.To));
 			end
 		else
 			Add_Dms_Cancelled_Card_Action_Event(order, territoryModification, addNewOrder, "Bomb");
@@ -149,11 +154,15 @@ function Trigger_Primary_Action(territoryModification, game, order, result, addN
 		local defendingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.To].OwnerPlayerID;
 		local attackingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.From].OwnerPlayerID;
 
+		-- GameOrderCustom can't be issued as neutral, so if the DMS's territory was already neutral, let the attacker nuke themself instead
+		local nukingPlayer = defendingPlayer;
+		if (defendingPlayer == WL.PlayerID.Neutral) then nukingPlayer = attackingPlayer; end
+
 		Add_Dms_Triggered_Event(order, territoryModification, addNewOrder);
 
 		for _ = 1, numberOfDMS do
-			local payload = "Nuke|Invoke|" .. defendingPlayer .. "|" .. attackingPlayer .. "|" .. order.To;
-			addNewOrder(WL.GameOrderCustom.Create(defendingPlayer, "Nuke", payload, nil));
+			local payload = "Nuke|Invoke|" .. attackingPlayer .. "|" .. defendingPlayer .. "|" .. order.To;
+			addNewOrder(WL.GameOrderCustom.Create(nukingPlayer, "Firing Nuke", payload, nil));
 		end
 	elseif (Mod.Settings.isDamageTypePercent) then
 		local armiesAfterAttack = result.ActualArmies.NumArmies - result.AttackingArmiesKilled.NumArmies;
@@ -178,10 +187,14 @@ function Trigger_Secondary_Actions(territoryModification, game, order, result, a
         	local defendingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.To].OwnerPlayerID;
         	local attackingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.From].OwnerPlayerID;
 
+			-- if the DMS's territory was already neutral, there's no real defending player to give the card to, so let the attacker sanction themself instead
+			local sanctioningPlayer = defendingPlayer;
+			if (defendingPlayer == WL.PlayerID.Neutral) then sanctioningPlayer = attackingPlayer; end
+
 			for _ = 1, numberOfDMS do
 				local instance = WL.NoParameterCardInstance.Create(WL.CardID.Sanctions);
-				addNewOrder(WL.GameOrderReceiveCard.Create(defendingPlayer, {instance}));
-				addNewOrder(WL.GameOrderPlayCardSanctions.Create(instance.ID, defendingPlayer, attackingPlayer));
+				addNewOrder(WL.GameOrderReceiveCard.Create(sanctioningPlayer, {instance}));
+				addNewOrder(WL.GameOrderPlayCardSanctions.Create(instance.ID, sanctioningPlayer, attackingPlayer));
 			end
 		else
 			Add_Dms_Cancelled_Card_Action_Event(order, territoryModification, addNewOrder, "Sanction");
@@ -194,15 +207,18 @@ function Trigger_Secondary_Actions(territoryModification, game, order, result, a
         	local defendingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.To].OwnerPlayerID;
         	local attackingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.From].OwnerPlayerID;
 
-			-- diplomacy cards are normally played at the end of the turn, so store them for end of turn instead of playing them immediately
-			local privateGameData = Mod.PrivateGameData;
-			if (privateGameData.PendingDiplomacy == nil) then privateGameData.PendingDiplomacy = {}; end;
+			-- if the DMS's territory was already neutral, there's no real defending player to benefit from the effect
+			if (defendingPlayer ~= WL.PlayerID.Neutral) then
+				-- diplomacy cards are normally played at the end of the turn, so store them for end of turn instead of playing them immediately
+				local privateGameData = Mod.PrivateGameData;
+				if (privateGameData.PendingDiplomacy == nil) then privateGameData.PendingDiplomacy = {}; end;
 
-			for _ = 1, numberOfDMS do
-				table.insert(privateGameData.PendingDiplomacy, { PlayerID = defendingPlayer, PlayerOne = defendingPlayer, PlayerTwo = attackingPlayer });
+				for _ = 1, numberOfDMS do
+					table.insert(privateGameData.PendingDiplomacy, { PlayerID = defendingPlayer, PlayerOne = defendingPlayer, PlayerTwo = attackingPlayer });
+				end
+
+				Mod.PrivateGameData = privateGameData;
 			end
-
-			Mod.PrivateGameData = privateGameData;
 		else
 			Add_Dms_Cancelled_Card_Action_Event(order, territoryModification, addNewOrder, "Diplomacy");
         end
@@ -214,10 +230,13 @@ function Trigger_Secondary_Actions(territoryModification, game, order, result, a
         	local defendingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.To].OwnerPlayerID;
         	local attackingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.From].OwnerPlayerID;
 
-			for _ = 1, numberOfDMS do
-				local instance = WL.NoParameterCardInstance.Create(WL.CardID.Spy);
-				addNewOrder(WL.GameOrderReceiveCard.Create(defendingPlayer, {instance}));
-				addNewOrder(WL.GameOrderPlayCardSpy.Create(instance.ID, defendingPlayer, attackingPlayer));
+			--if the DMS's territory was already neutral, there's no real defending player to benefit from the effect
+			if (defendingPlayer ~= WL.PlayerID.Neutral) then
+				for _ = 1, numberOfDMS do
+					local instance = WL.NoParameterCardInstance.Create(WL.CardID.Spy);
+					addNewOrder(WL.GameOrderReceiveCard.Create(defendingPlayer, {instance}));
+					addNewOrder(WL.GameOrderPlayCardSpy.Create(instance.ID, defendingPlayer, attackingPlayer));
+				end
 			end
 		else
 			Add_Dms_Cancelled_Card_Action_Event(order, territoryModification, addNewOrder, "Spy");
