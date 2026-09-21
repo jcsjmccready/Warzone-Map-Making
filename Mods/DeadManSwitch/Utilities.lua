@@ -1,4 +1,5 @@
 
+---@return integer
 function NewIdentity()
 	local data = Mod.PublicGameData;
 	local ret = data.Identity or 1;
@@ -7,6 +8,7 @@ function NewIdentity()
 	return ret;
 end
 
+---@param obj table | ProxyObject
 function Dump(obj)
 	if obj.proxyType ~= nil then
 		DumpProxy(obj);
@@ -16,16 +18,21 @@ function Dump(obj)
 		print('Dump ' .. type(obj));
 	end
 end
+---@param tbl table
 function DumpTable(tbl)
     for k,v in pairs(tbl) do
         print('k = ' .. tostring(k) .. ' (' .. type(k) .. ') ' .. ' v = ' .. tostring(v) .. ' (' .. type(v) .. ')');
     end
 end
+---@param obj ProxyObject
 function DumpProxy(obj)
 
     print('type=' .. obj.proxyType .. ' readOnly=' .. tostring(obj.readonly) .. ' readableKeys=' .. table.concat(obj.readableKeys, ',') .. ' writableKeys=' .. table.concat(obj.writableKeys, ','));
 end
 
+---@param str string
+---@param pat string
+---@return string[]
 function split(str, pat)
    local t = {}  -- NOTE: use {n = 0} in Lua-5.0
    local fpat = "(.-)" .. pat
@@ -46,6 +53,9 @@ function split(str, pat)
 end
 
 
+---@param array table
+---@param func fun(value: any): any
+---@return table
 function map(array, func)
 	local new_array = {}
 	local i = 1;
@@ -57,6 +67,9 @@ function map(array, func)
 end
 
 
+---@param array table
+---@param func fun(value: any): boolean
+---@return table
 function filter(array, func)
 	local new_array = {}
 	local i = 1;
@@ -69,6 +82,8 @@ function filter(array, func)
 	return new_array
 end
 
+---@param array table
+---@param func fun(value: any): boolean
 function removeWhere(array, func)
 	for k,v in pairs(array) do
 		if (func(v)) then
@@ -77,6 +92,9 @@ function removeWhere(array, func)
 	end
 end
 
+---@param array table
+---@param func? fun(value: any): boolean
+---@return any | nil
 function first(array, func)
 	for _,v in pairs(array) do
 		if (func == nil or func(v)) then
@@ -86,16 +104,22 @@ function first(array, func)
 	return nil;
 end
 
+---@param array table
+---@return any
 function randomFromArray(array)
 	local len = #array;
 	local i = math.random(len);
 	return array[i];
 end
 
+---@param str string
+---@param sub string
+---@return boolean
 function startsWith(str, sub)
 	return string.sub(str, 1, string.len(sub)) == sub;
 end
 
+---@param tbl table
 function shuffleInPlace(tbl)
 	for i = #tbl, 2, -1 do
 		local j = math.random(i)
@@ -103,6 +127,9 @@ function shuffleInPlace(tbl)
 	end
 end
 
+---@param tbl table
+---@param funcToGetKey fun(value: any): any
+---@return table<any, table>
 function groupBy(tbl, funcToGetKey)
 	local ret = {};
 	for k,v in pairs(tbl) do
@@ -118,6 +145,8 @@ function groupBy(tbl, funcToGetKey)
 	return ret;
 end
 
+---@param array string[]
+---@return string
 function JoinWithAnd(array)
 	local count = #array;
 	if (count == 0) then return ""; end;
@@ -128,10 +157,14 @@ function JoinWithAnd(array)
 	return result .. ", and " .. array[count];
 end
 
+---@param s string
+---@return string
 function TrimWhitespace(s)
     return s:match "^%s*(.-)%s*$"
 end
 
+---@param str string
+---@return string[]
 function ParseCommaDelimitedString(str)
 	local result = {}
     local start = 1
@@ -151,6 +184,7 @@ function ParseCommaDelimitedString(str)
     return result
 end
 
+---@return table<string, string>
 function GetButtonColors()
     return {
         Blue = "#0000FF"; 
@@ -206,6 +240,7 @@ function GetButtonColors()
     };
 end
 
+---@return table<string, string>
 function GetGrayColors()
     return {
         TextLighter = "#EEEEEE";
@@ -218,17 +253,26 @@ function GetGrayColors()
 end
 
 --given 0-255 RGB integers, return a single 24-bit integer, useful for annotations
+---@param red integer
+---@param green integer
+---@param blue integer
+---@return integer
 function GetColourInteger (red, green, blue)
 	return red*256^2 + green*256 + blue;
 end
 
 --given a hex colour string like "#RRGGBB", return a single 24-bit integer
+---@param hexColour string
+---@return integer
 function GetColourIntegerFromHex(hexColour)
     local normalized = string.gsub(hexColour, "#", "");
     return tonumber(normalized, 16);
 end
 
 
+
+---Prefix of the ModData on the custom card order that builds a DMS, followed by the target territory ID
+CREATE_DMS_MOD_DATA_PREFIX = "CreateDMS_";
 
 TEXT_DEFAULT_COLOUR = "#CCCCCC";
 ERROR_COLOUR = "#FF0000";

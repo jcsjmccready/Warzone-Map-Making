@@ -1,4 +1,7 @@
 require("Utilities");
+require("Actions.ManualDamage");
+require("Actions.NukeKrinid");
+require("Actions.VanillaCards");
 
 ---Server_AdvanceTurn_Order
 ---@param game GameServerHook
@@ -8,239 +11,146 @@ require("Utilities");
 ---@param addNewOrder fun(order: GameOrder) # Adds a game order, will be processed before any of the rest of the orders
 function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrder)
 
-    if (order.proxyType == 'GameOrderPlayCardCustom' and startsWith(order.ModData, "CreateDMS_")) then
+	-- Create DMS action
+    if (order.proxyType == 'GameOrderPlayCardCustom' and startsWith(order.ModData, CREATE_DMS_MOD_DATA_PREFIX)) then
+		---@cast order GameOrderPlayCardCustom
+        local targetTerritoryID = tonumber(string.sub(order.ModData, #CREATE_DMS_MOD_DATA_PREFIX + 1))
+		if (targetTerritoryID == nil) then return; end; --ModData doesn't contain a territory ID
 
-        local targetTerritoryID = tonumber(string.sub(order.ModData, 11))
-		if (game.ServerGame.LatestTurnStanding.Territories[targetTerritoryID].OwnerPlayerID ~= order.PlayerID) then
-			return; --not our territory
+		---@cast targetTerritoryID TerritoryID
+		local targetTerritory = game.ServerGame.LatestTurnStanding.Territories[targetTerritoryID];
+		if (targetTerritory == nil or targetTerritory.OwnerPlayerID ~= order.PlayerID) then
+			return; --not a real territory, or not our territory
 		end
 
-		-- store pending build orders for end of turn
-		local pendingDMS = {};
-		pendingDMS.PlayerID = order.PlayerID;
-		pendingDMS.Message = order.Description;
-		pendingDMS.TerritoryID = targetTerritoryID;
-
-		local privateGameData = Mod.PrivateGameData;
-		if (privateGameData.PendingDMS == nil) then privateGameData.PendingDMS = {}; end;
-		table.insert(privateGameData.PendingDMS, pendingDMS);
-
-		Mod.PrivateGameData = privateGameData;
+		QueueDmsCreate(order.PlayerID, order.Description, targetTerritoryID);
     end
 
-	-- --Check if this is an attack against a territory with a dms.
+	-- Check if this is an attack against a territory with a dms.
 	if (order.proxyType == 'GameOrderAttackTransfer' and result.IsAttack and result.IsSuccessful) then
-        local structureID = WL.StructureType.Custom("Dead Man's Switch");
-        local existingStructures = game.ServerGame.LatestTurnStanding.Territories[order.To].Structures;
-
-		if (existingStructures == nil) then return; end;
-
-        local numberOfDMS = 0;
-		if (existingStructures[structureID] ~= nil) then
-			numberOfDMS = numberOfDMS + existingStructures[structureID];
-		end
-
-		--If no DMS here, abort.
-		if (numberOfDMS == 0) then return; end;
-
-        --If an attack of 0, abort, so skipped orders don't destroy the DMS
-		if (result.ActualArmies.IsEmpty) then return; end;
-
-		-- abort if on same team and ally triggers is disabled
-        local territoryOwnerPlayerID = game.ServerGame.LatestTurnStanding.Territories[order.To].OwnerPlayerID;
-        local attackerTeam = game.ServerGame.Game.Players[order.PlayerID].Team;
-		local ownerTeam = WL.PlayerID.Neutral;
-		if (game.ServerGame.Game.Players[territoryOwnerPlayerID] ~= nil) then
-	        ownerTeam = game.ServerGame.Game.Players[territoryOwnerPlayerID].Team;
-		end
-
-		if(attackerTeam ~= nil and ownerTeam ~= nil and attackerTeam ~=-1 and ownerTeam ~=-1 and attackerTeam == ownerTeam and Mod.Settings.AllyTriggers == false) then
-			return;
-		end;
-
-		local structures = {};
-
-		-- copy old structures but skip dms
-		for key, value in pairs(existingStructures or {}) do
-			if(key ~= structureID) then
-				structures[key] = value;
-			end;
-		end
-
-		structures[structureID] = 0;
-		local territoryModification = WL.TerritoryModification.Create(order.To);
-		territoryModification.SetStructuresOpt = structures;
-
-		Trigger_Primary_Action(territoryModification, game, order, result, addNewOrder, numberOfDMS);
-		Trigger_Secondary_Actions(territoryModification, game, order, result, addNewOrder, numberOfDMS);
-    end
+		---@cast order GameOrderAttackTransfer
+		---@cast result GameOrderAttackTransferResult
+		HandleSuccessfulAttack(game, order, result, addNewOrder);
+	end
 end
 
-function Add_Dms_Triggered_Event(order, territoryModification, addNewOrder)
+---Stores a DMS to be built at the end of the turn
+---@param playerID PlayerID # The player building the DMS
+---@param message string # The message shown when the DMS is built
+---@param targetTerritoryID TerritoryID # The territory to build the DMS on
+function QueueDmsCreate(playerID, message, targetTerritoryID)
+	local pendingDMS = {};
+	pendingDMS.PlayerID = playerID;
+	pendingDMS.Message = message;
+	pendingDMS.TerritoryID = targetTerritoryID;
+
+	local privateGameData = Mod.PrivateGameData;
+	if (privateGameData.PendingDMS == nil) then privateGameData.PendingDMS = {}; end;
+	table.insert(privateGameData.PendingDMS, pendingDMS);
+
+	Mod.PrivateGameData = privateGameData;
+end
+
+---Triggers the DMS actions if a successful attack captured a territory containing a DMS
+---@param game GameServerHook
+---@param order GameOrderAttackTransfer # The successful attack
+---@param result GameOrderAttackTransferResult
+---@param addNewOrder fun(order: GameOrder, skipIfOriginalSkipped?: boolean)
+function HandleSuccessfulAttack(game, order, result, addNewOrder)
+	local structureID = WL.StructureType.Custom("Dead Man's Switch");
+	local existingStructures = game.ServerGame.LatestTurnStanding.Territories[order.To].Structures;
+
+	if (existingStructures == nil) then return; end;
+
+	local numberOfDMS = 0;
+	if (existingStructures[structureID] ~= nil) then
+		numberOfDMS = numberOfDMS + existingStructures[structureID];
+	end
+
+	--If no DMS here, abort.
+	if (numberOfDMS == 0) then return; end;
+
+	--If an attack of 0, abort, so skipped orders don't destroy the DMS
+	if (result.ActualArmies.IsEmpty) then return; end;
+
+	-- abort if on same team and ally triggers is disabled
+	local territoryOwnerPlayerID = game.ServerGame.LatestTurnStanding.Territories[order.To].OwnerPlayerID;
+	local attackerTeam = game.ServerGame.Game.Players[order.PlayerID].Team;
+	local ownerTeam = WL.PlayerID.Neutral;
+	if (game.ServerGame.Game.Players[territoryOwnerPlayerID] ~= nil) then
+		ownerTeam = game.ServerGame.Game.Players[territoryOwnerPlayerID].Team;
+	end
+
+	if(attackerTeam ~= nil and ownerTeam ~= nil
+		and attackerTeam ~=-1 and ownerTeam ~=-1
+		and attackerTeam == ownerTeam
+		and Mod.Settings.AllyTriggers == false) then
+		return;
+	end;
+
+	local structures = {};
+
+	-- copy old structures but skip dms
+	for key, value in pairs(existingStructures or {}) do
+		if(key ~= structureID) then
+			structures[key] = value;
+		end;
+	end
+
+	structures[structureID] = 0;
+	local territoryModification = WL.TerritoryModification.Create(order.To);
+	territoryModification.SetStructuresOpt = structures;
+
+	TriggerPrimaryActions(territoryModification, game, order, result, addNewOrder, numberOfDMS);
+	TriggerSecondaryActions(territoryModification, game, order, result, addNewOrder, numberOfDMS);
+end
+
+---Adds the event that shows a DMS was triggered, applying the DMS territory modification
+---@param order GameOrderAttackTransfer # The attack that triggered the DMS
+---@param territoryModification TerritoryModification # The DMS territory modification to attach to the event
+---@param addNewOrder fun(order: GameOrder, skipIfOriginalSkipped?: boolean) # Adds a game order, the second argument skips it if the triggering order is skipped
+function AddTriggeredEvent(order, territoryModification, addNewOrder)
 	local event = WL.GameOrderEvent.Create(order.PlayerID, "Triggered a Dead Man's Switch", {}, {territoryModification});
 	event.TerritoryAnnotationsOpt = { [order.To] = WL.TerritoryAnnotation.Create("Triggered DMS", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany)) };
 	event.Icon = "Triggered";
 	addNewOrder(event, true);
 end
 
-function Add_Dms_Cancelled_Card_Action_Event(order, territoryModification, addNewOrder, cardName)
-	-- this should be impossible to reach but safety net, in case the required card isn't enabled in the game settings
-	addNewOrder(WL.GameOrderEvent.Create(order.PlayerID, cardName .. " card not available - DMS action cancelled", {}, {territoryModification}), true);
-end
+---Triggers the single primary action selected in the mod settings (damage, card or nuke)
+---@param territoryModification TerritoryModification # The DMS territory modification (destroying the DMS)
+---@param game GameServerHook
+---@param order GameOrderAttackTransfer # The attack that triggered the DMS
+---@param result GameOrderAttackTransferResult
+---@param addNewOrder fun(order: GameOrder, skipIfOriginalSkipped?: boolean)
+---@param numberOfDMS integer # How many DMS were on the captured territory
+function TriggerPrimaryActions(territoryModification, game, order, result, addNewOrder, numberOfDMS)
+	if (Mod.Settings.isDamageTypeBomb) then Actions.VanillaCards.Bomb.Trigger(territoryModification, game, order, result, addNewOrder, numberOfDMS);
+	elseif (Mod.Settings.isDamageTypeBlockade) then Actions.VanillaCards.Blockade.Trigger(territoryModification, game, order, result, addNewOrder, numberOfDMS);
+	elseif (Mod.Settings.isDamageTypeEmergencyBlockade) then Actions.VanillaCards.EmergencyBlockade.Trigger(territoryModification, game, order, result, addNewOrder, numberOfDMS);
 
-function Trigger_Primary_Action(territoryModification, game, order, result, addNewOrder, numberOfDMS)
-	if (Mod.Settings.isDamageTypeBomb) then
-		-- unable to programatically play cards without them being enabled
-        if game.Settings.Cards ~= nil and game.Settings.Cards[WL.CardID.Bomb] ~= nil then
-        	local defendingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.To].OwnerPlayerID;
-        	local attackingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.From].OwnerPlayerID;
+	elseif (Mod.Settings.isDamageTypeFlat) then Actions.ManualDamage.Flat.Trigger(territoryModification, game, order, result, addNewOrder, numberOfDMS);
+	elseif (Mod.Settings.isDamageTypePercent) then Actions.ManualDamage.Percent.Trigger(territoryModification, game, order, result, addNewOrder, numberOfDMS);
 
-			-- if the DMS's territory was already neutral, there's no real defending player to give the card to, so let the attacker bomb themself instead
-			local bombPlayer = defendingPlayer;
-			if (defendingPlayer == WL.PlayerID.Neutral) then bombPlayer = attackingPlayer; end
-
-			Add_Dms_Triggered_Event(order, territoryModification, addNewOrder);
-
-			for _ = 1, numberOfDMS do
-				local instance = WL.NoParameterCardInstance.Create(WL.CardID.Bomb);
-				addNewOrder(WL.GameOrderReceiveCard.Create(bombPlayer, {instance}));
-				addNewOrder(WL.GameOrderPlayCardBomb.Create(instance.ID, bombPlayer, order.To));
-			end
-		else
-			Add_Dms_Cancelled_Card_Action_Event(order, territoryModification, addNewOrder, "Bomb");
-        end
-	elseif (Mod.Settings.isDamageTypeFlat) then
-		local damageAmount = Mod.Settings.FlatDamage * numberOfDMS;
-		local damageArmies = WL.Armies.Create(damageAmount + result.AttackingArmiesKilled.NumArmies);
-		territoryModification.SetArmiesTo = result.ActualArmies.Subtract(damageArmies).NumArmies;
-
-		Add_Dms_Triggered_Event(order, territoryModification, addNewOrder);
-
-	elseif (Mod.Settings.isDamageTypeBlockade) then
-		-- unable to programatically play cards without them being enabled
-        if game.Settings.Cards ~= nil and game.Settings.Cards[WL.CardID.Blockade] ~= nil then
-        	local attackingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.From].OwnerPlayerID;
-
-			Add_Dms_Triggered_Event(order, territoryModification, addNewOrder);
-
-			-- blockade cards are normally played at the end of the turn, so store them for end of turn instead of playing them immediately
-			local privateGameData = Mod.PrivateGameData;
-			if (privateGameData.PendingBlockade == nil) then privateGameData.PendingBlockade = {}; end;
-
-			for _ = 1, numberOfDMS do
-				table.insert(privateGameData.PendingBlockade, { PlayerID = attackingPlayer, TerritoryID = order.To });
-			end
-
-			Mod.PrivateGameData = privateGameData;
-		else
-			Add_Dms_Cancelled_Card_Action_Event(order, territoryModification, addNewOrder, "Blockade");
-        end
-	elseif (Mod.Settings.isDamageTypeEmergencyBlockade) then
-		-- unable to programatically play cards without them being enabled
-        if game.Settings.Cards ~= nil and game.Settings.Cards[WL.CardID.EmergencyBlockade] ~= nil then
-        	local attackingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.From].OwnerPlayerID;
-
-			Add_Dms_Triggered_Event(order, territoryModification, addNewOrder);
-
-			for _ = 1, numberOfDMS do
-				local instance = WL.NoParameterCardInstance.Create(WL.CardID.EmergencyBlockade);
-				addNewOrder(WL.GameOrderReceiveCard.Create(attackingPlayer, {instance}));
-				addNewOrder(WL.GameOrderPlayCardAbandon.Create(instance.ID, attackingPlayer, order.To));
-			end
-		else
-			Add_Dms_Cancelled_Card_Action_Event(order, territoryModification, addNewOrder, "Emergency Blockade");
-        end
-	elseif (Mod.Settings.isDamageTypeNuke) then
-		local defendingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.To].OwnerPlayerID;
-		local attackingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.From].OwnerPlayerID;
-
-		-- GameOrderCustom can't be issued as neutral, so if the DMS's territory was already neutral, let the attacker nuke themself instead
-		local nukingPlayer = defendingPlayer;
-		if (defendingPlayer == WL.PlayerID.Neutral) then nukingPlayer = attackingPlayer; end
-
-		Add_Dms_Triggered_Event(order, territoryModification, addNewOrder);
-
-		for _ = 1, numberOfDMS do
-			local payload = "Nuke|Invoke|" .. attackingPlayer .. "|" .. defendingPlayer .. "|" .. order.To;
-			addNewOrder(WL.GameOrderCustom.Create(nukingPlayer, "Firing Nuke", payload, nil));
-		end
-	elseif (Mod.Settings.isDamageTypePercent) then
-		local armiesAfterAttack = result.ActualArmies.NumArmies - result.AttackingArmiesKilled.NumArmies;
-		local remainingArmies = armiesAfterAttack;
-
-		for _ = 1, numberOfDMS do
-			remainingArmies = math.floor(remainingArmies * (1 - Mod.Settings.PercentageDamage) + 0.5);
-		end
-
-		local minimumRemainingArmies = math.max(0, armiesAfterAttack - (Mod.Settings.PercentageMinDamage * numberOfDMS));
-		territoryModification.SetArmiesTo = math.min(remainingArmies, minimumRemainingArmies);
-
-		Add_Dms_Triggered_Event(order, territoryModification, addNewOrder);
+	elseif (Mod.Settings.isDamageTypeNuke) then Actions.NukeKrinid.Trigger(territoryModification, game, order, result, addNewOrder, numberOfDMS);
 	end
 end
 
-function Trigger_Secondary_Actions(territoryModification, game, order, result, addNewOrder, numberOfDMS)
-	-- these trigger actions are independent toggles and can stack with each other and with the damage type above
-	if (Mod.Settings.isDamageTypeSanction) then
-		-- unable to programatically play cards without them being enabled
-        if game.Settings.Cards ~= nil and game.Settings.Cards[WL.CardID.Sanctions] ~= nil then
-        	local defendingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.To].OwnerPlayerID;
-        	local attackingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.From].OwnerPlayerID;
-
-			-- if the DMS's territory was already neutral, there's no real defending player to give the card to, so let the attacker sanction themself instead
-			local sanctioningPlayer = defendingPlayer;
-			if (defendingPlayer == WL.PlayerID.Neutral) then sanctioningPlayer = attackingPlayer; end
-
-			for _ = 1, numberOfDMS do
-				local instance = WL.NoParameterCardInstance.Create(WL.CardID.Sanctions);
-				addNewOrder(WL.GameOrderReceiveCard.Create(sanctioningPlayer, {instance}));
-				addNewOrder(WL.GameOrderPlayCardSanctions.Create(instance.ID, sanctioningPlayer, attackingPlayer));
-			end
-		else
-			Add_Dms_Cancelled_Card_Action_Event(order, territoryModification, addNewOrder, "Sanction");
-        end
-	end
+---Triggers every secondary action enabled in the mod settings, these do not conflict with each other so can each be triggered.
+---@param territoryModification TerritoryModification # The DMS territory modification (destroying the DMS)
+---@param game GameServerHook
+---@param order GameOrderAttackTransfer # The attack that triggered the DMS
+---@param result GameOrderAttackTransferResult
+---@param addNewOrder fun(order: GameOrder, skipIfOriginalSkipped?: boolean)
+---@param numberOfDMS integer # How many DMS were on the captured territory
+function TriggerSecondaryActions(territoryModification, game, order, result, addNewOrder, numberOfDMS)
+	if (Mod.Settings.isDamageTypeSanction) then Actions.VanillaCards.Sanction.Trigger(territoryModification, game, order, result, addNewOrder, numberOfDMS); end
 
 	if (Mod.Settings.isDamageTypeDiplomacy) then
-		-- unable to programatically play cards without them being enabled
-        if game.Settings.Cards ~= nil and game.Settings.Cards[WL.CardID.Diplomacy] ~= nil then
-        	local defendingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.To].OwnerPlayerID;
-        	local attackingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.From].OwnerPlayerID;
-
-			-- if the DMS's territory was already neutral, there's no real defending player to benefit from the effect
-			if (defendingPlayer ~= WL.PlayerID.Neutral) then
-				-- diplomacy cards are normally played at the end of the turn, so store them for end of turn instead of playing them immediately
-				local privateGameData = Mod.PrivateGameData;
-				if (privateGameData.PendingDiplomacy == nil) then privateGameData.PendingDiplomacy = {}; end;
-
-				for _ = 1, numberOfDMS do
-					table.insert(privateGameData.PendingDiplomacy, { PlayerID = defendingPlayer, PlayerOne = defendingPlayer, PlayerTwo = attackingPlayer });
-				end
-
-				Mod.PrivateGameData = privateGameData;
-			end
-		else
-			Add_Dms_Cancelled_Card_Action_Event(order, territoryModification, addNewOrder, "Diplomacy");
-        end
+		Actions.VanillaCards.Diplomacy.Trigger(territoryModification, game, order, result, addNewOrder, numberOfDMS);
 	end
 
 	if (Mod.Settings.isDamageTypeSpy) then
-		-- unable to programatically play cards without them being enabled
-        if game.Settings.Cards ~= nil and game.Settings.Cards[WL.CardID.Spy] ~= nil then
-        	local defendingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.To].OwnerPlayerID;
-        	local attackingPlayer = game.ServerGame.LatestTurnStanding.Territories[order.From].OwnerPlayerID;
-
-			--if the DMS's territory was already neutral, there's no real defending player to benefit from the effect
-			if (defendingPlayer ~= WL.PlayerID.Neutral) then
-				for _ = 1, numberOfDMS do
-					local instance = WL.NoParameterCardInstance.Create(WL.CardID.Spy);
-					addNewOrder(WL.GameOrderReceiveCard.Create(defendingPlayer, {instance}));
-					addNewOrder(WL.GameOrderPlayCardSpy.Create(instance.ID, defendingPlayer, attackingPlayer));
-				end
-			end
-		else
-			Add_Dms_Cancelled_Card_Action_Event(order, territoryModification, addNewOrder, "Spy");
-        end
+		Actions.VanillaCards.Spy.Trigger(territoryModification, game, order, result, addNewOrder, numberOfDMS);
 	end
 end
 
@@ -249,44 +159,20 @@ end
 ---@param addNewOrder fun(order: GameOrder) # Adds a game order, will be processed before any of the rest of the orders
 function Server_AdvanceTurn_End(game, addNewOrder)
 	BuildStructures(game, addNewOrder);
-	PlayPendingBlockades(addNewOrder);
-	PlayPendingDiplomacy(addNewOrder);
+	PlayEndOfTurnActions(game, addNewOrder);
 end
 
-function PlayPendingBlockades(addNewOrder)
-
-	local privateGameData = Mod.PrivateGameData;
-	local pending = privateGameData.PendingBlockade;
-
-	if (pending == nil) then return; end;
-
-	for _,pendingBlockade in pairs(pending) do
-		local instance = WL.NoParameterCardInstance.Create(WL.CardID.Blockade);
-		addNewOrder(WL.GameOrderReceiveCard.Create(pendingBlockade.PlayerID, {instance}));
-		addNewOrder(WL.GameOrderPlayCardBlockade.Create(instance.ID, pendingBlockade.PlayerID, pendingBlockade.TerritoryID));
-	end
-
-	privateGameData.PendingBlockade = nil;
-	Mod.PrivateGameData = privateGameData;
+---Plays any trigger actions that were queued during the turn to be played at the end of it
+---@param game GameServerHook
+---@param addNewOrder fun(order: GameOrder, skipIfOriginalSkipped?: boolean)
+function PlayEndOfTurnActions(game, addNewOrder)
+	Actions.VanillaCards.Blockade.PlayPending(addNewOrder);
+	Actions.VanillaCards.Diplomacy.PlayPending(addNewOrder);
 end
 
-function PlayPendingDiplomacy(addNewOrder)
-
-	local privateGameData = Mod.PrivateGameData;
-	local pending = privateGameData.PendingDiplomacy;
-
-	if (pending == nil) then return; end;
-
-	for _,pendingDiplomacy in pairs(pending) do
-		local instance = WL.NoParameterCardInstance.Create(WL.CardID.Diplomacy);
-		addNewOrder(WL.GameOrderReceiveCard.Create(pendingDiplomacy.PlayerID, {instance}));
-		addNewOrder(WL.GameOrderPlayCardDiplomacy.Create(instance.ID, pendingDiplomacy.PlayerID, pendingDiplomacy.PlayerOne, pendingDiplomacy.PlayerTwo));
-	end
-
-	privateGameData.PendingDiplomacy = nil;
-	Mod.PrivateGameData = privateGameData;
-end
-
+---Builds the DMS structures queued by played DMS cards, skipping territories that changed owner
+---@param game GameServerHook
+---@param addNewOrder fun(order: GameOrder, skipIfOriginalSkipped?: boolean)
 function BuildStructures(game, addNewOrder)
 
 	local structureID = WL.StructureType.Custom("Dead Man's Switch");

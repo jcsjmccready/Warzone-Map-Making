@@ -7,6 +7,7 @@ Create_UI_Controls(rootParent);
 
 end;
 
+---@param rootParent RootParent
 function Create_UI_Controls(rootParent)
     local mainModUI = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
 
@@ -171,6 +172,7 @@ function Create_UI_Controls(rootParent)
     end
 end;
 
+---@param rootParent VerticalLayoutGroup
 function Create_PercentageDamage_SubOptions_UI(rootParent)
     percentageDamageHeading = UI.CreateVerticalLayoutGroup(rootParent);
 
@@ -190,6 +192,7 @@ function Create_PercentageDamage_SubOptions_UI(rootParent)
         .SetValue(Mod.Settings.PercentageMinDamage or 1);
 end;
 
+---@param rootParent VerticalLayoutGroup
 function Create_FlatDamage_SubOptions_UI(rootParent)
     flatDamageHeading = UI.CreateVerticalLayoutGroup(rootParent);
 
@@ -201,6 +204,7 @@ function Create_FlatDamage_SubOptions_UI(rootParent)
         .SetValue(Mod.Settings.FlatDamage or 15);
 end;
 
+---@param rootParent VerticalLayoutGroup
 function Create_Card_SubOptions_UI(rootParent)
     cardOptionsHeading = UI.CreateVerticalLayoutGroup(rootParent);
 
