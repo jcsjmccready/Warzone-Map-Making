@@ -8,7 +8,7 @@ require("ModConstants");
 ---@param game GameClientHook
 ---@param close fun() # Zero parameter function that closes the dialog
 function Client_PresentMenuUI(rootParent, setMaxSize, setScrollable, game, close)
-    setMaxSize(400, 200);
+    setMaxSize(400, 240);
 
     local vert = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
     UI.CreateLabel(vert).SetText(THIS_MOD_KEY .. " test menu").SetColor(SUBHEADING_COLOUR);
@@ -23,18 +23,28 @@ function Client_PresentMenuUI(rootParent, setMaxSize, setScrollable, game, close
         .SetText("Send test order to " .. OTHER_MOD_KEY)
         .SetColor(BUTTON_COLOURS.DarkGreen)
         .SetOnClick(function()
-            AddSendTestOrder(game);
+            AddMenuOrder(game, SEND_ORDER_PAYLOAD, "Ask " .. THIS_MOD_KEY .. " to send a test order to " .. OTHER_MOD_KEY);
             statusLabel.SetText("Order added, " .. OTHER_MOD_KEY .. " gets it when the turn advances.").SetColor(TEXT_DEFAULT_COLOUR);
+        end);
+
+    UI.CreateButton(vert)
+        .SetText("Send test order to itself")
+        .SetColor(BUTTON_COLOURS.RoyalBlue)
+        .SetOnClick(function()
+            AddMenuOrder(game, SEND_SELF_ORDER_PAYLOAD, "Ask " .. THIS_MOD_KEY .. " to send a test order to itself");
+            statusLabel.SetText("Order added, " .. THIS_MOD_KEY .. " gets it when the turn advances.").SetColor(TEXT_DEFAULT_COLOUR);
         end);
 end
 
----Adds the order that asks this mod's server code to send a test order to the other mod
+---Adds an order that asks this mod's server code to send a test order
 ---@param game GameClientHook
-function AddSendTestOrder(game)
+---@param payload string # Says which test order to send, one of the payload constants
+---@param message string # The message shown for the order in the order list
+function AddMenuOrder(game, payload, message)
     local order = WL.GameOrderCustom.Create(
         game.Us.ID,
-        "Ask " .. THIS_MOD_KEY .. " to send a test order to " .. OTHER_MOD_KEY,
-        SEND_ORDER_PAYLOAD,
+        message,
+        payload,
         nil,
         WL.TurnPhase.Attacks);
 
