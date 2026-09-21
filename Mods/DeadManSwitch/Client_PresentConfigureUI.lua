@@ -1,4 +1,4 @@
-require("Utilities");
+require("Utilities.CommonUtils");
 
 ---Client_PresentConfigureUI hook
 ---@param rootParent RootParent

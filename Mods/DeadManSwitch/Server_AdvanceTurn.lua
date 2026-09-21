@@ -1,7 +1,15 @@
-require("Utilities");
+require("Utilities.CommonUtils");
+require("IO.ModAuth");
 require("Actions.ManualDamage");
 require("Actions.NukeKrinid");
 require("Actions.VanillaCards");
+
+---Server_AdvanceTurn_Start
+---@param game GameServerHook
+---@param addNewOrder fun(order: GameOrder, skipIfOriginalSkipped?: boolean)
+function Server_AdvanceTurn_Start(game, addNewOrder)
+	IO.ModAuth.Reset();
+end
 
 ---Server_AdvanceTurn_Order
 ---@param game GameServerHook
@@ -10,6 +18,8 @@ require("Actions.VanillaCards");
 ---@param skipThisOrder fun(modOrderControl: EnumModOrderControl) # Allows you to skip the current order
 ---@param addNewOrder fun(order: GameOrder) # Adds a game order, will be processed before any of the rest of the orders
 function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrder)
+	-- completes ModAuth calls this mod made to other mods
+	if (IO.ModAuth.ProcessOrder(order, addNewOrder)) then return; end
 
 	-- Create DMS action
     if (order.proxyType == 'GameOrderPlayCardCustom' and startsWith(order.ModData, CREATE_DMS_MOD_DATA_PREFIX)) then

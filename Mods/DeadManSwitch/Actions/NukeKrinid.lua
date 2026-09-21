@@ -1,8 +1,19 @@
 require("Actions.Actions");
+require("Utilities.CommonUtils");
+require("IO.ModAuth");
 
 Actions.NukeKrinid = {};
 
----Fires a nuke on the captured territory for each DMS, via the Nuke mod by Krinid
+local NUKE_MOD_KEY = "Nuke_Krinid";
+
+---The data the Nuke mod receives as the authenticated order
+---@class NukeInvokeData
+---@field Action "Invoke"
+---@field Nuker PlayerID
+---@field Nukee PlayerID
+---@field TerritoryID TerritoryID
+
+---Asks the Nuke mod by Krinid to fire a nuke on the captured territory for each DMS, the nuke is sent once it has answered our ModAuth call
 ---@param territoryModification TerritoryModification
 ---@param game GameServerHook
 ---@param order GameOrderAttackTransfer
@@ -19,8 +30,11 @@ function Actions.NukeKrinid.Trigger(territoryModification, game, order, result, 
 
 	AddTriggeredEvent(order, territoryModification, addNewOrder);
 
+	---@type NukeInvokeData
+	local invoke = { Action = "Invoke", Nuker = attackingPlayer, Nukee = defendingPlayer, TerritoryID = order.To };
+
 	for _ = 1, numberOfDMS do
-		local payload = "Nuke|Invoke|" .. attackingPlayer .. "|" .. defendingPlayer .. "|" .. order.To;
-		addNewOrder(WL.GameOrderCustom.Create(nukingPlayer, "Firing Nuke", payload, nil));
+		-- the nuke is only sent once the Nuke mod has answered this call, see ModAuth
+		IO.ModAuth.Send(NUKE_MOD_KEY, nukingPlayer, invoke, addNewOrder);
 	end
 end
