@@ -40,7 +40,7 @@ end
 function CommerceCountOwnedAndQueuedBarbedWire(game)
     local primedStructureID = Mod.PublicGameData.BarbedWirePrimedStructureID;
     local triggeredStructureID = Mod.PublicGameData.BarbedWireTriggeredStructureID;
-    local count = CountPlayerBarbedWire(game.LatestStanding, game.Us.ID, primedStructureID, triggeredStructureID);
+    local count = CountPlayerTrapPieces(game.LatestStanding, game.Us.ID, primedStructureID, triggeredStructureID);
 
     for _, order in pairs(game.Orders) do
         if (order.proxyType == 'GameOrderCustom' and startsWith(order.Payload, "CreateBarbedWireCommerce_")) then

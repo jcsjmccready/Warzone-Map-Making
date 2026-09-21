@@ -15,6 +15,20 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
 
     closeCardsDialog();
 
+    -- Both Barbed Wire and Caltrop use this same hook, since it's per-mod not per-card - figure out
+    -- which one was actually played so we build the right thing with the right wording.
+    local trapDisplayName;
+    local trapModDataPrefix;
+    if (cardInstance.CardID == Mod.Settings.BarbedWireCardID) then
+        trapDisplayName = "Barbed Wire";
+        trapModDataPrefix = "CreateBarbedWire_";
+    elseif (cardInstance.CardID == Mod.Settings.CaltropCardID) then
+        trapDisplayName = "Caltrop";
+        trapModDataPrefix = "CreateCaltrop_";
+    else
+        return;
+    end
+
     game.CreateDialog(function(rootParent, setMaxSize, setScrollable, game, close)
         Close = close;
         setMaxSize(400, 200);
@@ -32,7 +46,7 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
             .SetInteractable(false)
             .SetColor(BUTTON_COLOURS.DarkGreen)
             .SetFlexibleWidth(0.7)
-            .SetOnClick(function() 
+            .SetOnClick(function()
                 if (TargetTerritoryID == nil) then
                     TargetTerritoryInstructionLabel.SetText("You must select a territory first").SetColor(ERROR_COLOUR);
                     TargetTerritoryBtn.SetInteractable(true);
@@ -43,7 +57,7 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
 
                 local jumpToSpot = WL.RectangleVM.Create(td.MiddlePointX, td.MiddlePointY, td.MiddlePointX, td.MiddlePointY);
 
-                if (playCard("Build a Barbed Wire on " .. TargetTerritoryName, "CreateBarbedWire_" .. TargetTerritoryID, WL.TurnPhase.Attacks, {}, jumpToSpot)) then
+                if (playCard("Build a " .. trapDisplayName .. " on " .. TargetTerritoryName, trapModDataPrefix .. TargetTerritoryID, WL.TurnPhase.Attacks, {}, jumpToSpot)) then
                     Game.HighlightTerritories({});
                     close();
                 end
@@ -54,7 +68,7 @@ end
 function TargetTerritoryClicked()
 	Game.HighlightTerritories({}); --clear any territories highlighted from a previous failed territory selection
 	UI.InterceptNextTerritoryClick(TerritoryClicked);
-	TargetTerritoryInstructionLabel.SetText("Please click on the territory you wish to create the Barbed Wire on.").SetColor(TEXT_DEFAULT_COLOUR);
+	TargetTerritoryInstructionLabel.SetText("Please click on the territory you wish to build on.").SetColor(TEXT_DEFAULT_COLOUR);
 	TargetTerritoryBtn.SetInteractable(false);
     PlayCardBtn.SetInteractable(false);
 end
