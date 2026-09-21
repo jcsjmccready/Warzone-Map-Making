@@ -6,6 +6,7 @@ IO.ModAuth = {};
 ---@type ModKey
 local LOCAL_MOD_KEY = "IntermodTesterA"; -- READ ME: Update this for your mod
 local SKIP_HANDLED_AUTH_ORDERS = true; -- set to false while testing so the auth orders stay in the order list
+local ENABLE_LOGGING = true; -- set to true to print what ModAuth is doing to the log
 
 ---@alias ModKey string # The key a mod identifies itself as when it authenticates with other mods
 
@@ -51,6 +52,13 @@ local ID_PATTERN = "^%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%
 ---@field Tokens table<GUID, ModKey> # Tokens this mod issued and the mod each was issued to, by Token
 ---@field SelfToken GUID | nil # The token this mod puts on orders it sends to itself
 
+---Prints the message to the log if ENABLE_LOGGING is set
+---@param message string
+local function Log(message)
+    if (not ENABLE_LOGGING) then return; end
+    print("[ModAuth " .. LOCAL_MOD_KEY .. "]: " .. tostring(message));
+end
+
 -- annotations doesn't expose uuid, so wrap it
 ---@return GUID
 local function NewID()
@@ -88,6 +96,7 @@ end
 ---Call from Server_AdvanceTurn_Start on every turn.
 function IO.ModAuth.Reset()
     IO.ModAuth.State = NewState();
+    Log("New turn. Reset state.");
 end
 
 ---Returns the token this mod puts on the orders it sends to itself, generated the first time it is asked for each turn.
@@ -118,7 +127,10 @@ end
 local function Decode(encodedPayload)
     -- prefix and corruption check
     if (string.sub(encodedPayload, 1, #PAYLOAD_PREFIX) ~= PAYLOAD_PREFIX) then return nil; end
-    if (#encodedPayload > MAX_PAYLOAD_SIZE) then return nil; end
+    if (#encodedPayload > MAX_PAYLOAD_SIZE) then 
+        Log("Decoded payload too long: " .. #encodedPayload .. " > " .. MAX_PAYLOAD_SIZE);
+        return nil;
+    end
 
     local payload = IO.Reader.Read(string.sub(encodedPayload, #PAYLOAD_PREFIX + 1), "table");
     if (type(payload) ~= "table") then return nil; end
@@ -130,6 +142,9 @@ end
 ---@param payload ModAuthPayload # Encoded into the order's payload
 ---@param addNewOrder fun(order: GameOrder, skipIfOriginalSkipped?: boolean)
 local function AddNewAuthOrder(playerID, message, payload, addNewOrder)
+    if(playerID == WL.PlayerID.Neutral) then
+        Log("Error expected, sending ModAuth order as neutral player");
+    end
     addNewOrder(WL.GameOrderCustom.Create(playerID, message, Encode(payload), nil));
 end
 
@@ -137,7 +152,10 @@ end
 ---@param payload ModAuthPayload
 ---@return boolean
 local function FitsInOneOrder(payload)
-    return #Encode(payload) <= MAX_PAYLOAD_SIZE;
+    local encodedPayload = Encode(payload);
+    local fitsInOneOrder = #encodedPayload <= MAX_PAYLOAD_SIZE;
+    if(not fitsInOneOrder) then Log("Payload too large for one order: " .. #encodedPayload .. " > " .. MAX_PAYLOAD_SIZE); end
+    return fitsInOneOrder;
 end
 
 ---@param targetModKey ModKey
@@ -209,6 +227,8 @@ end
 ---@param addNewOrder fun(order: GameOrder, skipIfOriginalSkipped?: boolean)
 ---@return boolean sent # false if nothing was sent or queued
 function IO.ModAuth.Send(targetModKey, playerID, data, addNewOrder)
+    Log(targetModKey .. " requested to send an authenticated order with data " .. IO.Writer.Write(data));
+
     -- check mod identifying keys are valid
     if (not IsValidKey(LOCAL_MOD_KEY) or not IsValidKey(targetModKey) or LOCAL_MOD_KEY == targetModKey) then return false; end
 
@@ -219,6 +239,7 @@ function IO.ModAuth.Send(targetModKey, playerID, data, addNewOrder)
 
     local token = state.Sessions[targetModKey];
     if (token ~= nil) then
+        Log("Existing session with " .. targetModKey .. ", sending order with token " .. token);
         AddNewAuthOrder(playerID, ORDER_MESSAGE, BuildOrderPayload(targetModKey, token, data), addNewOrder);
         return true;
     end
@@ -236,7 +257,9 @@ function IO.ModAuth.Send(targetModKey, playerID, data, addNewOrder)
     local callID = NewID();
     state.Calls[targetModKey] = { CallID = callID, QueuedOrders = { queued } };
 
-    AddNewAuthOrder(playerID, CALL_MESSAGE, BuildCallPayload(targetModKey, callID), addNewOrder);
+    local callPayload = BuildCallPayload(targetModKey, callID);
+    Log("No session with " .. targetModKey .. ", sending call with payload " .. IO.Writer.Write(callPayload) .. " and queuing order");
+    AddNewAuthOrder(playerID, CALL_MESSAGE, callPayload, addNewOrder);
     return true;
 end
 
@@ -251,6 +274,7 @@ function IO.ModAuth.SendSelf(playerID, data, addNewOrder)
     local payload = BuildOrderPayload(LOCAL_MOD_KEY, IO.ModAuth.GetSelfToken(), data);
     if (not FitsInOneOrder(payload)) then return false; end
 
+    Log("Sending self-authenticated order to " .. LOCAL_MOD_KEY .. " with payload " .. IO.Writer.Write(payload));
     AddNewAuthOrder(playerID, ORDER_MESSAGE, payload, addNewOrder);
     return true;
 end
@@ -260,28 +284,39 @@ end
 ---@param order GameOrderCustom
 ---@param addNewOrder fun(order: GameOrder, skipIfOriginalSkipped?: boolean)
 local function HandleCall(payload, order, addNewOrder)
+    Log("Handling call " .. payload.CallID .. " from " .. payload.SenderKey);
+
     local token = NewID();
     local state = GetState();
     state.Tokens[token] = payload.SenderKey;
 
-    AddNewAuthOrder(order.PlayerID, RESPONSE_MESSAGE, BuildResponsePayload(payload.SenderKey, payload.CallID, token), addNewOrder);
+    local responsePayload = BuildResponsePayload(payload.SenderKey, payload.CallID, token);
+    Log("Sending response with payload " .. IO.Writer.Write(responsePayload));
+    AddNewAuthOrder(order.PlayerID, RESPONSE_MESSAGE, responsePayload, addNewOrder);
 end
 
 ---Handles a response (stage 2). Opens the single-turn session with its token and sends the orders queued while waiting for it
 ---@param payload ModAuthPayload
 ---@param addNewOrder fun(order: GameOrder, skipIfOriginalSkipped?: boolean)
 local function HandleResponse(payload, addNewOrder)
+    Log("Handling response " .. payload.CallID .. " from " .. payload.SenderKey .. " with token " .. payload.Token);
+
     local state = GetState();
 
     -- validate we are tracking the payload call id
     local call = state.Calls[payload.SenderKey];
-    if (call == nil or call.CallID ~= payload.CallID) then return; end
+    if (call == nil or call.CallID ~= payload.CallID) then
+        Log("Ignoring response from " .. payload.SenderKey .. ", call not found");
+        return;
+    end
 
     -- untrack the call and populate the session
     state.Calls[payload.SenderKey] = nil;
     state.Sessions[payload.SenderKey] = payload.Token;
 
+    Log("Session opened with " .. payload.SenderKey .. ", sending " .. #call.QueuedOrders .. " queued order(s)");
     for _, queued in ipairs(call.QueuedOrders) do
+        Log("Sending queued order to " .. payload.SenderKey .. ", using token " .. payload.Token .. " with data " .. IO.Writer.Write(queued.Data));
         AddNewAuthOrder(queued.PlayerID, ORDER_MESSAGE, BuildOrderPayload(payload.SenderKey, payload.Token, queued.Data), addNewOrder);
     end
 end
@@ -292,11 +327,16 @@ end
 ---@param onAuthenticated? fun(senderModKey: ModKey, data: table, order: GameOrderCustom)
 local function HandleOrder(payload, order, onAuthenticated)
     if (payload.SenderKey == LOCAL_MOD_KEY) then
-        if (not IO.ModAuth.IsSelfToken(payload.Token)) then return; end -- can't trust a token claiming to be this mod's own if it isn't
+        if (not IO.ModAuth.IsSelfToken(payload.Token)) then -- can't trust a token claiming to be this mod's own if it isn't
+            Log("Rejected order with self-claim. Invalid token " .. tostring(payload.Token));
+            return;
+        end
     elseif (GetState().Tokens[payload.Token] ~= payload.SenderKey) then
+        Log("Rejected order from " .. payload.SenderKey .. ", invalid token " .. tostring(payload.Token));
         return;
     end
 
+    Log("Authenticated order from " .. payload.SenderKey);
     -- finally, we can carry out the underlying order that the mod wanted sent
     if (onAuthenticated ~= nil) then onAuthenticated(payload.SenderKey, payload.Data, order); end
 end
