@@ -19,7 +19,8 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
     local handled = IO.ModAuth.ProcessOrder(
         order,
         addNewOrder,
-        function(senderMod, data, authenticatedOrder) OnAuthenticatedOrderReceived(senderMod, data, authenticatedOrder, addNewOrder);end
+        skipThisOrder,
+        function(senderModKey, data, authenticatedOrder) OnAuthenticatedOrderReceived(senderModKey, data, authenticatedOrder, addNewOrder);end
     );
     if (handled) then return; end
 
@@ -54,15 +55,15 @@ function SendOrderToSelf(playerID, addNewOrder)
 end
 
 ---Called for each authenticated order sent to this mod, by the other mod or by itself, it adds an order saying it arrived
----@param senderMod string
----@param data table
+---@param senderModKey ModKey
+---@param data table -- the data sent with the order, without the auth headers
 ---@param order GameOrderCustom # The authenticated order
 ---@param addNewOrder fun(order: GameOrder, skipIfOriginalSkipped?: boolean)
-function OnAuthenticatedOrderReceived(senderMod, data, order, addNewOrder)
+function OnAuthenticatedOrderReceived(senderModKey, data, order, addNewOrder)
     -- only orders from this mod itself or the mod it is being tested with
-    if (senderMod ~= THIS_MOD_KEY and senderMod ~= OTHER_MOD_KEY) then return; end
+    if (senderModKey ~= THIS_MOD_KEY and senderModKey ~= OTHER_MOD_KEY) then return; end
 
-    AddLogOrder(order.PlayerID, THIS_MOD_KEY .. " received an authenticated order from " .. senderMod .. ": " .. tostring(data.Message), addNewOrder);
+    AddLogOrder(order.PlayerID, THIS_MOD_KEY .. " received an authenticated order from " .. senderModKey .. ": " .. tostring(data.Message), addNewOrder);
 end
 
 ---Adds an order whose message shows in the order list

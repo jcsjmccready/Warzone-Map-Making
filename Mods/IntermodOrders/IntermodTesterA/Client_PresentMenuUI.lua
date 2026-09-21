@@ -1,4 +1,4 @@
-require("Utilities.CommonUtils");
+require("Utilities");
 require("ModConstants");
 
 ---Client_PresentMenuUI hook
