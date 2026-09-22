@@ -21,39 +21,36 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
 
     local existingPhases = Mod.PlayerGameData.CrunchtimePhases;
     if (existingPhases ~= nil) then
-        UI.Alert("You are already in " .. PhaseDisplayName(existingPhases[1].Phase) .. " and cannot restart or exit early.");
+        UI.Alert("You are already in " .. PhaseEffectName(existingPhases[1].Percent) .. " and cannot restart or exit early.");
         return;
     end
 
-    local allowIncrease = Mod.Settings.AllowIncreaseFirst ~= false;
-    local allowDecrease = Mod.Settings.AllowDecreaseFirst ~= false;
-    ChosenPhase = allowIncrease and "Increase" or "Decrease";
+    ---@type PhaseRowSetting[]
+    local configuredPhases = Mod.Settings.Phases or {};
+    ChosenStartIndex = 1;
 
     game.CreateDialog(function(rootParent, setMaxSize, setScrollable, game, close)
         Close = close;
-        setMaxSize(400, 250);
+        setMaxSize(400, 300);
         local vert = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
 
-        if (allowIncrease and allowDecrease) then
-            UI.CreateLabel(vert).SetText("Choose whether to start with Crunch Time or Rest Time. Once started, it cannot be exited early.");
+        if (Mod.Settings.PhaseOrderPlayerSelected and #configuredPhases > 1) then
+            UI.CreateLabel(vert).SetText("Choose which phase to start on. Once started, it cannot be exited early.");
 
             local phaseGroup = UI.CreateRadioButtonGroup(vert);
-            local increaseBtn = UI.CreateRadioButton(vert).SetGroup(phaseGroup).SetText("Start with Crunch Time (income increase)").SetIsChecked(true);
-            local decreaseBtn = UI.CreateRadioButton(vert).SetGroup(phaseGroup).SetText("Start with Rest Time (income decrease)").SetIsChecked(false);
-
-            increaseBtn.SetOnValueChanged(function()
-                if (increaseBtn.GetIsChecked()) then ChosenPhase = "Increase"; end
-            end);
-            decreaseBtn.SetOnValueChanged(function()
-                if (decreaseBtn.GetIsChecked()) then ChosenPhase = "Decrease"; end
-            end);
+            for i, row in ipairs(configuredPhases) do
+                local rowBtn = UI.CreateRadioButton(vert).SetGroup(phaseGroup).SetText(DescribePhaseRow(row)).SetIsChecked(i == 1);
+                rowBtn.SetOnValueChanged(function()
+                    if (rowBtn.GetIsChecked()) then ChosenStartIndex = i; end
+                end);
+            end
         else
-            UI.CreateLabel(vert).SetText("This will begin with " .. PhaseDisplayName(ChosenPhase) .. ". Once started, it cannot be exited early.");
+            UI.CreateLabel(vert).SetText("This will begin with " .. DescribePhaseRow(configuredPhases[1]) .. ". Once started, it cannot be exited early.");
         end
 
         if (Mod.Settings.UserSpecifiedDuration) then
             local durationHorz = UI.CreateHorizontalLayoutGroup(vert);
-            UI.CreateLabel(durationHorz).SetText("Duration for each phase").SetPreferredWidth(290);
+            UI.CreateLabel(durationHorz).SetText("Duration in turns (applies to every phase)").SetPreferredWidth(290);
 
             DurationField = UI.CreateNumberInputField(durationHorz)
                 .SetWholeNumbers(true)
@@ -77,8 +74,8 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
                     end
                 end
 
-                local modData = CRUNCHTIME_MOD_DATA_PREFIX .. ChosenPhase .. "_" .. duration;
-                local message = "Enter " .. PhaseDisplayName(ChosenPhase);
+                local modData = CRUNCHTIME_MOD_DATA_PREFIX .. ChosenStartIndex .. "_" .. duration;
+                local message = "Enter " .. PhaseEffectName(configuredPhases[ChosenStartIndex].Percent);
 
                 if (playCard(message, modData, WL.TurnPhase.Deploys, {}, nil)) then
                     close();

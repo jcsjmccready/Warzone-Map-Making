@@ -1,0 +1,7 @@
+This mod lets a player enter "Crunch Time", a sequence of temporary income changes on themselves. The map maker defines an ordered list of phases (at least 2), each with its own duration, percentage, and flat amount - a positive percentage/amount is presented to the player as "Crunch Time" (increased income), a negative one as "Rest Time" (decreased income). Once entered it cannot be exited early, and it runs through every configured phase exactly once before ending.
+
+The map maker can either fix the order (always starting on phase 1 and proceeding through the rest in sequence), or let the player choose which phase to start on, after which the remaining phases still follow in the configured sequence (wrapping back to the start of the list). The classic "increase then decrease, or vice versa" setup is just two phases with opposite signs, letting the player pick which one to start with.
+
+Phase durations can either be set independently per phase by the map maker, or - only when the player is choosing a starting phase - set to "dynamic", where the player picks a single duration (up to a configured maximum) that's then used for every phase.
+
+It can be entered either by playing a card or from the mod menu, chosen by the map maker.

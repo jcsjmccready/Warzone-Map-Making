@@ -2,19 +2,11 @@ CURRENT_SETTINGS_VERSION = 1;
 
 CRUNCHTIME_MOD_DATA_PREFIX = "Crunchtime_";
 
---returns the number of turns the named phase should last for a player who chose chosenUserSpecifiedDuration
---(chosenUserSpecifiedDuration is ignored unless Mod.Settings.UserSpecifiedDuration is true)
-function GetPhaseDuration(phase, chosenUserSpecifiedDuration)
-    if (Mod.Settings.UserSpecifiedDuration) then
-        return chosenUserSpecifiedDuration;
-    end
-
-    if (phase == "Increase") then
-        return Mod.Settings.IncreaseDuration;
-    end
-
-    return Mod.Settings.DecreaseDuration;
-end
+---One map-maker-configured phase row, stored in Mod.Settings.Phases (an ordered array, at least 2 entries)
+---@class PhaseRowSetting
+---@field Duration integer # Turns this phase lasts, ignored in favour of the player's chosen duration when Mod.Settings.UserSpecifiedDuration is true
+---@field Percent number # Signed percentage applied to the player's current income (e.g. 0.25 = +25%, -0.3 = -30%)
+---@field FlatAmount number # Signed flat amount applied after the percentage
 
 --splits str on literal separator pat (not a Lua pattern); uses plain-text find rather than the lazy "(.-)" pattern
 --match, since that recurses once per unmatched character and hits Lua's "pattern too complex" limit on long strings
@@ -42,15 +34,28 @@ function startsWith(str, sub)
 	return string.sub(str, 1, string.len(sub)) == sub;
 end
 
---the user-facing name for a phase: an income increase is presented as "Crunch Time", an income decrease as "Rest Time"
-function PhaseDisplayName(phase)
-    if (phase == "Increase") then
-        return "Crunch Time";
+--the user-facing name for a phase's effect, derived from the sign of its percentage: any non-negative percentage
+--is presented as "Crunch Time", any negative percentage as "Rest Time" - there's no separate direction concept,
+--the signed Percent/FlatAmount values on a phase are the only source of truth for what it does
+function PhaseEffectName(percent)
+    if (percent < 0) then
+        return "Rest Time";
     end
-    return "Rest Time";
+    return "Crunch Time";
 end
 
---finds a player's CrunchtimeState in the Mod.PrivateGameData.Crunchtime array, or nil if they aren't in Crunch Time.
+--a short human-readable summary of one configured phase row, e.g. "Crunch Time (+25% then +3 income, 3 turn(s))"
+function DescribePhaseRow(row)
+    local percentText = math.floor(row.Percent * 100 + 0.5) .. "%";
+    if (row.Percent >= 0) then percentText = "+" .. percentText; end
+
+    local flatText = tostring(row.FlatAmount);
+    if (row.FlatAmount >= 0) then flatText = "+" .. flatText; end
+
+    return PhaseEffectName(row.Percent) .. " (" .. percentText .. " then " .. flatText .. " income, " .. row.Duration .. " turn(s))";
+end
+
+--finds a player's CrunchTimeState in the Mod.PrivateGameData.CrunchTime array, or nil if they aren't in Crunch Time.
 --server-side only, since PrivateGameData isn't readable from client hooks
 function FindCrunchtimeState(crunchtime, playerID)
     for _, state in ipairs(crunchtime) do

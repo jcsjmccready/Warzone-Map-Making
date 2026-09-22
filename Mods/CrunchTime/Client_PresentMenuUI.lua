@@ -10,7 +10,7 @@ function Client_PresentMenuUI(rootParent, setMaxSize, setScrollable, game, close
     Game = game;
     Close = close;
 
-    setMaxSize(400, 260);
+    setMaxSize(400, 300);
 
     local vert = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
     UI.CreateLabel(vert).SetText("Crunch Time").SetColor(SUBHEADING_COLOUR);
@@ -20,12 +20,12 @@ function Client_PresentMenuUI(rootParent, setMaxSize, setScrollable, game, close
 
     if (myPhases ~= nil) then
         local currentPhase = myPhases[1];
-        UI.CreateLabel(vert).SetText("You are currently in " .. PhaseDisplayName(currentPhase.Phase) .. " - income is " .. (currentPhase.Phase == "Increase" and "increasing" or "decreasing") .. ".");
+        UI.CreateLabel(vert).SetText("You are currently in " .. PhaseEffectName(currentPhase.Percent) .. " - income is " .. (currentPhase.Percent >= 0 and "increasing" or "decreasing") .. ".");
         UI.CreateLabel(vert).SetText("Turns remaining in this phase: " .. (currentPhase.FinalTurn - Game.Game.TurnNumber));
 
         if (#myPhases > 1) then
             local nextPhase = myPhases[2];
-            UI.CreateLabel(vert).SetText("After that, " .. PhaseDisplayName(nextPhase.Phase) .. " begins - income will " .. (nextPhase.Phase == "Increase" and "increase" or "decrease") .. " for " .. (nextPhase.FinalTurn - currentPhase.FinalTurn) .. " turn(s).");
+            UI.CreateLabel(vert).SetText("After that, " .. PhaseEffectName(nextPhase.Percent) .. " begins - income will " .. (nextPhase.Percent >= 0 and "increase" or "decrease") .. " for " .. (nextPhase.FinalTurn - currentPhase.FinalTurn) .. " turn(s).");
         else
             UI.CreateLabel(vert).SetText("This is the final phase - it will end afterwards.");
         end
@@ -39,30 +39,27 @@ function Client_PresentMenuUI(rootParent, setMaxSize, setScrollable, game, close
         return;
     end
 
-    local allowIncrease = Mod.Settings.AllowIncreaseFirst ~= false;
-    local allowDecrease = Mod.Settings.AllowDecreaseFirst ~= false;
-    ChosenPhase = allowIncrease and "Increase" or "Decrease";
+    ---@type PhaseRowSetting[]
+    local configuredPhases = Mod.Settings.Phases or {};
+    ChosenStartIndex = 1;
 
-    if (allowIncrease and allowDecrease) then
-        UI.CreateLabel(vert).SetText("Choose whether to start with Crunch Time or Rest Time. Once started, it cannot be exited early.");
+    if (Mod.Settings.PhaseOrderPlayerSelected and #configuredPhases > 1) then
+        UI.CreateLabel(vert).SetText("Choose which phase to start on. Once started, it cannot be exited early.");
 
         local phaseGroup = UI.CreateRadioButtonGroup(vert);
-        local increaseBtn = UI.CreateRadioButton(vert).SetGroup(phaseGroup).SetText("Start with Crunch Time (income increase)").SetIsChecked(true);
-        local decreaseBtn = UI.CreateRadioButton(vert).SetGroup(phaseGroup).SetText("Start with Rest Time (income decrease)").SetIsChecked(false);
-
-        increaseBtn.SetOnValueChanged(function()
-            if (increaseBtn.GetIsChecked()) then ChosenPhase = "Increase"; end
-        end);
-        decreaseBtn.SetOnValueChanged(function()
-            if (decreaseBtn.GetIsChecked()) then ChosenPhase = "Decrease"; end
-        end);
+        for i, row in ipairs(configuredPhases) do
+            local rowBtn = UI.CreateRadioButton(vert).SetGroup(phaseGroup).SetText(DescribePhaseRow(row)).SetIsChecked(i == 1);
+            rowBtn.SetOnValueChanged(function()
+                if (rowBtn.GetIsChecked()) then ChosenStartIndex = i; end
+            end);
+        end
     else
-        UI.CreateLabel(vert).SetText("This will begin with " .. PhaseDisplayName(ChosenPhase) .. ". Once started, it cannot be exited early.");
+        UI.CreateLabel(vert).SetText("This will begin with " .. DescribePhaseRow(configuredPhases[1]) .. ". Once started, it cannot be exited early.");
     end
 
     if (Mod.Settings.UserSpecifiedDuration) then
         local durationHorz = UI.CreateHorizontalLayoutGroup(vert);
-        UI.CreateLabel(durationHorz).SetText("Duration in turns (applies to both phases)").SetPreferredWidth(290);
+        UI.CreateLabel(durationHorz).SetText("Duration in turns (applies to every phase)").SetPreferredWidth(290);
         DurationField = UI.CreateNumberInputField(durationHorz)
             .SetWholeNumbers(true)
             .SetSliderMinValue(1)
@@ -85,8 +82,8 @@ function Client_PresentMenuUI(rootParent, setMaxSize, setScrollable, game, close
                 end
             end
 
-            local payload = CRUNCHTIME_MOD_DATA_PREFIX .. ChosenPhase .. "_" .. duration;
-            local message = "Enter " .. PhaseDisplayName(ChosenPhase);
+            local payload = CRUNCHTIME_MOD_DATA_PREFIX .. ChosenStartIndex .. "_" .. duration;
+            local message = "Enter " .. PhaseEffectName(configuredPhases[ChosenStartIndex].Percent);
 
             table.insert(game.Orders, WL.GameOrderCustom.Create(Game.Us.ID, message, payload, nil, WL.TurnPhase.Deploys));
             close();
