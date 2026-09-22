@@ -1,0 +1,5 @@
+This mod lets a player enter "Crunch Time", a two-phase income event on themselves. One phase, presented to the player as "Crunch Time", increases their income by a configurable percentage and flat amount for a number of turns; the other, presented as "Rest Time", decreases their income by a separate configurable percentage and flat amount for a number of turns. The player chooses which phase they start with; the other follows automatically afterwards. Once entered it cannot be exited early, and it only runs once per player (one phase, then the other, then it's over).
+
+Phase durations can either be set independently by the map maker, or set to "dynamic", where the player picks a single duration (up to a configured maximum) when they enter - that same duration is then used for both phases.
+
+It can be entered either by playing a card or from the mod menu, chosen by the map maker.
