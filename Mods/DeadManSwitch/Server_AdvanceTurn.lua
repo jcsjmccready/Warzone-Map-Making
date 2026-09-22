@@ -18,8 +18,12 @@ end
 ---@param skipThisOrder fun(modOrderControl: EnumModOrderControl) # Allows you to skip the current order
 ---@param addNewOrder fun(order: GameOrder) # Adds a game order, will be processed before any of the rest of the orders
 function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrder)
-	-- completes ModAuth calls this mod made to other mods
-	if (IO.ModAuth.ProcessOrder(order, addNewOrder)) then return; end
+	-- this mod accepts no orders from other mods other than handshake orders
+	if (IO.ModAuth.ProcessOrder(
+        order,
+        addNewOrder,
+        skipThisOrder
+    )) then return; end
 
 	-- Create DMS action
     if (order.proxyType == 'GameOrderPlayCardCustom' and startsWith(order.ModData, CREATE_DMS_MOD_DATA_PREFIX)) then

@@ -35,6 +35,11 @@ function Actions.NukeKrinid.Trigger(territoryModification, game, order, result, 
 
 	for _ = 1, numberOfDMS do
 		-- the nuke is only sent once the Nuke mod has answered this call, see ModAuth
-		IO.ModAuth.Send(NUKE_MOD_KEY, nukingPlayer, invoke, addNewOrder);
+		local sent = IO.ModAuth.Send(NUKE_MOD_KEY, nukingPlayer, invoke, addNewOrder);
+		if(not sent) then
+			local failEvent = WL.GameOrderEvent.Create(order.PlayerID, "Error sending nuke request", {}, {territoryModification});
+			failEvent.Icon = "TriggeredFailed";
+			addNewOrder(failEvent, true);
+		end
 	end
 end
