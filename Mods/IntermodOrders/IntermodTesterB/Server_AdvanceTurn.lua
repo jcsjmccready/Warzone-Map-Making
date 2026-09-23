@@ -73,3 +73,38 @@ end
 function AddLogOrder(playerID, message, addNewOrder)
     addNewOrder(WL.GameOrderCustom.Create(playerID, message, RECEIPT_PAYLOAD, nil));
 end
+
+---Server_AdvanceTurn_End hook
+---@param game GameServerHook
+---@param addNewOrder fun(order: GameOrder, skipIfOriginalSkipped?: boolean)
+function Server_AdvanceTurn_End(game, addNewOrder)
+    ReportUnansweredAuths(game, addNewOrder);
+end
+
+---Adds an error event, shown to every player, for each mod this mod called that never answered
+---@param game GameServerHook
+---@param addNewOrder fun(order: GameOrder, skipIfOriginalSkipped?: boolean)
+function ReportUnansweredAuths(game, addNewOrder)
+    local unansweredModKeys = IO.ModAuth.GetUnansweredAuths();
+    if (#unansweredModKeys == 0) then return; end
+
+    local playerIDs = GetPlayingPlayerIDs(game);
+    if (#playerIDs == 0) then return; end
+
+    -- the end of the turn has no order to take a player from, so the events are made as the first player in the game
+    for _, unansweredModKey in ipairs(unansweredModKeys) do
+        local message = "ERROR: " .. THIS_MOD_KEY .. " never got an answer from " .. unansweredModKey .. ". Is it installed, and does it call ModAuth.ProcessOrder?";
+        addNewOrder(WL.GameOrderEvent.Create(playerIDs[1], message, playerIDs, {}));
+    end
+end
+
+---Returns the IDs of every player still playing the game
+---@param game GameServerHook
+---@return PlayerID[]
+function GetPlayingPlayerIDs(game)
+    local playerIDs = {};
+    for playerID, _ in pairs(game.ServerGame.Game.PlayingPlayers) do
+        table.insert(playerIDs, playerID);
+    end
+    return playerIDs;
+end

@@ -115,6 +115,16 @@ function IO.ModAuth.IsSelfToken(token)
     return selfToken ~= nil and token == selfToken;
 end
 
+---Returns the unordered keys of the mods this mod has called that haven't answered
+---@return ModKey[]
+function IO.ModAuth.GetUnansweredAuths()
+    local unanswered = {};
+    for targetModKey, _ in pairs(GetState().Calls) do
+        table.insert(unanswered, targetModKey);
+    end
+    return unanswered;
+end
+
 ---@param payload ModAuthPayload
 ---@return string
 local function Encode(payload)
