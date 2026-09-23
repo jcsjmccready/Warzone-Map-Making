@@ -174,6 +174,34 @@ end
 function Server_AdvanceTurn_End(game, addNewOrder)
 	BuildStructures(game, addNewOrder);
 	PlayEndOfTurnActions(game, addNewOrder);
+	ReportUnansweredAuths(game, addNewOrder);
+end
+
+---Adds an error event, shown to every player, for each mod this mod called that never answered
+---@param game GameServerHook
+---@param addNewOrder fun(order: GameOrder, skipIfOriginalSkipped?: boolean)
+function ReportUnansweredAuths(game, addNewOrder)
+	local unansweredModKeys = IO.ModAuth.GetUnansweredAuths();
+	if (#unansweredModKeys == 0) then return; end
+
+	local playerIDs = GetPlayingPlayerIDs(game);
+	if (#playerIDs == 0) then return; end
+
+	for _, unansweredModKey in ipairs(unansweredModKeys) do
+		local message = "MOD ERROR: DMS missing ACK from " .. unansweredModKey .. ". Is " .. unansweredModKey .. " enabled?";
+		addNewOrder(WL.GameOrderEvent.Create(playerIDs[1], message, playerIDs, {}));
+	end
+end
+
+---Returns the IDs of every player still playing the game
+---@param game GameServerHook
+---@return PlayerID[]
+function GetPlayingPlayerIDs(game)
+	local playerIDs = {};
+	for playerID, _ in pairs(game.ServerGame.Game.PlayingPlayers) do
+		table.insert(playerIDs, playerID);
+	end
+	return playerIDs;
 end
 
 ---Plays any trigger actions that were queued during the turn to be played at the end of it
