@@ -2,16 +2,14 @@ require("Utilities");
 
 --Settings version 2 behaviour
 
---Barbed Wire and Caltrop settings are identically shaped (just under different Mod.Settings prefixes -
---BarbedWireXxx vs CaltropXxx). This class documents that shared shape so a single generic attack-handling
---function can read out of either trap type's settings, instead of duplicating BarbedWire-specific logic
---for Caltrop.
 ---@class V2_TrapSettings
 ---@field TriggerDuration integer # Turns a triggered trap keeps blocking movement before it resets/destroys
 ---@field AllyTriggers boolean # Whether allies (not just enemies) can trigger this trap
 ---@field TrapsArmies boolean # Whether a triggered trap blocks normal armies moving out
 ---@field TrapsSpecialUnits boolean # Whether a triggered trap blocks special units moving out
 ---@field CancelsAirlifts boolean # Whether a triggered trap cancels airlifts out of the territory
+---@field BombDestroys boolean # Whether a bomb played on the territory destroys the trap
+---@field OnlyTriggersOnTrappableUnits boolean # Whether the trap only triggers if the successful attack involved units it would trap (armies and/or special units, per the Traps* flags)
 ---@field SingleUse boolean # Whether the trap is destroyed (rather than reset to primed) once its trigger duration ends
 ---@field HasLimitedLifespan boolean # Whether primed/triggered pieces expire after a set number of turns
 ---@field Lifespan integer | nil # Turns before a piece expires - only meaningful when HasLimitedLifespan is true
@@ -19,12 +17,6 @@ require("Utilities");
 ---@field TanksIgnore boolean # Tanks ignore this trap entirely - only meaningful when IsTankSpecialBehaviour is true
 ---@field TanksDestroy boolean # Tanks destroy this trap on entry/exit - only meaningful when IsTankSpecialBehaviour is true
 
---Identifies a trap type (Barbed Wire or Caltrop) and everything generic handling needs to know about it.
---Key is the single distinguisher: it prefixes this trap's Mod.Settings fields, keys its entries in
---Mod.PrivateGameData.PendingTraps / .Traps, and forms its build-order prefixes (V2.GetCardModDataPrefix /
---V2.GetCommercePayloadPrefix - these must keep producing "CreateBarbedWire_" etc, since the client sends them).
---This is plain data (no WL calls), so it's safe to build at file-load time, unlike WL.StructureType.Custom
---itself - see V2.GetStructureIds, which is called fresh inside each function instead.
 ---@class V2_TrapType
 ---@field Key string # "BarbedWire" | "Caltrop" - the one distinguisher (see above)
 ---@field DisplayName string # e.g. "Barbed Wire" - used in player-facing messages
@@ -65,67 +57,6 @@ V2.CaltropTrapType = {
 
 V2.AllTrapTypes = { V2.BarbedWireTrapType, V2.CaltropTrapType };
 
----@param trapType V2_TrapType
----@return EnumStructureType primedStructId
----@return EnumStructureType triggeredStructId
-function V2.GetStructureIds(trapType)
-	return WL.StructureType.Custom(trapType.PrimedStructureName), WL.StructureType.Custom(trapType.TriggeredStructureName);
-end
-
----@param trapType V2_TrapType
----@return string # GameOrderPlayCardCustom.ModData prefix for this trap's card build order, e.g. "CreateBarbedWire_"
-function V2.GetCardModDataPrefix(trapType)
-	return "Create" .. trapType.Key .. "_";
-end
-
----@param trapType V2_TrapType
----@return string # GameOrderCustom.Payload prefix for this trap's Commerce build order, e.g. "CreateBarbedWireCommerce_"
-function V2.GetCommercePayloadPrefix(trapType)
-	return "Create" .. trapType.Key .. "Commerce_";
-end
-
----@param privateGameData V2_PrivateGameData
----@param trapType V2_TrapType
----@return V2_PendingTrap[] # created and stored if this trap has none yet
-function V2.GetPendingTraps(privateGameData, trapType)
-	if (privateGameData.PendingTraps == nil) then privateGameData.PendingTraps = {}; end
-	if (privateGameData.PendingTraps[trapType.Key] == nil) then privateGameData.PendingTraps[trapType.Key] = {}; end
-	return privateGameData.PendingTraps[trapType.Key];
-end
-
----@param privateGameData V2_PrivateGameData
----@param trapType V2_TrapType
----@return V2_TrapPiece[] # created and stored if this trap has none yet
-function V2.GetTrapPieces(privateGameData, trapType)
-	if (privateGameData.Traps == nil) then privateGameData.Traps = {}; end
-	if (privateGameData.Traps[trapType.Key] == nil) then privateGameData.Traps[trapType.Key] = {}; end
-	return privateGameData.Traps[trapType.Key];
-end
-
----Reads trapType's settings out of Mod.Settings (under its Key) into the shared V2_TrapSettings
----shape. A field is only ever nil for a trap that's disabled (its settings weren't saved), and a disabled
----trap has no structures for any handler to act on.
----@param trapType V2_TrapType
----@return V2_TrapSettings
-function V2.GetTrapSettings(trapType)
-	local prefix = trapType.Key;
-
-	---@type V2_TrapSettings
-	return {
-		TriggerDuration = Mod.Settings[prefix .. "TriggerDuration"] or 1,
-		AllyTriggers = Mod.Settings[prefix .. "AllyTriggers"] or false,
-		TrapsArmies = Mod.Settings[prefix .. "TrapsArmies"] or false,
-		TrapsSpecialUnits = Mod.Settings[prefix .. "TrapsSpecialUnits"] or false,
-		CancelsAirlifts = Mod.Settings[prefix .. "CancelsAirlifts"] or false,
-		SingleUse = Mod.Settings[prefix .. "SingleUse"] or false,
-		HasLimitedLifespan = Mod.Settings[prefix .. "HasLimitedLifespan"] or false,
-		Lifespan = Mod.Settings[prefix .. "Lifespan"],
-		IsTankSpecialBehaviour = Mod.Settings[prefix .. "IsTankSpecialBehaviour"] or false,
-		TanksIgnore = Mod.Settings[prefix .. "TanksIgnore"] or false,
-		TanksDestroy = Mod.Settings[prefix .. "TanksDestroy"] or false,
-	};
-end
-
 ---@param game GameServerHook
 ---@param order GameOrder
 ---@param result GameOrderResult
@@ -158,40 +89,13 @@ function V2.Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewO
 		end
 	end
 
-	-- Blocking (attack/transfer movement) takes full manual control of the order when it partially blocks
-	-- (see V2.ResolvePartialTrapBlock) - once that happens, `result` is no longer trustworthy, so nothing
-	-- else should act on it.
-	local tookOverOrder = V2.HandleAttackTransferFromTriggeredTraps(V2.AllTrapTypes, game, order, result, skipThisOrder, addNewOrder);
-
-	if (not tookOverOrder) then
-		for _, trapType in ipairs(V2.AllTrapTypes) do
-			V2.HandleAttackTransferToTrap(trapType, game, order, result, addNewOrder);
-		end
+	if (order.proxyType == 'GameOrderAttackTransfer') then
+		V2.HandleAttackTransfer(game, order, result, skipThisOrder, addNewOrder);
+	elseif (order.proxyType == 'GameOrderPlayCardBomb') then
+		V2.HandleBombOnTraps(V2.AllTrapTypes, game, order, addNewOrder);
+	elseif (order.proxyType == 'GameOrderPlayCardAirlift') then
+		V2.HandleAirliftFromTriggeredTrap(game, order, skipThisOrder, addNewOrder);
 	end
-
-	for _, trapType in ipairs(V2.AllTrapTypes) do
-		V2.HandleAirliftFromTriggeredTrap(trapType, game, order, skipThisOrder, addNewOrder);
-	end
-end
-
----@param trapType V2_TrapType
----@param playerID PlayerID
----@param targetTerritoryID TerritoryID
----@param message string
----@param isCommerce boolean
-function V2.QueuePendingTrap(trapType, playerID, targetTerritoryID, message, isCommerce)
-	---@type V2_PendingTrap
-	local pendingTrap = {
-		PlayerID = playerID,
-		Message = message,
-		TerritoryID = targetTerritoryID,
-		IsCommerce = isCommerce,
-	};
-
-	local privateGameData = Mod.PrivateGameData --[[@as V2_PrivateGameData]];
-	table.insert(V2.GetPendingTraps(privateGameData, trapType), pendingTrap);
-
-	Mod.PrivateGameData = privateGameData;
 end
 
 ---@param game GameServerHook
@@ -199,16 +103,23 @@ end
 function V2.Server_AdvanceTurn_End(game, addNewOrder)
 	for _, trapType in ipairs(V2.AllTrapTypes) do
 		V2.BuildTrapStructures(trapType, game, addNewOrder);
-		-- must run before ResetTriggeredTrap: a piece can be due to both reset and expire in the same
-		-- turn, and we want it destroyed once as "expired" rather than reset-then-immediately-expired
 		V2.ExpireTrap(trapType, game, addNewOrder);
 		V2.ResetTriggeredTrap(trapType, game, addNewOrder);
 	end
 end
 
----Blocks movement out of order.From if any of trapTypes has a triggered trap there. We don't care which trap
----is doing the blocking, only that movement is blocked, so the traps present are merged into one: whatever
----any of them traps is trapped (and a trap only stops applying to a stack with a Tank if it ignores Tanks).
+---Everything an attack/transfer order does with traps: blocked by triggered traps at order.From, then
+---tank-destroy and triggering of traps at order.To.
+---@param game GameServerHook
+---@param order GameOrder
+---@param result GameOrderResult
+---@param skipThisOrder fun(modOrderControl: EnumModOrderControl) # Allows you to skip the current order
+---@param addNewOrder fun(order: GameOrder) # Adds a game order, will be processed before any of the rest of the orders
+function V2.HandleAttackTransfer(game, order, result, skipThisOrder, addNewOrder)
+	V2.HandleAttackTransferFromTriggeredTraps(V2.AllTrapTypes, game, order, result, skipThisOrder, addNewOrder);
+	V2.HandleAttackTransferToTraps(V2.AllTrapTypes, game, order, result, addNewOrder);
+end
+
 ---@param trapTypes V2_TrapType[]
 ---@param game GameServerHook
 ---@param order GameOrder
@@ -217,9 +128,6 @@ end
 ---@param addNewOrder fun(order: GameOrder) # Adds a game order, will be processed before any of the rest of the orders
 ---@return boolean tookOverOrder true if this fully took over resolving the order (skipped it) - the caller must not run further trap logic against `result` for this order
 function V2.HandleAttackTransferFromTriggeredTraps(trapTypes, game, order, result, skipThisOrder, addNewOrder)
-	if (order.proxyType ~= 'GameOrderAttackTransfer') then
-		return false;
-	end
 	---@cast order GameOrderAttackTransfer
 	---@cast result GameOrderAttackTransferResult
 
@@ -359,46 +267,12 @@ function V2.ResolvePartialTrapBlock(blockedBy, game, order, result, remainingNum
 	QueueExtraSpecialUnitEvents(order.To, extraToChunks, order.PlayerID, addNewOrder);
 end
 
----@param trapType V2_TrapType
----@param game GameServerHook
----@param order GameOrder
----@param skipThisOrder fun(modOrderControl: EnumModOrderControl) # Allows you to skip the current order
----@param addNewOrder fun(order: GameOrder) # Adds a game order, will be processed before any of the rest of the orders
-function V2.HandleAirliftFromTriggeredTrap(trapType, game, order, skipThisOrder, addNewOrder)
-	if (order.proxyType ~= 'GameOrderPlayCardAirlift') then
-		return;
-	end
-	---@cast order GameOrderPlayCardAirlift
-
-	local trapSettings = V2.GetTrapSettings(trapType);
-	if (not trapSettings.CancelsAirlifts) then
-		return;
-	end
-
-	local _, triggeredStructId = V2.GetStructureIds(trapType);
-	local existingStructures = game.ServerGame.LatestTurnStanding.Territories[order.FromTerritoryID].Structures;
-
-	if (existingStructures == nil or (existingStructures[triggeredStructId] or 0) <= 0) then
-		return;
-	end
-
-	skipThisOrder(WL.ModOrderControl.SkipAndSupressSkippedMessage);
-
-	local event = WL.GameOrderEvent.Create(order.PlayerID, 'Airlift cancelled by ' .. trapType.DisplayName, {}, {});
-	event.TerritoryAnnotationsOpt = { [order.FromTerritoryID] = WL.TerritoryAnnotation.Create("Airlift cancelled", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany)) };
-	event.Icon = "Blocked";
-	addNewOrder(event);
-end
-
----@param trapType V2_TrapType
+---@param trapTypes V2_TrapType[]
 ---@param game GameServerHook
 ---@param order GameOrder
 ---@param result GameOrderResult
 ---@param addNewOrder fun(order: GameOrder) # Adds a game order, will be processed before any of the rest of the orders
-function V2.HandleAttackTransferToTrap(trapType, game, order, result, addNewOrder)
-	if (order.proxyType ~= 'GameOrderAttackTransfer') then
-		return;
-	end
+function V2.HandleAttackTransferToTraps(trapTypes, game, order, result, addNewOrder)
 	---@cast order GameOrderAttackTransfer
 	---@cast result GameOrderAttackTransferResult
 
@@ -407,8 +281,12 @@ function V2.HandleAttackTransferToTrap(trapType, game, order, result, addNewOrde
 		return;
 	end
 
-	local remainingStructuresTo = V2.HandleTankDestroyTrap(trapType, game, order, result, addNewOrder);
-	V2.HandleTrapTrigger(trapType, game, order, result, remainingStructuresTo, addNewOrder);
+	local remainingStructuresTo = game.ServerGame.LatestTurnStanding.Territories[order.To].Structures;
+	for _, trapType in ipairs(trapTypes) do
+		remainingStructuresTo = V2.HandleTankDestroyTrap(trapType, game, order, result, remainingStructuresTo, addNewOrder);
+	end
+
+	V2.HandleTrapTriggers(trapTypes, game, order, result, remainingStructuresTo, addNewOrder);
 end
 
 ---If <Prefix>TanksDestroy is on and the moving stack includes a Tank, destroys any trap at both ends of
@@ -417,11 +295,10 @@ end
 ---@param game GameServerHook
 ---@param order GameOrderAttackTransfer
 ---@param result GameOrderAttackTransferResult
+---@param remainingStructuresTo table<EnumStructureType, integer> | nil # order.To's structures so far (earlier trap types' destruction already applied)
 ---@param addNewOrder fun(order: GameOrder) # Adds a game order, will be processed before any of the rest of the orders
----@return table<EnumStructureType, integer> | nil remainingStructuresTo the (possibly wire-cleared) structures at order.To, for HandleTrapTrigger to use
-function V2.HandleTankDestroyTrap(trapType, game, order, result, addNewOrder)
-	local remainingStructuresTo = game.ServerGame.LatestTurnStanding.Territories[order.To].Structures;
-
+---@return table<EnumStructureType, integer> | nil remainingStructuresTo the (possibly trap-cleared) structures at order.To, for HandleTrapTriggers to use
+function V2.HandleTankDestroyTrap(trapType, game, order, result, remainingStructuresTo, addNewOrder)
 	local trapSettings = V2.GetTrapSettings(trapType);
 	if (not (trapSettings.TanksDestroy and result.ActualArmies ~= nil and result.ActualArmies.SpecialUnits ~= nil)) then
 		return remainingStructuresTo;
@@ -442,8 +319,7 @@ function V2.HandleTankDestroyTrap(trapType, game, order, result, addNewOrder)
 	local primedStructId, triggeredStructId = V2.GetStructureIds(trapType);
 	local privateGameData = Mod.PrivateGameData --[[@as V2_PrivateGameData]];
 
-	local existingStructuresTo = game.ServerGame.LatestTurnStanding.Territories[order.To].Structures;
-	local newStructuresTo = V2.DestroyTrapAt(trapType, order.To, existingStructuresTo, primedStructId, triggeredStructId, privateGameData, order.PlayerID, addNewOrder);
+	local newStructuresTo = V2.DestroyTrapAt(trapType, order.To, remainingStructuresTo, primedStructId, triggeredStructId, privateGameData, order.PlayerID, addNewOrder);
 	if (newStructuresTo ~= nil) then
 		remainingStructuresTo = newStructuresTo;
 	end
@@ -457,77 +333,45 @@ function V2.HandleTankDestroyTrap(trapType, game, order, result, addNewOrder)
 	return remainingStructuresTo;
 end
 
----Destroys any Primed/Triggered trap on territoryID, if present: zeroes those structures, removes
----matching tracked pieces from privateGameData.Traps[trapType.Key], and fires a "<Trap> destroyed" event.
----@param trapType V2_TrapType
----@param territoryID TerritoryID
----@param existingStructures table<EnumStructureType, integer> | nil
----@param primedStructId EnumStructureType
----@param triggeredStructId EnumStructureType
----@param privateGameData V2_PrivateGameData
----@param playerID PlayerID
----@param addNewOrder fun(order: GameOrder) # Adds a game order, will be processed before any of the rest of the orders
----@return table<EnumStructureType, integer> | nil newStructures the territory's structures with the trap zeroed out, or nil if there was nothing to destroy
-function V2.DestroyTrapAt(trapType, territoryID, existingStructures, primedStructId, triggeredStructId, privateGameData, playerID, addNewOrder)
-	local hasTrap =
-		existingStructures ~= nil and
-		((existingStructures[triggeredStructId] or 0) > 0 or (existingStructures[primedStructId] or 0) > 0);
-
-	if (not hasTrap) then
-		return nil;
+---Whether armies contains anything a trap with these settings would trap: armies if it traps armies,
+---special units if it traps special units (Tanks excluded when they ignore the trap).
+---@param trapSettings V2_TrapSettings
+---@param armies Armies
+---@return boolean
+function V2.HasTrappableUnits(trapSettings, armies)
+	if (trapSettings.TrapsArmies and armies.NumArmies > 0) then
+		return true;
 	end
-	---@cast existingStructures table<EnumStructureType, integer>
 
-	local newStructures = {};
-	newStructures[primedStructId] = 0;
-	newStructures[triggeredStructId] = 0;
-
-	-- copy old structures but skip the trap
-	for key, value in pairs(existingStructures) do
-		if (key ~= primedStructId and key ~= triggeredStructId) then
-			newStructures[key] = value;
+	if (trapSettings.TrapsSpecialUnits and armies.SpecialUnits ~= nil) then
+		local tanksIgnore = trapSettings.IsTankSpecialBehaviour and trapSettings.TanksIgnore;
+		for _, specialUnit in ipairs(armies.SpecialUnits) do
+			local isTank = specialUnit.proxyType == "CustomSpecialUnit" and (specialUnit --[[@as CustomSpecialUnit]]).Name == "Tank";
+			if (not (tanksIgnore and isTank)) then
+				return true;
+			end
 		end
 	end
 
-	local territoryModification = WL.TerritoryModification.Create(territoryID);
-	territoryModification.SetStructuresOpt = newStructures;
-
-	removeWhere(V2.GetTrapPieces(privateGameData, trapType), function(w) return w.TerritoryID == territoryID; end);
-
-	local event = WL.GameOrderEvent.Create(playerID, trapType.DisplayName .. ' destroyed', {}, {territoryModification});
-	event.TerritoryAnnotationsOpt = { [territoryID] = WL.TerritoryAnnotation.Create(trapType.DisplayName .. " destroyed", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany)) };
-	event.Icon = "Destroyed";
-	addNewOrder(event, true);
-
-	return newStructures;
+	return false;
 end
 
----Converts primed trap at order.To into a triggered trap, if the order successfully captured the
----territory (and, when on the same team, <Prefix>AllyTriggers allows it).
----@param trapType V2_TrapType
+---Converts primed traps at order.To into triggered traps, if the order successfully captured the territory
+---@param trapTypes V2_TrapType[]
 ---@param game GameServerHook
 ---@param order GameOrderAttackTransfer
 ---@param result GameOrderAttackTransferResult
 ---@param remainingStructuresTo table<EnumStructureType, integer> | nil
 ---@param addNewOrder fun(order: GameOrder) # Adds a game order, will be processed before any of the rest of the orders
-function V2.HandleTrapTrigger(trapType, game, order, result, remainingStructuresTo, addNewOrder)
+function V2.HandleTrapTriggers(trapTypes, game, order, result, remainingStructuresTo, addNewOrder)
 	if (not result.IsAttack or not result.IsSuccessful) then
 		return;
 	end
 
-	-- (ActualArmies emptiness is already ruled out by HandleAttackTransferToTrap before this is called)
+	-- (ActualArmies emptiness is already ruled out by HandleAttackTransferToTraps before this is called)
 	local existingStructures = remainingStructuresTo;
 	if (existingStructures == nil) then return; end;
 
-	local primedStructId, triggeredStructId = V2.GetStructureIds(trapType);
-	local numberOfPrimed = existingStructures[primedStructId] or 0;
-
-	--If no primed trap here, abort.
-	if (numberOfPrimed == 0) then return; end;
-
-	local trapSettings = V2.GetTrapSettings(trapType);
-
-	-- abort if on same team and ally triggers is disabled
 	local territoryOwnerPlayerID = game.ServerGame.LatestTurnStanding.Territories[order.To].OwnerPlayerID;
 	local attackerTeam = game.ServerGame.Game.Players[order.PlayerID].Team;
 
@@ -536,44 +380,129 @@ function V2.HandleTrapTrigger(trapType, game, order, result, remainingStructures
 		ownerTeam = game.ServerGame.Game.Players[territoryOwnerPlayerID].Team;
 	end
 
-	if(attackerTeam ~= nil and ownerTeam ~= nil and attackerTeam ~=-1 and ownerTeam ~=-1 and attackerTeam == ownerTeam and not trapSettings.AllyTriggers) then
-		return;
-	end;
+	local isSameTeam =
+		attackerTeam ~= nil and attackerTeam ~= -1
+		and ownerTeam ~= nil and ownerTeam ~= -1
+		and attackerTeam == ownerTeam;
 
 	local privateGameData = Mod.PrivateGameData --[[@as V2_PrivateGameData]];
-	local triggeredTerritoryId = order.To;
+	local finalTurnBase = game.ServerGame.Game.TurnNumber;
 
-	-- flip every still-primed piece on this territory over to triggered, matching the whole primed
-	-- stock converting together above (numberOfPrimed). A freshly triggered piece's FinalTurnTriggered
-	-- is always in the future (TriggerDuration has a minimum of 1), so V2.ResetTriggeredTrap naturally
-	-- won't touch it this same turn - no separate skip-list needed.
-	local finalTurnTriggered = game.ServerGame.Game.TurnNumber + trapSettings.TriggerDuration;
-	for _, piece in pairs(V2.GetTrapPieces(privateGameData, trapType)) do
-		if (piece.TerritoryID == triggeredTerritoryId and not piece.Triggered) then
-			piece.Triggered = true;
-			piece.FinalTurnTriggered = finalTurnTriggered;
-		end
-	end
-
+	-- copy old structures once, then flip each triggering trap's primed count to triggered
 	local structures = {};
-	-- copy old structures but skip the trap
 	for key, value in pairs(existingStructures) do
-		if(key ~= primedStructId) then
-			structures[key] = value;
+		structures[key] = value;
+	end
+
+	local triggeredNames = {};
+	for _, trapType in ipairs(trapTypes) do
+		local primedStructId, triggeredStructId = V2.GetStructureIds(trapType);
+		local numberOfPrimed = existingStructures[primedStructId] or 0;
+		local trapSettings = V2.GetTrapSettings(trapType);
+
+		-- skip if no primed trap here, or on same team and ally triggers is disabled
+		if (numberOfPrimed > 0
+			and (not isSameTeam or trapSettings.AllyTriggers)
+			and (not trapSettings.OnlyTriggersOnTrappableUnits or V2.HasTrappableUnits(trapSettings, result.ActualArmies))) then
+			local finalTurnTriggered = finalTurnBase + trapSettings.TriggerDuration;
+			for _, piece in pairs(V2.GetTrapPieces(privateGameData, trapType)) do
+				if (piece.TerritoryID == order.To and not piece.Triggered) then
+					piece.Triggered = true;
+					piece.FinalTurnTriggered = finalTurnTriggered;
+				end
+			end
+
+			structures[primedStructId] = 0;
+			structures[triggeredStructId] = numberOfPrimed;
+			table.insert(triggeredNames, trapType.DisplayName .. "(s)");
 		end
 	end
 
-	structures[primedStructId] = 0;
-	structures[triggeredStructId] = numberOfPrimed;
+	if (#triggeredNames == 0) then return; end;
+
+	local message = "Triggered " .. table.concat(triggeredNames, " + ");
 
 	local territoryModification = WL.TerritoryModification.Create(order.To);
 	territoryModification.SetStructuresOpt = structures;
 
-	local event = WL.GameOrderEvent.Create(order.PlayerID, "Triggered " .. trapType.DisplayName .. "(s)", {}, {territoryModification});
-	event.TerritoryAnnotationsOpt = { [order.To] = WL.TerritoryAnnotation.Create("Triggered " .. trapType.DisplayName .. "(s)", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany)) };
+	local event = WL.GameOrderEvent.Create(order.PlayerID, message, {}, {territoryModification});
+	event.TerritoryAnnotationsOpt = { [order.To] = WL.TerritoryAnnotation.Create(message, 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany)) };
 	event.Icon = "Triggered";
 	addNewOrder(event, true);
 	Mod.PrivateGameData = privateGameData;
+end
+
+---Destroys, on the bombed territory, every trap whose <Prefix>BombDestroys is on.
+---@param trapTypes V2_TrapType[]
+---@param game GameServerHook
+---@param order GameOrder
+---@param addNewOrder fun(order: GameOrder) # Adds a game order, will be processed before any of the rest of the orders
+function V2.HandleBombOnTraps(trapTypes, game, order, addNewOrder)
+	local targetTerritoryID = (order --[[@as GameOrderPlayCardBomb]]).TargetTerritoryID;
+
+	local privateGameData = Mod.PrivateGameData --[[@as V2_PrivateGameData]];
+	-- chained so each trap type's destruction builds on the previous one's structures
+	local structures = game.ServerGame.LatestTurnStanding.Territories[targetTerritoryID].Structures;
+	local destroyedAny = false;
+
+	for _, trapType in ipairs(trapTypes) do
+		if (V2.GetTrapSettings(trapType).BombDestroys) then
+			local primedStructId, triggeredStructId = V2.GetStructureIds(trapType);
+			local newStructures = V2.DestroyTrapAt(trapType, targetTerritoryID, structures, primedStructId, triggeredStructId, privateGameData, order.PlayerID, addNewOrder);
+			if (newStructures ~= nil) then
+				structures = newStructures;
+				destroyedAny = true;
+			end
+		end
+	end
+
+	if (destroyedAny) then
+		Mod.PrivateGameData = privateGameData;
+	end
+end
+
+---@param game GameServerHook
+---@param order GameOrder
+---@param skipThisOrder fun(modOrderControl: EnumModOrderControl) # Allows you to skip the current order
+---@param addNewOrder fun(order: GameOrder) # Adds a game order, will be processed before any of the rest of the orders
+function V2.HandleAirliftFromTriggeredTrap(game, order, skipThisOrder, addNewOrder)
+	---@cast order GameOrderPlayCardAirlift
+
+	local triggeredStructIds = {};
+	for _, trapType in ipairs(V2.AllTrapTypes) do
+		if (V2.GetTrapSettings(trapType).CancelsAirlifts) then
+			local _, triggeredStructId = V2.GetStructureIds(trapType);
+			table.insert(triggeredStructIds, triggeredStructId);
+		end
+	end
+
+	if (#triggeredStructIds == 0) then
+		return;
+	end
+
+	local existingStructures = game.ServerGame.LatestTurnStanding.Territories[order.FromTerritoryID].Structures;
+	if (existingStructures == nil) then
+		return;
+	end
+
+	local isTrapped = false;
+	for _, triggeredStructId in ipairs(triggeredStructIds) do
+		if ((existingStructures[triggeredStructId] or 0) > 0) then
+			isTrapped = true;
+			break;
+		end
+	end
+
+	if (not isTrapped) then
+		return;
+	end
+
+	skipThisOrder(WL.ModOrderControl.SkipAndSupressSkippedMessage);
+
+	local event = WL.GameOrderEvent.Create(order.PlayerID, 'Airlift cancelled by barbed wire/caltrop', {}, {});
+	event.TerritoryAnnotationsOpt = { [order.FromTerritoryID] = WL.TerritoryAnnotation.Create("Airlift cancelled", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany)) };
+	event.Icon = "Blocked";
+	addNewOrder(event);
 end
 
 ---@param trapType V2_TrapType
@@ -827,4 +756,129 @@ function V2.BuildTrapStructures(trapType, game, addNewOrder)
 
 	privateGameData.PendingTraps[trapType.Key] = nil;
 	Mod.PrivateGameData = privateGameData;
+end
+
+---@param trapType V2_TrapType
+---@param playerID PlayerID
+---@param targetTerritoryID TerritoryID
+---@param message string
+---@param isCommerce boolean
+function V2.QueuePendingTrap(trapType, playerID, targetTerritoryID, message, isCommerce)
+	---@type V2_PendingTrap
+	local pendingTrap = {
+		PlayerID = playerID,
+		Message = message,
+		TerritoryID = targetTerritoryID,
+		IsCommerce = isCommerce,
+	};
+
+	local privateGameData = Mod.PrivateGameData --[[@as V2_PrivateGameData]];
+	table.insert(V2.GetPendingTraps(privateGameData, trapType), pendingTrap);
+
+	Mod.PrivateGameData = privateGameData;
+end
+
+---Destroys any Primed/Triggered trap on territoryID, if present: zeroes those structures, removes
+---matching tracked pieces from privateGameData.Traps[trapType.Key], and fires a "<Trap> destroyed" event.
+---@param trapType V2_TrapType
+---@param territoryID TerritoryID
+---@param existingStructures table<EnumStructureType, integer> | nil
+---@param primedStructId EnumStructureType
+---@param triggeredStructId EnumStructureType
+---@param privateGameData V2_PrivateGameData
+---@param playerID PlayerID
+---@param addNewOrder fun(order: GameOrder) # Adds a game order, will be processed before any of the rest of the orders
+---@return table<EnumStructureType, integer> | nil newStructures the territory's structures with the trap zeroed out, or nil if there was nothing to destroy
+function V2.DestroyTrapAt(trapType, territoryID, existingStructures, primedStructId, triggeredStructId, privateGameData, playerID, addNewOrder)
+	local hasTrap =
+		existingStructures ~= nil and
+		((existingStructures[triggeredStructId] or 0) > 0 or (existingStructures[primedStructId] or 0) > 0);
+
+	if (not hasTrap) then
+		return nil;
+	end
+	---@cast existingStructures table<EnumStructureType, integer>
+
+	local newStructures = {};
+	newStructures[primedStructId] = 0;
+	newStructures[triggeredStructId] = 0;
+
+	-- copy old structures but skip the trap
+	for key, value in pairs(existingStructures) do
+		if (key ~= primedStructId and key ~= triggeredStructId) then
+			newStructures[key] = value;
+		end
+	end
+
+	local territoryModification = WL.TerritoryModification.Create(territoryID);
+	territoryModification.SetStructuresOpt = newStructures;
+
+	removeWhere(V2.GetTrapPieces(privateGameData, trapType), function(w) return w.TerritoryID == territoryID; end);
+
+	local event = WL.GameOrderEvent.Create(playerID, trapType.DisplayName .. ' destroyed', {}, {territoryModification});
+	event.TerritoryAnnotationsOpt = { [territoryID] = WL.TerritoryAnnotation.Create(trapType.DisplayName .. " destroyed", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany)) };
+	event.Icon = "Destroyed";
+	addNewOrder(event, true);
+
+	return newStructures;
+end
+
+---@param trapType V2_TrapType
+---@return V2_TrapSettings
+function V2.GetTrapSettings(trapType)
+	local prefix = trapType.Key;
+
+	---@type V2_TrapSettings
+	return {
+		TriggerDuration = Mod.Settings[prefix .. "TriggerDuration"] or 1,
+		AllyTriggers = Mod.Settings[prefix .. "AllyTriggers"] or false,
+		TrapsArmies = Mod.Settings[prefix .. "TrapsArmies"] or false,
+		TrapsSpecialUnits = Mod.Settings[prefix .. "TrapsSpecialUnits"] or false,
+		CancelsAirlifts = Mod.Settings[prefix .. "CancelsAirlifts"] or false,
+		BombDestroys = Mod.Settings[prefix .. "BombDestroys"] or false,
+		OnlyTriggersOnTrappableUnits = Mod.Settings[prefix .. "OnlyTriggersOnTrappableUnits"] or false,
+		SingleUse = Mod.Settings[prefix .. "SingleUse"] or false,
+		HasLimitedLifespan = Mod.Settings[prefix .. "HasLimitedLifespan"] or false,
+		Lifespan = Mod.Settings[prefix .. "Lifespan"],
+		IsTankSpecialBehaviour = Mod.Settings[prefix .. "IsTankSpecialBehaviour"] or false,
+		TanksIgnore = Mod.Settings[prefix .. "TanksIgnore"] or false,
+		TanksDestroy = Mod.Settings[prefix .. "TanksDestroy"] or false,
+	};
+end
+
+---@param trapType V2_TrapType
+---@return EnumStructureType primedStructId
+---@return EnumStructureType triggeredStructId
+function V2.GetStructureIds(trapType)
+	return WL.StructureType.Custom(trapType.PrimedStructureName), WL.StructureType.Custom(trapType.TriggeredStructureName);
+end
+
+---@param trapType V2_TrapType
+---@return string # GameOrderPlayCardCustom.ModData prefix for this trap's card build order, e.g. "CreateBarbedWire_"
+function V2.GetCardModDataPrefix(trapType)
+	return "Create" .. trapType.Key .. "_";
+end
+
+---@param trapType V2_TrapType
+---@return string # GameOrderCustom.Payload prefix for this trap's Commerce build order, e.g. "CreateBarbedWireCommerce_"
+function V2.GetCommercePayloadPrefix(trapType)
+	return "Create" .. trapType.Key .. "Commerce_";
+end
+
+---@param privateGameData V2_PrivateGameData
+---@param trapType V2_TrapType
+---@return V2_PendingTrap[] # created and stored if this trap has none yet
+function V2.GetPendingTraps(privateGameData, trapType)
+	if (privateGameData.PendingTraps == nil) then privateGameData.PendingTraps = {}; end
+	if (privateGameData.PendingTraps[trapType.Key] == nil) then privateGameData.PendingTraps[trapType.Key] = {}; end
+	return privateGameData.PendingTraps[trapType.Key];
+end
+
+---@param privateGameData V2_PrivateGameData
+---@param trapType V2_TrapType
+---@return V2_TrapPiece[] # created and stored if this trap has none yet
+function V2.GetTrapPieces(privateGameData, trapType)
+	if (privateGameData.Traps == nil) then privateGameData.Traps = {}; end
+	if (privateGameData.Traps[trapType.Key] == nil) then privateGameData.Traps[trapType.Key] = {}; end
+	return privateGameData.Traps[trapType.Key];
 end

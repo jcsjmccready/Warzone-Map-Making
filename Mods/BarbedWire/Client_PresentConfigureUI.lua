@@ -159,13 +159,16 @@ function Create_Caltrop_Behaviour_UI(rootParent)
 
     caltropTrapsArmies = UI.CreateCheckBox(optionalsHeading)
         .SetText("Traps armies")
-        .SetIsChecked(Mod.Settings.CaltropTrapsArmies == nil or Mod.Settings.CaltropTrapsArmies);
+        .SetIsChecked(Mod.Settings.CaltropTrapsArmies or false);
     caltropCancelsAirlifts = UI.CreateCheckBox(optionalsHeading)
         .SetText("Cancels Airlifts")
         .SetIsChecked(Mod.Settings.CaltropCancelsAirlifts == nil or Mod.Settings.CaltropCancelsAirlifts);
     caltropTrapsSpecialUnits = UI.CreateCheckBox(optionalsHeading)
         .SetText("Traps Special Units")
         .SetIsChecked(Mod.Settings.CaltropTrapsSpecialUnits == nil or Mod.Settings.CaltropTrapsSpecialUnits);
+    caltropOnlyTriggersOnTrappableUnits = UI.CreateCheckBox(optionalsHeading)
+        .SetText("Only trigger if trappable units attacked")
+        .SetIsChecked(Mod.Settings.CaltropOnlyTriggersOnTrappableUnits == nil or Mod.Settings.CaltropOnlyTriggersOnTrappableUnits);
     caltropIsTankSpecialBehaviour = UI.CreateCheckBox(optionalsHeading)
         .SetText("Include Tank special behaviour")
         .SetIsChecked(Mod.Settings.CaltropIsTankSpecialBehaviour or false);
@@ -180,6 +183,9 @@ function Create_Caltrop_Behaviour_UI(rootParent)
         .SetText("Caltrops have a limited lifespan?")
         .SetIsChecked(Mod.Settings.CaltropHasLimitedLifespan or false);
     local caltropLifespanContainer = UI.CreateVerticalLayoutGroup(optionalsHeading);
+    caltropBombDestroys = UI.CreateCheckBox(caltropLifespanContainer)
+        .SetText("Bomb destroys")
+        .SetIsChecked(Mod.Settings.CaltropBombDestroys or false);
     caltropAllyTriggers = UI.CreateCheckBox(optionalsHeading)
         .SetText("Allies trigger Caltrops")
         .SetIsChecked(Mod.Settings.CaltropAllyTriggers or false);
@@ -397,10 +403,13 @@ function Create_BarbedWire_Behaviour_UI(rootParent)
         .SetIsChecked(Mod.Settings.BarbedWireTrapsArmies == nil or Mod.Settings.BarbedWireTrapsArmies);
     barbedWireCancelsAirlifts = UI.CreateCheckBox(optionalsHeading)
         .SetText("Cancels Airlifts")
-        .SetIsChecked(Mod.Settings.BarbedWireCancelsAirlifts == nil or Mod.Settings.BarbedWireCancelsAirlifts);
+        .SetIsChecked(Mod.Settings.BarbedWireCancelsAirlifts or false);
     barbedWireTrapsSpecialUnits = UI.CreateCheckBox(optionalsHeading)
         .SetText("Traps Special Units")
-        .SetIsChecked(Mod.Settings.BarbedWireTrapsSpecialUnits == nil or Mod.Settings.BarbedWireTrapsSpecialUnits);
+        .SetIsChecked(Mod.Settings.BarbedWireTrapsSpecialUnits or false);
+    barbedWireOnlyTriggersOnTrappableUnits = UI.CreateCheckBox(optionalsHeading)
+        .SetText("Only trigger if trappable units attacked")
+        .SetIsChecked(Mod.Settings.BarbedWireOnlyTriggersOnTrappableUnits == nil or Mod.Settings.BarbedWireOnlyTriggersOnTrappableUnits);
     barbedWireIsTankSpecialBehaviour = UI.CreateCheckBox(optionalsHeading)
         .SetText("Include Tank special behaviour")
         .SetIsChecked(Mod.Settings.BarbedWireIsTankSpecialBehaviour or false);
@@ -415,6 +424,9 @@ function Create_BarbedWire_Behaviour_UI(rootParent)
         .SetText("Wire has a limited lifespan?")
         .SetIsChecked(Mod.Settings.BarbedWireHasLimitedLifespan or false);
     local barbedWireLifespanContainer = UI.CreateVerticalLayoutGroup(optionalsHeading);
+    barbedWireBombDestroys = UI.CreateCheckBox(barbedWireLifespanContainer)
+        .SetText("Bomb destroys")
+        .SetIsChecked(Mod.Settings.BarbedWireBombDestroys or false);
     barbedWireAllyTriggers = UI.CreateCheckBox(optionalsHeading)
         .SetText("Allies trigger barbed wire")
         .SetIsChecked(Mod.Settings.BarbedWireAllyTriggers or false);

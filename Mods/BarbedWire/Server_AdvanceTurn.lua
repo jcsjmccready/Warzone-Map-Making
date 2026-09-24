@@ -2,13 +2,6 @@ require("Utilities");
 require("Server_AdvanceTurn_V1");
 require("Server_AdvanceTurn_V2");
 
---Dispatches to the Server_AdvanceTurn_V*.lua matching the settings version this game was created with.
---A game's Mod.Settings.Version is fixed for its whole lifetime (only written in Client_SaveConfigureUI,
---which runs at configure time, never mid-game), so no MigrateModSettings()/legacy-fallback handling is
---needed here - each version file only ever sees the Mod.Settings/Mod.PrivateGameData shape it itself
---created. This hook always runs for an already-configured game, so a raw version read is safe (unlike
---Client_PresentConfigureUI, there's no "never saved yet" case to disambiguate here).
-
 ---Server_AdvanceTurn_Order
 ---@param game GameServerHook
 ---@param order GameOrder

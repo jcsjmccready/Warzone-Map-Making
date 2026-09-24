@@ -27,6 +27,8 @@ function Client_SaveConfigureUI(alert, addCard)
         Mod.Settings.BarbedWireTrapsArmies = barbedWireTrapsArmies.GetIsChecked();
         Mod.Settings.BarbedWireCancelsAirlifts = barbedWireCancelsAirlifts.GetIsChecked();
         Mod.Settings.BarbedWireTrapsSpecialUnits = barbedWireTrapsSpecialUnits.GetIsChecked();
+        Mod.Settings.BarbedWireOnlyTriggersOnTrappableUnits = barbedWireOnlyTriggersOnTrappableUnits.GetIsChecked();
+        Mod.Settings.BarbedWireBombDestroys = barbedWireBombDestroys.GetIsChecked();
         Mod.Settings.BarbedWireSingleUse = barbedWireSingleUse.GetIsChecked();
 
         Mod.Settings.BarbedWireHasLimitedLifespan = barbedWireHasLimitedLifespan.GetIsChecked();
@@ -104,6 +106,8 @@ function Client_SaveConfigureUI(alert, addCard)
         Mod.Settings.CaltropTrapsArmies = caltropTrapsArmies.GetIsChecked();
         Mod.Settings.CaltropCancelsAirlifts = caltropCancelsAirlifts.GetIsChecked();
         Mod.Settings.CaltropTrapsSpecialUnits = caltropTrapsSpecialUnits.GetIsChecked();
+        Mod.Settings.CaltropOnlyTriggersOnTrappableUnits = caltropOnlyTriggersOnTrappableUnits.GetIsChecked();
+        Mod.Settings.CaltropBombDestroys = caltropBombDestroys.GetIsChecked();
         Mod.Settings.CaltropSingleUse = caltropSingleUse.GetIsChecked();
 
         Mod.Settings.CaltropHasLimitedLifespan = caltropHasLimitedLifespan.GetIsChecked();
