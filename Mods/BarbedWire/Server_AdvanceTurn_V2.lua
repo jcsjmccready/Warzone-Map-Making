@@ -7,15 +7,16 @@ require("Utilities");
 ---@field AllyTriggers boolean # Whether allies (not just enemies) can trigger this trap
 ---@field TrapsArmies boolean # Whether a triggered trap blocks normal armies moving out
 ---@field TrapsSpecialUnits boolean # Whether a triggered trap blocks special units moving out
----@field CancelsAirlifts boolean # Whether a triggered trap cancels airlifts out of the territory
+---@field CancelsAirlifts boolean # Whether a primed or triggered trap cancels airlifts out of the territory
 ---@field BombDestroys boolean # Whether a bomb played on the territory destroys the trap
 ---@field OnlyTriggersOnTrappableUnits boolean # Whether the trap only triggers if the successful attack involved units it would trap (armies and/or special units, per the Traps* flags)
 ---@field SingleUse boolean # Whether the trap is destroyed (rather than reset to primed) once its trigger duration ends
 ---@field HasLimitedLifespan boolean # Whether primed/triggered pieces expire after a set number of turns
 ---@field Lifespan integer | nil # Turns before a piece expires - only meaningful when HasLimitedLifespan is true
----@field IsTankSpecialBehaviour boolean # Whether Tanks get special treatment (ignore or destroy) rather than being trapped like any other special unit
----@field TanksIgnore boolean # Tanks ignore this trap entirely - only meaningful when IsTankSpecialBehaviour is true
----@field TanksDestroy boolean # Tanks destroy this trap on entry/exit - only meaningful when IsTankSpecialBehaviour is true
+---@field IsImmuneUnitEnabled boolean # Whether the immune unit gets special treatment (ignore or destroy) rather than being trapped like any other special unit
+---@field ImmuneUnitName string # Name of the custom special unit that gets the immune unit behaviour below - only meaningful when IsImmuneUnitEnabled is true
+---@field ImmuneUnitIgnores boolean # The immune unit ignores this trap entirely - only meaningful when IsImmuneUnitEnabled is true
+---@field ImmuneUnitDestroys boolean # The immune unit destroys this trap on entry/exit - only meaningful when IsImmuneUnitEnabled is true
 
 ---@class V2_TrapType
 ---@field Key string # "BarbedWire" | "Caltrop" - the one distinguisher (see above)
@@ -94,7 +95,7 @@ function V2.Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewO
 	elseif (order.proxyType == 'GameOrderPlayCardBomb') then
 		V2.HandleBombOnTraps(V2.AllTrapTypes, game, order, addNewOrder);
 	elseif (order.proxyType == 'GameOrderPlayCardAirlift') then
-		V2.HandleAirliftFromTriggeredTrap(game, order, skipThisOrder, addNewOrder);
+		V2.HandleAirliftFromTrap(game, order, skipThisOrder, addNewOrder);
 	end
 end
 
@@ -109,7 +110,7 @@ function V2.Server_AdvanceTurn_End(game, addNewOrder)
 end
 
 ---Everything an attack/transfer order does with traps: blocked by triggered traps at order.From, then
----tank-destroy and triggering of traps at order.To.
+---immune-unit-destroy and triggering of traps at order.To.
 ---@param game GameServerHook
 ---@param order GameOrder
 ---@param result GameOrderResult
@@ -136,16 +137,8 @@ function V2.HandleAttackTransferFromTriggeredTraps(trapTypes, game, order, resul
 	local existingStructures = game.ServerGame.LatestTurnStanding.Territories[order.From].Structures;
 	if (existingStructures == nil) then return false; end;
 
-	local hasTank = false;
-	for _, specialUnit in ipairs(result.ActualArmies.SpecialUnits) do
-		if specialUnit ~= nil and specialUnit.proxyType == "CustomSpecialUnit" and (specialUnit --[[@as CustomSpecialUnit]]).Name == "Tank" then
-			hasTank = true;
-			break;
-		end
-	end
-
 	-- Which trap types are triggered on order.From and actually apply to this stack. A trap that ignores
-	-- tanks doesn't apply at all (not even to the non-tank units) when a tank is moving.
+	-- immune units doesn't apply at all (not even to the other units) when its immune unit is moving.
 	local trapsArmies = false;
 	local trapsSpecialUnits = false;
 	local blockingTrapNames = {};
@@ -153,7 +146,7 @@ function V2.HandleAttackTransferFromTriggeredTraps(trapTypes, game, order, resul
 		local _, triggeredStructId = V2.GetStructureIds(trapType);
 		if ((existingStructures[triggeredStructId] or 0) > 0) then
 			local trapSettings = V2.GetTrapSettings(trapType);
-			if (not (hasTank and trapSettings.TanksIgnore)) then
+			if (not (trapSettings.ImmuneUnitIgnores and V2.HasImmuneUnit(trapSettings, result.ActualArmies.SpecialUnits))) then
 				-- most restrictive wins: something is trapped if any applicable trap traps it
 				trapsArmies = trapsArmies or trapSettings.TrapsArmies;
 				trapsSpecialUnits = trapsSpecialUnits or trapSettings.TrapsSpecialUnits;
@@ -283,13 +276,13 @@ function V2.HandleAttackTransferToTraps(trapTypes, game, order, result, addNewOr
 
 	local remainingStructuresTo = game.ServerGame.LatestTurnStanding.Territories[order.To].Structures;
 	for _, trapType in ipairs(trapTypes) do
-		remainingStructuresTo = V2.HandleTankDestroyTrap(trapType, game, order, result, remainingStructuresTo, addNewOrder);
+		remainingStructuresTo = V2.HandleImmuneUnitDestroyTrap(trapType, game, order, result, remainingStructuresTo, addNewOrder);
 	end
 
 	V2.HandleTrapTriggers(trapTypes, game, order, result, remainingStructuresTo, addNewOrder);
 end
 
----If <Prefix>TanksDestroy is on and the moving stack includes a Tank, destroys any trap at both ends of
+---If <Prefix>ImmuneUnitDestroys is on and the moving stack includes its immune unit, destroys any trap at both ends of
 ---the order (it attacks into order.To and comes from order.From).
 ---@param trapType V2_TrapType
 ---@param game GameServerHook
@@ -298,21 +291,13 @@ end
 ---@param remainingStructuresTo table<EnumStructureType, integer> | nil # order.To's structures so far (earlier trap types' destruction already applied)
 ---@param addNewOrder fun(order: GameOrder) # Adds a game order, will be processed before any of the rest of the orders
 ---@return table<EnumStructureType, integer> | nil remainingStructuresTo the (possibly trap-cleared) structures at order.To, for HandleTrapTriggers to use
-function V2.HandleTankDestroyTrap(trapType, game, order, result, remainingStructuresTo, addNewOrder)
+function V2.HandleImmuneUnitDestroyTrap(trapType, game, order, result, remainingStructuresTo, addNewOrder)
 	local trapSettings = V2.GetTrapSettings(trapType);
-	if (not (trapSettings.TanksDestroy and result.ActualArmies ~= nil and result.ActualArmies.SpecialUnits ~= nil)) then
+	if (not (trapSettings.ImmuneUnitDestroys and result.ActualArmies ~= nil and result.ActualArmies.SpecialUnits ~= nil)) then
 		return remainingStructuresTo;
 	end
 
-	local hasTank = false;
-	for _, specialUnit in ipairs(result.ActualArmies.SpecialUnits) do
-		if specialUnit ~= nil and specialUnit.proxyType == "CustomSpecialUnit" and (specialUnit --[[@as CustomSpecialUnit]]).Name == "Tank" then
-			hasTank = true;
-			break;
-		end
-	end
-
-	if (not hasTank) then
+	if (not V2.HasImmuneUnit(trapSettings, result.ActualArmies.SpecialUnits)) then
 		return remainingStructuresTo;
 	end
 
@@ -333,8 +318,31 @@ function V2.HandleTankDestroyTrap(trapType, game, order, result, remainingStruct
 	return remainingStructuresTo;
 end
 
+---Whether specialUnit is the immune unit for this trap (the one that gets the special ignore/destroy behaviour) - matched by its name
+---(trapSettings.ImmuneUnitName).
+---@param trapSettings V2_TrapSettings
+---@param specialUnit SpecialUnit
+---@return boolean
+function V2.IsImmuneUnit(trapSettings, specialUnit)
+	return specialUnit ~= nil
+		and specialUnit.proxyType == "CustomSpecialUnit"
+		and (specialUnit --[[@as CustomSpecialUnit]]).Name == trapSettings.ImmuneUnitName;
+end
+
+---@param trapSettings V2_TrapSettings
+---@param specialUnits SpecialUnit[]
+---@return boolean # true if any of specialUnits is an immune unit for this trap (see V2.IsImmuneUnit)
+function V2.HasImmuneUnit(trapSettings, specialUnits)
+	for _, specialUnit in ipairs(specialUnits) do
+		if (V2.IsImmuneUnit(trapSettings, specialUnit)) then
+			return true;
+		end
+	end
+	return false;
+end
+
 ---Whether armies contains anything a trap with these settings would trap: armies if it traps armies,
----special units if it traps special units (Tanks excluded when they ignore the trap).
+---special units if it traps special units (immune units excluded when they ignore the trap).
 ---@param trapSettings V2_TrapSettings
 ---@param armies Armies
 ---@return boolean
@@ -344,10 +352,9 @@ function V2.HasTrappableUnits(trapSettings, armies)
 	end
 
 	if (trapSettings.TrapsSpecialUnits and armies.SpecialUnits ~= nil) then
-		local tanksIgnore = trapSettings.IsTankSpecialBehaviour and trapSettings.TanksIgnore;
+		local immuneUnitIgnores = trapSettings.IsImmuneUnitEnabled and trapSettings.ImmuneUnitIgnores;
 		for _, specialUnit in ipairs(armies.SpecialUnits) do
-			local isTank = specialUnit.proxyType == "CustomSpecialUnit" and (specialUnit --[[@as CustomSpecialUnit]]).Name == "Tank";
-			if (not (tanksIgnore and isTank)) then
+			if (not (immuneUnitIgnores and V2.IsImmuneUnit(trapSettings, specialUnit))) then
 				return true;
 			end
 		end
@@ -465,18 +472,20 @@ end
 ---@param order GameOrder
 ---@param skipThisOrder fun(modOrderControl: EnumModOrderControl) # Allows you to skip the current order
 ---@param addNewOrder fun(order: GameOrder) # Adds a game order, will be processed before any of the rest of the orders
-function V2.HandleAirliftFromTriggeredTrap(game, order, skipThisOrder, addNewOrder)
+function V2.HandleAirliftFromTrap(game, order, skipThisOrder, addNewOrder)
 	---@cast order GameOrderPlayCardAirlift
 
-	local triggeredStructIds = {};
+	-- primed and triggered structures both cancel airlifts
+	local trapStructIds = {};
 	for _, trapType in ipairs(V2.AllTrapTypes) do
 		if (V2.GetTrapSettings(trapType).CancelsAirlifts) then
-			local _, triggeredStructId = V2.GetStructureIds(trapType);
-			table.insert(triggeredStructIds, triggeredStructId);
+			local primedStructId, triggeredStructId = V2.GetStructureIds(trapType);
+			table.insert(trapStructIds, primedStructId);
+			table.insert(trapStructIds, triggeredStructId);
 		end
 	end
 
-	if (#triggeredStructIds == 0) then
+	if (#trapStructIds == 0) then
 		return;
 	end
 
@@ -486,8 +495,8 @@ function V2.HandleAirliftFromTriggeredTrap(game, order, skipThisOrder, addNewOrd
 	end
 
 	local isTrapped = false;
-	for _, triggeredStructId in ipairs(triggeredStructIds) do
-		if ((existingStructures[triggeredStructId] or 0) > 0) then
+	for _, structId in ipairs(trapStructIds) do
+		if ((existingStructures[structId] or 0) > 0) then
 			isTrapped = true;
 			break;
 		end
@@ -840,9 +849,10 @@ function V2.GetTrapSettings(trapType)
 		SingleUse = Mod.Settings[prefix .. "SingleUse"] or false,
 		HasLimitedLifespan = Mod.Settings[prefix .. "HasLimitedLifespan"] or false,
 		Lifespan = Mod.Settings[prefix .. "Lifespan"],
-		IsTankSpecialBehaviour = Mod.Settings[prefix .. "IsTankSpecialBehaviour"] or false,
-		TanksIgnore = Mod.Settings[prefix .. "TanksIgnore"] or false,
-		TanksDestroy = Mod.Settings[prefix .. "TanksDestroy"] or false,
+		IsImmuneUnitEnabled = Mod.Settings[prefix .. "IsImmuneUnitEnabled"] or false,
+		ImmuneUnitName = Mod.Settings[prefix .. "ImmuneUnitName"] or "Tank",
+		ImmuneUnitIgnores = Mod.Settings[prefix .. "ImmuneUnitIgnores"] or false,
+		ImmuneUnitDestroys = Mod.Settings[prefix .. "ImmuneUnitDestroys"] or false,
 	};
 end
 

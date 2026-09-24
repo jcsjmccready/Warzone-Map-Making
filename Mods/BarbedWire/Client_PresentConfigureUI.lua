@@ -61,7 +61,7 @@ function Create_CaltropEnabled_UI(rootParent)
     local acquiringTypeHeading = UI.CreateVerticalLayoutGroup(caltropEnabledVHeading);
     UI.CreateLabel(acquiringTypeHeading)
         .SetText('Acquiring type:')
-        .SetColor(SUBHEADING_COLOUR);
+        .SetColor(BUTTON_COLOURS.LightBlue);
     local acquiringType = UI.CreateRadioButtonGroup(acquiringTypeHeading);
 
     local caltropAcquiringSubOptionsParent = UI.CreateVerticalLayoutGroup(caltropEnabledVHeading);
@@ -160,22 +160,25 @@ function Create_Caltrop_Behaviour_UI(rootParent)
     caltropTrapsArmies = UI.CreateCheckBox(optionalsHeading)
         .SetText("Traps armies")
         .SetIsChecked(Mod.Settings.CaltropTrapsArmies or false);
-    caltropCancelsAirlifts = UI.CreateCheckBox(optionalsHeading)
-        .SetText("Cancels Airlifts")
-        .SetIsChecked(Mod.Settings.CaltropCancelsAirlifts == nil or Mod.Settings.CaltropCancelsAirlifts);
     caltropTrapsSpecialUnits = UI.CreateCheckBox(optionalsHeading)
         .SetText("Traps Special Units")
         .SetIsChecked(Mod.Settings.CaltropTrapsSpecialUnits == nil or Mod.Settings.CaltropTrapsSpecialUnits);
     caltropOnlyTriggersOnTrappableUnits = UI.CreateCheckBox(optionalsHeading)
         .SetText("Only trigger if trappable units attacked")
         .SetIsChecked(Mod.Settings.CaltropOnlyTriggersOnTrappableUnits == nil or Mod.Settings.CaltropOnlyTriggersOnTrappableUnits);
-    caltropIsTankSpecialBehaviour = UI.CreateCheckBox(optionalsHeading)
-        .SetText("Include Tank special behaviour")
-        .SetIsChecked(Mod.Settings.CaltropIsTankSpecialBehaviour or false);
-    local caltropTankContainer = UI.CreateVerticalLayoutGroup(optionalsHeading);
+    UI.CreateLabel(optionalsHeading).SetText("");
+
+    caltropIsImmuneUnitEnabled = UI.CreateCheckBox(optionalsHeading)
+        .SetText("Enable immune special unit")
+        .SetIsChecked(Mod.Settings.CaltropIsImmuneUnitEnabled or false);
+    local caltropImmuneUnitContainer = UI.CreateVerticalLayoutGroup(optionalsHeading);
 
     UI.CreateLabel(optionalsHeading).SetText("");
 
+    UI.CreateLabel(optionalsHeading).SetText('Lifespan Behaviour').SetColor(BUTTON_COLOURS.LightBlue);
+    caltropBombDestroys = UI.CreateCheckBox(optionalsHeading)
+        .SetText("Bomb destroys")
+        .SetIsChecked(Mod.Settings.CaltropBombDestroys or false);
     caltropSingleUse = UI.CreateCheckBox(optionalsHeading)
         .SetText("Caltrops are single use (destroyed instead of resetting) ")
         .SetIsChecked(Mod.Settings.CaltropSingleUse or false);
@@ -183,12 +186,14 @@ function Create_Caltrop_Behaviour_UI(rootParent)
         .SetText("Caltrops have a limited lifespan?")
         .SetIsChecked(Mod.Settings.CaltropHasLimitedLifespan or false);
     local caltropLifespanContainer = UI.CreateVerticalLayoutGroup(optionalsHeading);
-    caltropBombDestroys = UI.CreateCheckBox(caltropLifespanContainer)
-        .SetText("Bomb destroys")
-        .SetIsChecked(Mod.Settings.CaltropBombDestroys or false);
+    UI.CreateLabel(optionalsHeading).SetText('Misc.').SetColor(BUTTON_COLOURS.LightBlue);
     caltropAllyTriggers = UI.CreateCheckBox(optionalsHeading)
         .SetText("Allies trigger Caltrops")
         .SetIsChecked(Mod.Settings.CaltropAllyTriggers or false);
+    caltropCancelsAirlifts = UI.CreateCheckBox(optionalsHeading)
+        .SetText("Cancels Airlifts")
+        .SetIsChecked(Mod.Settings.CaltropCancelsAirlifts == nil or Mod.Settings.CaltropCancelsAirlifts);
+    UI.CreateLabel(optionalsHeading).SetText("Applies to both primed and triggered Caltrops*").SetColor(BUTTON_COLOURS.DarkGray);
 
     -- Lifespan sub-options
     caltropHasLimitedLifespan.SetOnValueChanged(function()
@@ -204,20 +209,20 @@ function Create_Caltrop_Behaviour_UI(rootParent)
         Create_Caltrop_Lifespan_SubOptions_UI(caltropLifespanContainer);
     end
 
-    -- Tank sub-options
-    caltropIsTankSpecialBehaviour.SetOnValueChanged(function()
-        if(caltropIsTankSpecialBehaviour.GetIsChecked()) then
-            Create_Caltrop_Tank_SubOptions_UI(caltropTankContainer);
+    -- Immune unit sub-options
+    caltropIsImmuneUnitEnabled.SetOnValueChanged(function()
+        if(caltropIsImmuneUnitEnabled.GetIsChecked()) then
+            Create_Caltrop_ImmuneUnit_SubOptions_UI(caltropImmuneUnitContainer);
         else
-           UI.Destroy(caltropTankSupportHeading);
-           caltropTanksIgnore.SetIsChecked(false);
-           caltropTanksDestroy.SetIsChecked(false);
+           UI.Destroy(caltropImmuneUnitSupportHeading);
+           caltropImmuneUnitIgnores.SetIsChecked(false);
+           caltropImmuneUnitDestroys.SetIsChecked(false);
         end
     end);
 
      -- one time check for loading up from settings
-    if(caltropIsTankSpecialBehaviour.GetIsChecked()) then
-        Create_Caltrop_Tank_SubOptions_UI(caltropTankContainer);
+    if(caltropIsImmuneUnitEnabled.GetIsChecked()) then
+        Create_Caltrop_ImmuneUnit_SubOptions_UI(caltropImmuneUnitContainer);
     end
 end
 
@@ -232,44 +237,48 @@ function Create_Caltrop_Lifespan_SubOptions_UI(rootParent)
         .SetValue(Mod.Settings.CaltropLifespan or 2);
 end
 
-function Create_Caltrop_Tank_SubOptions_UI(rootParent)
-    caltropTankSupportHeading = UI.CreateVerticalLayoutGroup(rootParent);
+function Create_Caltrop_ImmuneUnit_SubOptions_UI(rootParent)
+    caltropImmuneUnitSupportHeading = UI.CreateVerticalLayoutGroup(rootParent);
 
-    UI.CreateLabel(caltropTankSupportHeading).SetText("Tanks can not be trapped*").SetColor(BUTTON_COLOURS.DarkGray);
+    UI.CreateLabel(caltropImmuneUnitSupportHeading).SetText("Immune unit can not be trapped*").SetColor(BUTTON_COLOURS.DarkGray);
 
-    caltropTankSpecialBehaviourGroup = UI.CreateRadioButtonGroup(caltropTankSupportHeading);
+    local unitNameHorz = UI.CreateHorizontalLayoutGroup(caltropImmuneUnitSupportHeading);
+    UI.CreateLabel(unitNameHorz).SetText('Immune unit name').SetPreferredWidth(290);
+    caltropImmuneUnitName = UI.CreateTextInputField(unitNameHorz)
+        .SetPlaceholderText('Tank')
+        .SetText(Mod.Settings.CaltropImmuneUnitName or 'Tank')
+        .SetPreferredWidth(200);
 
-    caltropTanksIgnore = UI.CreateRadioButton(caltropTankSupportHeading).SetGroup(caltropTankSpecialBehaviourGroup)
-        .SetText('Armies with Tanks ignore triggered Caltrops')
-        .SetIsChecked(Mod.Settings.CaltropTanksIgnore or true);
+    -- one radio group: ignore / destroy / none. None needs no setting of its own - it is just neither of the
+    -- other two saved, and is also the default.
+    local mode = 'none';
+    if (Mod.Settings.CaltropImmuneUnitDestroys) then
+        mode = 'destroy';
+    elseif (Mod.Settings.CaltropImmuneUnitIgnores) then
+        mode = 'ignore';
+    end
 
-    caltropTanksDestroy = UI.CreateRadioButton(caltropTankSupportHeading).SetGroup(caltropTankSpecialBehaviourGroup)
-        .SetText('Tanks destroy Caltrops on entry/exit')
-        .SetIsChecked(Mod.Settings.CaltropTanksDestroy or false);
+    caltropImmuneUnitBehaviourGroup = UI.CreateRadioButtonGroup(caltropImmuneUnitSupportHeading);
 
-    caltropTanksIgnore.SetOnValueChanged(function()
-        if(caltropTanksIgnore.GetIsChecked()) then
-            caltropTanksIgnore.SetInteractable(false);
-        else
-           caltropTanksIgnore.SetInteractable(true);
-        end
-    end);
+    caltropImmuneUnitIgnores = UI.CreateRadioButton(caltropImmuneUnitSupportHeading).SetGroup(caltropImmuneUnitBehaviourGroup)
+        .SetText('Armies/special units share the immunity')
+        .SetIsChecked(mode == 'ignore');
 
-    caltropTanksDestroy.SetOnValueChanged(function()
-        if(caltropTanksDestroy.GetIsChecked()) then
-            caltropTanksDestroy.SetInteractable(false);
-        else
-           caltropTanksDestroy.SetInteractable(true);
-        end
-    end);
+    caltropImmuneUnitDestroys = UI.CreateRadioButton(caltropImmuneUnitSupportHeading).SetGroup(caltropImmuneUnitBehaviourGroup)
+        .SetText('Immune unit destroys Caltrops on entry/exit')
+        .SetIsChecked(mode == 'destroy');
 
-    -- initial load
-    if(caltropTanksIgnore.GetIsChecked()) then
-        caltropTanksIgnore.SetInteractable(false);
-        caltropTanksDestroy.SetInteractable(true);
-    else
-        caltropTanksIgnore.SetInteractable(true);
-        caltropTanksDestroy.SetInteractable(false);
+    caltropImmuneUnitNone = UI.CreateRadioButton(caltropImmuneUnitSupportHeading).SetGroup(caltropImmuneUnitBehaviourGroup)
+        .SetText('None')
+        .SetIsChecked(mode == 'none');
+
+    -- the selected radio can't be clicked again (you can't unselect a radio group)
+    for _, radio in ipairs({ caltropImmuneUnitIgnores, caltropImmuneUnitDestroys, caltropImmuneUnitNone }) do
+        radio.SetOnValueChanged(function()
+            radio.SetInteractable(not radio.GetIsChecked());
+        end);
+        -- initial load
+        radio.SetInteractable(not radio.GetIsChecked());
     end
 end
 
@@ -328,7 +337,7 @@ end
 function Create_BarbedWireCard_SubOptions_UI(rootParent)
     acquiringSubOptionsVGroup = UI.CreateVerticalLayoutGroup(rootParent);
 
-    UI.CreateLabel(acquiringSubOptionsVGroup).SetText('Card:').SetColor(BUTTON_COLOURS.LightBlue);
+    UI.CreateLabel(acquiringSubOptionsVGroup).SetText('Card:').SetColor(SUBHEADING_COLOUR);
     local horz = UI.CreateHorizontalLayoutGroup(acquiringSubOptionsVGroup);
     UI.CreateLabel(horz).SetText('Number of pieces to divide the card into').SetPreferredWidth(290);
     barbedWireNumPieces = UI.CreateNumberInputField(horz)
@@ -362,7 +371,7 @@ end
 function Create_BarbedWireCommerce_SubOptions_UI(rootParent)
     acquiringSubOptionsVGroup = UI.CreateVerticalLayoutGroup(rootParent);
 
-    UI.CreateLabel(acquiringSubOptionsVGroup).SetText('Commerce:').SetColor(BUTTON_COLOURS.LightBlue);
+    UI.CreateLabel(acquiringSubOptionsVGroup).SetText('Commerce:').SetColor(SUBHEADING_COLOUR);
 
     local horz = UI.CreateHorizontalLayoutGroup(acquiringSubOptionsVGroup);
     UI.CreateLabel(horz).SetText('Cost of a Barbed Wire').SetPreferredWidth(290);
@@ -386,7 +395,7 @@ function Create_BarbedWire_Behaviour_UI(rootParent)
 
     UI.CreateLabel(optionalsHeading)
         .SetText('Behaviour:')
-        .SetColor(BUTTON_COLOURS.LightBlue);
+        .SetColor(SUBHEADING_COLOUR);
 
     local triggerDurationHorz = UI.CreateHorizontalLayoutGroup(optionalsHeading);
     UI.CreateLabel(triggerDurationHorz)
@@ -401,22 +410,25 @@ function Create_BarbedWire_Behaviour_UI(rootParent)
     barbedWireTrapsArmies = UI.CreateCheckBox(optionalsHeading)
         .SetText("Traps armies")
         .SetIsChecked(Mod.Settings.BarbedWireTrapsArmies == nil or Mod.Settings.BarbedWireTrapsArmies);
-    barbedWireCancelsAirlifts = UI.CreateCheckBox(optionalsHeading)
-        .SetText("Cancels Airlifts")
-        .SetIsChecked(Mod.Settings.BarbedWireCancelsAirlifts or false);
     barbedWireTrapsSpecialUnits = UI.CreateCheckBox(optionalsHeading)
         .SetText("Traps Special Units")
         .SetIsChecked(Mod.Settings.BarbedWireTrapsSpecialUnits or false);
     barbedWireOnlyTriggersOnTrappableUnits = UI.CreateCheckBox(optionalsHeading)
         .SetText("Only trigger if trappable units attacked")
         .SetIsChecked(Mod.Settings.BarbedWireOnlyTriggersOnTrappableUnits == nil or Mod.Settings.BarbedWireOnlyTriggersOnTrappableUnits);
-    barbedWireIsTankSpecialBehaviour = UI.CreateCheckBox(optionalsHeading)
-        .SetText("Include Tank special behaviour")
-        .SetIsChecked(Mod.Settings.BarbedWireIsTankSpecialBehaviour or false);
-    local barbedWireTankContainer = UI.CreateVerticalLayoutGroup(optionalsHeading);
+    UI.CreateLabel(optionalsHeading).SetText("");
+
+    barbedWireIsImmuneUnitEnabled = UI.CreateCheckBox(optionalsHeading)
+        .SetText("Enable immune special unit")
+        .SetIsChecked(Mod.Settings.BarbedWireIsImmuneUnitEnabled or false);
+    local barbedWireImmuneUnitContainer = UI.CreateVerticalLayoutGroup(optionalsHeading);
 
     UI.CreateLabel(optionalsHeading).SetText("");
 
+    UI.CreateLabel(optionalsHeading).SetText('Lifespan Behaviour').SetColor(SUBHEADING_COLOUR);
+    barbedWireBombDestroys = UI.CreateCheckBox(optionalsHeading)
+        .SetText("Bomb destroys")
+        .SetIsChecked(Mod.Settings.BarbedWireBombDestroys or false);
     barbedWireSingleUse = UI.CreateCheckBox(optionalsHeading)
         .SetText("Wire is single use (destroyed instead of resetting) ")
         .SetIsChecked(Mod.Settings.BarbedWireSingleUse or false);
@@ -424,12 +436,14 @@ function Create_BarbedWire_Behaviour_UI(rootParent)
         .SetText("Wire has a limited lifespan?")
         .SetIsChecked(Mod.Settings.BarbedWireHasLimitedLifespan or false);
     local barbedWireLifespanContainer = UI.CreateVerticalLayoutGroup(optionalsHeading);
-    barbedWireBombDestroys = UI.CreateCheckBox(barbedWireLifespanContainer)
-        .SetText("Bomb destroys")
-        .SetIsChecked(Mod.Settings.BarbedWireBombDestroys or false);
+    UI.CreateLabel(optionalsHeading).SetText('Misc.').SetColor(SUBHEADING_COLOUR);
     barbedWireAllyTriggers = UI.CreateCheckBox(optionalsHeading)
         .SetText("Allies trigger barbed wire")
         .SetIsChecked(Mod.Settings.BarbedWireAllyTriggers or false);
+    barbedWireCancelsAirlifts = UI.CreateCheckBox(optionalsHeading)
+        .SetText("Cancels Airlifts")
+        .SetIsChecked(Mod.Settings.BarbedWireCancelsAirlifts or false);
+    UI.CreateLabel(optionalsHeading).SetText("Applies to both primed and triggered barbed wire*").SetColor(BUTTON_COLOURS.DarkGray);
 
     -- Lifespan sub-options
     barbedWireHasLimitedLifespan.SetOnValueChanged(function()
@@ -445,20 +459,20 @@ function Create_BarbedWire_Behaviour_UI(rootParent)
         Create_BarbedWire_Lifespan_SubOptions_UI(barbedWireLifespanContainer);
     end
 
-    -- Tank sub-options
-    barbedWireIsTankSpecialBehaviour.SetOnValueChanged(function()
-        if(barbedWireIsTankSpecialBehaviour.GetIsChecked()) then
-            Create_BarbedWire_Tank_SubOptions_UI(barbedWireTankContainer);
+    -- Immune unit sub-options
+    barbedWireIsImmuneUnitEnabled.SetOnValueChanged(function()
+        if(barbedWireIsImmuneUnitEnabled.GetIsChecked()) then
+            Create_BarbedWire_ImmuneUnit_SubOptions_UI(barbedWireImmuneUnitContainer);
         else
-           UI.Destroy(barbedWireTankSupportHeading);
-           barbedWireTanksIgnore.SetIsChecked(false);
-           barbedWireTanksDestroy.SetIsChecked(false);
+           UI.Destroy(barbedWireImmuneUnitSupportHeading);
+           barbedWireImmuneUnitIgnores.SetIsChecked(false);
+           barbedWireImmuneUnitDestroys.SetIsChecked(false);
         end
     end);
 
      -- one time check for loading up from settings
-    if(barbedWireIsTankSpecialBehaviour.GetIsChecked()) then
-        Create_BarbedWire_Tank_SubOptions_UI(barbedWireTankContainer);
+    if(barbedWireIsImmuneUnitEnabled.GetIsChecked()) then
+        Create_BarbedWire_ImmuneUnit_SubOptions_UI(barbedWireImmuneUnitContainer);
     end
 end
 
@@ -473,43 +487,47 @@ function Create_BarbedWire_Lifespan_SubOptions_UI(rootParent)
         .SetValue(Mod.Settings.BarbedWireLifespan or 2);
 end
 
-function Create_BarbedWire_Tank_SubOptions_UI(rootParent)
-    barbedWireTankSupportHeading = UI.CreateVerticalLayoutGroup(rootParent);
+function Create_BarbedWire_ImmuneUnit_SubOptions_UI(rootParent)
+    barbedWireImmuneUnitSupportHeading = UI.CreateVerticalLayoutGroup(rootParent);
 
-    UI.CreateLabel(barbedWireTankSupportHeading).SetText("Tanks can not be trapped*").SetColor(BUTTON_COLOURS.DarkGray);
+    UI.CreateLabel(barbedWireImmuneUnitSupportHeading).SetText("Immune unit can not be trapped*").SetColor(BUTTON_COLOURS.DarkGray);
 
-    barbedWireTankSpecialBehaviourGroup = UI.CreateRadioButtonGroup(barbedWireTankSupportHeading);
+    local unitNameHorz = UI.CreateHorizontalLayoutGroup(barbedWireImmuneUnitSupportHeading);
+    UI.CreateLabel(unitNameHorz).SetText('Immune unit name').SetPreferredWidth(290);
+    barbedWireImmuneUnitName = UI.CreateTextInputField(unitNameHorz)
+        .SetPlaceholderText('Tank')
+        .SetText(Mod.Settings.BarbedWireImmuneUnitName or 'Tank')
+        .SetPreferredWidth(200);
 
-    barbedWireTanksIgnore = UI.CreateRadioButton(barbedWireTankSupportHeading).SetGroup(barbedWireTankSpecialBehaviourGroup)
-        .SetText('Armies with Tanks ignore triggered barbed wire')
-        .SetIsChecked(Mod.Settings.BarbedWireTanksIgnore or true);
+    -- one radio group: ignore / destroy / none. None needs no setting of its own - it is just neither of the
+    -- other two saved, and is also the default.
+    local mode = 'none';
+    if (Mod.Settings.BarbedWireImmuneUnitDestroys) then
+        mode = 'destroy';
+    elseif (Mod.Settings.BarbedWireImmuneUnitIgnores) then
+        mode = 'ignore';
+    end
 
-    barbedWireTanksDestroy = UI.CreateRadioButton(barbedWireTankSupportHeading).SetGroup(barbedWireTankSpecialBehaviourGroup)
-        .SetText('Tanks destroy barbed wire on entry/exit')
-        .SetIsChecked(Mod.Settings.BarbedWireTanksDestroy or false);
+    barbedWireImmuneUnitBehaviourGroup = UI.CreateRadioButtonGroup(barbedWireImmuneUnitSupportHeading);
 
-    barbedWireTanksIgnore.SetOnValueChanged(function()
-        if(barbedWireTanksIgnore.GetIsChecked()) then
-            barbedWireTanksIgnore.SetInteractable(false);
-        else
-           barbedWireTanksIgnore.SetInteractable(true);
-        end
-    end);
+    barbedWireImmuneUnitIgnores = UI.CreateRadioButton(barbedWireImmuneUnitSupportHeading).SetGroup(barbedWireImmuneUnitBehaviourGroup)
+        .SetText('Armies/special units share the immunity')
+        .SetIsChecked(mode == 'ignore');
 
-    barbedWireTanksDestroy.SetOnValueChanged(function()
-        if(barbedWireTanksDestroy.GetIsChecked()) then
-            barbedWireTanksDestroy.SetInteractable(false);
-        else
-           barbedWireTanksDestroy.SetInteractable(true);
-        end
-    end);
+    barbedWireImmuneUnitDestroys = UI.CreateRadioButton(barbedWireImmuneUnitSupportHeading).SetGroup(barbedWireImmuneUnitBehaviourGroup)
+        .SetText('Immune unit destroys barbed wire on entry/exit')
+        .SetIsChecked(mode == 'destroy');
 
-    -- initial load
-    if(barbedWireTanksIgnore.GetIsChecked()) then
-        barbedWireTanksIgnore.SetInteractable(false);
-        barbedWireTanksDestroy.SetInteractable(true);
-    else
-        barbedWireTanksIgnore.SetInteractable(true);
-        barbedWireTanksDestroy.SetInteractable(false);
+    barbedWireImmuneUnitNone = UI.CreateRadioButton(barbedWireImmuneUnitSupportHeading).SetGroup(barbedWireImmuneUnitBehaviourGroup)
+        .SetText('None')
+        .SetIsChecked(mode == 'none');
+
+    -- the selected radio can't be clicked again (you can't unselect a radio group)
+    for _, radio in ipairs({ barbedWireImmuneUnitIgnores, barbedWireImmuneUnitDestroys, barbedWireImmuneUnitNone }) do
+        radio.SetOnValueChanged(function()
+            radio.SetInteractable(not radio.GetIsChecked());
+        end);
+        -- initial load
+        radio.SetInteractable(not radio.GetIsChecked());
     end
 end

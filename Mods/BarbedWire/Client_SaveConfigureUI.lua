@@ -13,9 +13,14 @@ function Client_SaveConfigureUI(alert, addCard)
     Mod.Settings.IncludeBarbedWire = includeBarbedWire.GetIsChecked();
 
     if(Mod.Settings.IncludeBarbedWire) then
-        Mod.Settings.BarbedWireIsTankSpecialBehaviour = barbedWireIsTankSpecialBehaviour.GetIsChecked();
-        Mod.Settings.BarbedWireTanksIgnore = barbedWireIsTankSpecialBehaviour.GetIsChecked() and barbedWireTanksIgnore.GetIsChecked();
-        Mod.Settings.BarbedWireTanksDestroy = barbedWireIsTankSpecialBehaviour.GetIsChecked() and barbedWireTanksDestroy.GetIsChecked();
+        Mod.Settings.BarbedWireIsImmuneUnitEnabled = barbedWireIsImmuneUnitEnabled.GetIsChecked();
+        Mod.Settings.BarbedWireImmuneUnitName = barbedWireIsImmuneUnitEnabled.GetIsChecked() and (barbedWireImmuneUnitName.GetText():match("^%s*(.-)%s*$")) or nil;
+        if (Mod.Settings.BarbedWireIsImmuneUnitEnabled and (Mod.Settings.BarbedWireImmuneUnitName == nil or Mod.Settings.BarbedWireImmuneUnitName:match("^%s*$"))) then
+            alert("Barbed Wire immune unit name cannot be empty");
+            return;
+        end
+        Mod.Settings.BarbedWireImmuneUnitIgnores = barbedWireIsImmuneUnitEnabled.GetIsChecked() and barbedWireImmuneUnitIgnores.GetIsChecked();
+        Mod.Settings.BarbedWireImmuneUnitDestroys = barbedWireIsImmuneUnitEnabled.GetIsChecked() and barbedWireImmuneUnitDestroys.GetIsChecked();
 
         Mod.Settings.BarbedWireTriggerDuration = barbedWireTriggerDuration.GetValue();
         if (Mod.Settings.BarbedWireTriggerDuration < 1) then
@@ -92,9 +97,14 @@ function Client_SaveConfigureUI(alert, addCard)
     Mod.Settings.IncludeCaltrop = includeCaltrop.GetIsChecked();
 
     if(Mod.Settings.IncludeCaltrop) then
-        Mod.Settings.CaltropIsTankSpecialBehaviour = caltropIsTankSpecialBehaviour.GetIsChecked();
-        Mod.Settings.CaltropTanksIgnore = caltropIsTankSpecialBehaviour.GetIsChecked() and caltropTanksIgnore.GetIsChecked();
-        Mod.Settings.CaltropTanksDestroy = caltropIsTankSpecialBehaviour.GetIsChecked() and caltropTanksDestroy.GetIsChecked();
+        Mod.Settings.CaltropIsImmuneUnitEnabled = caltropIsImmuneUnitEnabled.GetIsChecked();
+        Mod.Settings.CaltropImmuneUnitName = caltropIsImmuneUnitEnabled.GetIsChecked() and (caltropImmuneUnitName.GetText():match("^%s*(.-)%s*$")) or nil;
+        if (Mod.Settings.CaltropIsImmuneUnitEnabled and (Mod.Settings.CaltropImmuneUnitName == nil or Mod.Settings.CaltropImmuneUnitName:match("^%s*$"))) then
+            alert("Caltrop immune unit name cannot be empty");
+            return;
+        end
+        Mod.Settings.CaltropImmuneUnitIgnores = caltropIsImmuneUnitEnabled.GetIsChecked() and caltropImmuneUnitIgnores.GetIsChecked();
+        Mod.Settings.CaltropImmuneUnitDestroys = caltropIsImmuneUnitEnabled.GetIsChecked() and caltropImmuneUnitDestroys.GetIsChecked();
 
         Mod.Settings.CaltropTriggerDuration = caltropTriggerDuration.GetValue();
         if (Mod.Settings.CaltropTriggerDuration < 1) then
