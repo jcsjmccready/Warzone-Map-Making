@@ -192,7 +192,7 @@ function Create_Caltrop_Behaviour_UI(rootParent)
         .SetIsChecked(Mod.Settings.CaltropAllyTriggers or false);
     caltropCancelsAirlifts = UI.CreateCheckBox(optionalsHeading)
         .SetText("Cancels Airlifts")
-        .SetIsChecked(Mod.Settings.CaltropCancelsAirlifts == nil or Mod.Settings.CaltropCancelsAirlifts);
+        .SetIsChecked(Mod.Settings.CaltropCancelsAirlifts or false);
     UI.CreateLabel(optionalsHeading).SetText("Applies to both primed and triggered Caltrops*").SetColor(BUTTON_COLOURS.DarkGray);
 
     -- Lifespan sub-options
@@ -258,6 +258,7 @@ function Create_Caltrop_ImmuneUnit_SubOptions_UI(rootParent)
         mode = 'ignore';
     end
 
+    UI.CreateLabel(caltropImmuneUnitSupportHeading).SetText('Additional Behaviour');
     caltropImmuneUnitBehaviourGroup = UI.CreateRadioButtonGroup(caltropImmuneUnitSupportHeading);
 
     caltropImmuneUnitIgnores = UI.CreateRadioButton(caltropImmuneUnitSupportHeading).SetGroup(caltropImmuneUnitBehaviourGroup)
@@ -508,6 +509,7 @@ function Create_BarbedWire_ImmuneUnit_SubOptions_UI(rootParent)
         mode = 'ignore';
     end
 
+    UI.CreateLabel(barbedWireImmuneUnitSupportHeading).SetText('Additional Behaviour');
     barbedWireImmuneUnitBehaviourGroup = UI.CreateRadioButtonGroup(barbedWireImmuneUnitSupportHeading);
 
     barbedWireImmuneUnitIgnores = UI.CreateRadioButton(barbedWireImmuneUnitSupportHeading).SetGroup(barbedWireImmuneUnitBehaviourGroup)

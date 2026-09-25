@@ -173,7 +173,7 @@ function V2.HandleAttackTransferFromTriggeredTraps(trapTypes, game, order, resul
 		-- success) against this smaller force itself.
 		result.ActualArmies = WL.Armies.Create(0);
 		local event = WL.GameOrderEvent.Create(order.PlayerID, 'Movement blocked by ' .. blockedBy, {}, {});
-		event.TerritoryAnnotationsOpt = { [order.From] = WL.TerritoryAnnotation.Create("Armies stuck", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany)) };
+		event.TerritoryAnnotationsOpt = { [order.From] = WL.TerritoryAnnotation.Create("Armies trapped", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany)) };
 		event.Icon = "Blocked"
 		addNewOrder(event);
 		return false;
