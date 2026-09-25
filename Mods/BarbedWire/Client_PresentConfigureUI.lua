@@ -240,7 +240,7 @@ end
 function Create_Caltrop_ImmuneUnit_SubOptions_UI(rootParent)
     caltropImmuneUnitSupportHeading = UI.CreateVerticalLayoutGroup(rootParent);
 
-    UI.CreateLabel(caltropImmuneUnitSupportHeading).SetText("Immune unit can not be trapped*").SetColor(BUTTON_COLOURS.DarkGray);
+    UI.CreateLabel(caltropImmuneUnitSupportHeading).SetText("Immune unit can not be trapped by this trap*").SetColor(BUTTON_COLOURS.DarkGray);
 
     local unitNameHorz = UI.CreateHorizontalLayoutGroup(caltropImmuneUnitSupportHeading);
     UI.CreateLabel(unitNameHorz).SetText('Immune unit name').SetPreferredWidth(290);
@@ -491,7 +491,7 @@ end
 function Create_BarbedWire_ImmuneUnit_SubOptions_UI(rootParent)
     barbedWireImmuneUnitSupportHeading = UI.CreateVerticalLayoutGroup(rootParent);
 
-    UI.CreateLabel(barbedWireImmuneUnitSupportHeading).SetText("Immune unit can not be trapped*").SetColor(BUTTON_COLOURS.DarkGray);
+    UI.CreateLabel(barbedWireImmuneUnitSupportHeading).SetText("Immune unit can not be trapped by this trap*").SetColor(BUTTON_COLOURS.DarkGray);
 
     local unitNameHorz = UI.CreateHorizontalLayoutGroup(barbedWireImmuneUnitSupportHeading);
     UI.CreateLabel(unitNameHorz).SetText('Immune unit name').SetPreferredWidth(290);
