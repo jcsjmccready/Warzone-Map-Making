@@ -282,6 +282,17 @@ BUTTON_COLOURS = GetButtonColors();
 --     - [Limited Multimove] true indicates whether this is a standard WZ attack order and we're manipulating 'result' to let WZ handle the result of the battle
 --     - [Airstrike]         false indicates that this isn't being done with an attack order, usually b/c the FROM and TO territories are not adjacent and the standard WZ engine can't process these attacks; in this case the result is handled by this code, either FROM/TO directly modified + optional airlift to visibly move units when attack is successful
 --return value is the result with updated AttackingArmiesKilled, DefendingArmiesKilled values & a true/false AttackIsSuccessful indicator
+
+ENABLE_MANUAL_ATTACK_LOGGING = false; -- set to true to print process_manual_attack's debug output
+
+---Logs message if ENABLE_MANUAL_ATTACK_LOGGING is on, otherwise does nothing.
+---@param message string
+function LogManualAttack(message)
+	if (ENABLE_MANUAL_ATTACK_LOGGING) then
+		print(message);
+	end
+end
+
 function process_manual_attack (game, AttackingArmies, DefendingTerritory, result, addNewOrder, boolWZattackTransferOrder)
 	--note armies have combat order of 0, Commanders 10,000, need to get the combat order of Specials from their properties
 	local DefendingArmies = DefendingTerritory.NumArmies;
@@ -303,7 +314,7 @@ function process_manual_attack (game, AttackingArmies, DefendingTerritory, resul
 			--if (unit.AttackPowerPercentage ~= nil) then totalAttackerAttackPowerPercentage = totalAttackerAttackPowerPercentage * unit.AttackPowerPercentage; end
 			--if (unit.DefensePowerPercentage ~= nil) then totalAttackerDefensePowerPercentage = totalAttackerDefensePowerPercentage * unit.DefensePowerPercentage; end
 			--do some math here; remember <0.0 is not possible, 0.0-1.0 is actually -100%-0%, 1.0-2.0 is 0%-100%, etc
-				--printDebug ("SPECIAL ATTACKER "..unit.Name..", APower% "..unit.AttackPowerPercentage..", DPower% "..unit.DefensePowerPercentage..", DmgAbsorb "..unit.DamageAbsorbedWhenAttacked..", DmgToKill "..unit.DamageToKill..", Health "..unit.Health);
+				LogManualAttack("SPECIAL ATTACKER "..unit.Name..", APower% "..tostring(unit.AttackPowerPercentage)..", DPower% "..tostring(unit.DefensePowerPercentage)..", DmgAbsorb "..tostring(unit.DamageAbsorbedWhenAttacked)..", DmgToKill "..tostring(unit.DamageToKill)..", Health "..tostring(unit.Health));
 		-- end
 	end
 	table.sort(sortedAttackerSpecialUnits, function(a, b) return a.CombatOrder < b.CombatOrder; end)
@@ -312,10 +323,10 @@ function process_manual_attack (game, AttackingArmies, DefendingTerritory, resul
 	for _, unit in pairs(DefendingArmies.SpecialUnits) do
 		table.insert(sortedDefenderSpecialUnits, unit);
 		-- if (unit.proxyType == "CustomSpecialUnit") then
-			--if (unit.AttackPowerPercentage ~= nil) then printDebug ("APP "..unit.Name,totalDefenderAttackPowerPercentage,unit.AttackPowerPercentage); totalDefenderAttackPowerPercentage = totalDefenderAttackPowerPercentage * unit.AttackPowerPercentage; end
-			--if (unit.DefensePowerPercentage ~= nil) then printDebug ("DPP "..unit.Name,totalDefenderDefensePowerPercentage,unit.DefensePowerPercentage); totalDefenderDefensePowerPercentage = totalDefenderDefensePowerPercentage * unit.DefensePowerPercentage; end
+			--if (unit.AttackPowerPercentage ~= nil) then LogManualAttack ("APP "..unit.Name..totalDefenderAttackPowerPercentage..unit.AttackPowerPercentage); totalDefenderAttackPowerPercentage = totalDefenderAttackPowerPercentage * unit.AttackPowerPercentage; end
+			--if (unit.DefensePowerPercentage ~= nil) then LogManualAttack ("DPP "..unit.Name..totalDefenderDefensePowerPercentage..unit.DefensePowerPercentage); totalDefenderDefensePowerPercentage = totalDefenderDefensePowerPercentage * unit.DefensePowerPercentage; end
 			--do some math here; remember <0.0 is not possible, 0.0-1.0 is actually -100%-0%, 1.0-2.0 is 0%-100%, etc
-			--printDebug ("SPECIAL DEFENDER "..unit.Name..", APower% "..unit.AttackPowerPercentage..", DPower% "..unit.DefensePowerPercentage..", DmgAbsorb "..unit.DamageAbsorbedWhenAttacked..", DmgToKill "..unit.DamageToKill..", Health "..unit.Health);
+			LogManualAttack("SPECIAL DEFENDER "..unit.Name..", APower% "..tostring(unit.AttackPowerPercentage)..", DPower% "..tostring(unit.DefensePowerPercentage)..", DmgAbsorb "..tostring(unit.DamageAbsorbedWhenAttacked)..", DmgToKill "..tostring(unit.DamageToKill)..", Health "..tostring(unit.Health));
 		-- end
 	end
 	table.sort(sortedDefenderSpecialUnits, function(a, b) return a.CombatOrder < b.CombatOrder; end)
@@ -332,21 +343,21 @@ function process_manual_attack (game, AttackingArmies, DefendingTerritory, resul
 	if (boolTOterritoryHasActiveShield == true) then
 		AttackDamage = 0;
 		DefenseDamage = 0;
-		print ("[ATTACK/TRANSFER] [SHIELD on TARGET TERRITORY] nullify all damage");
+		LogManualAttack("[ATTACK/TRANSFER] [SHIELD on TARGET TERRITORY] nullify all damage");
 	end
 
 	--process Defender damage 1st; if both players are eliminated by this order & they are the last 2 active players in the game, then Defender is eliminated 1st, Attacker wins
-	-- print ("[DEFENDER TAKES DAMAGE] "..AttackDamage..", AttackPower "..AttackPower..", AttackerAttackPower% ".. totalAttackerAttackPowerPercentage..", Off kill rate "..game.Settings.OffenseKillRate.." _________________");
+	LogManualAttack("[DEFENDER TAKES DAMAGE] "..AttackDamage..", AttackPower "..AttackPower..", AttackerAttackPower% ".. totalAttackerAttackPowerPercentage..", Off kill rate "..game.Settings.OffenseKillRate.." _________________");
 	local defenderResult = apply_damage_to_specials_and_armies (sortedDefenderSpecialUnits, DefendingArmies.NumArmies, AttackDamage, game, addNewOrder, boolWZattackTransferOrder, nil);
-	-- print ("[ATTACKER TAKES DAMAGE] "..DefenseDamage..", DefensePower "..DefensePower..", DefenderDefensePower% ".. totalDefenderDefensePowerPercentage..", Def kill rate "..game.Settings.DefenseKillRate.." _________________");
+	LogManualAttack("[ATTACKER TAKES DAMAGE] "..DefenseDamage..", DefensePower "..DefensePower..", DefenderDefensePower% ".. totalDefenderDefensePowerPercentage..", Def kill rate "..game.Settings.DefenseKillRate.." _________________");
 	local attackerResult = apply_damage_to_specials_and_armies (sortedAttackerSpecialUnits, AttackingArmies.NumArmies, DefenseDamage, game, addNewOrder, boolWZattackTransferOrder, {["Flag"]=384, ["Captured Flag"]=384}); --Flag/Captured Flag SUs from Mod#384 (Capture the Flag mod) are invulnerable SUs
 	local boolAttackSuccessful = false; --indicates whether attacker is successful and should move units to target territory and take ownership of it
-	-- print ("[DEFENDER RESULT] #armies "..defenderResult.RemainingArmies .." ["..defenderResult.KilledArmies.. " died], #specials "..#defenderResult.SurvivingSpecials.." ["..#defenderResult.KilledSpecials.. " died, ".. #defenderResult.ClonedSpecials .." cloned]");
-	-- print ("[ATTACKER RESULT] #armies "..attackerResult.RemainingArmies .." ["..attackerResult.KilledArmies.. " died], #specials "..#attackerResult.SurvivingSpecials.." ["..#attackerResult.KilledSpecials.. " died, ".. #attackerResult.ClonedSpecials .." cloned]");
+	LogManualAttack("[DEFENDER RESULT] #armies "..defenderResult.RemainingArmies .." ["..defenderResult.KilledArmies.. " died], #specials "..#defenderResult.SurvivingSpecials.." ["..#defenderResult.KilledSpecials.. " died, ".. #defenderResult.ClonedSpecials .." cloned]");
+	LogManualAttack("[ATTACKER RESULT] #armies "..attackerResult.RemainingArmies .." ["..attackerResult.KilledArmies.. " died], #specials "..#attackerResult.SurvivingSpecials.." ["..#attackerResult.KilledSpecials.. " died, ".. #attackerResult.ClonedSpecials .." cloned]");
 	local damageToAllSpecialUnits = concatenateArrays (attackerResult.DamageToSpecialUnits, defenderResult.DamageToSpecialUnits); --combine elements from each array for attacker/defender to get a single array
-	for k,v in pairs (defenderResult.DamageToSpecialUnits) do print ("[SU Def damage] SU "..k..", damage "..v); end
-	for k,v in pairs (attackerResult.DamageToSpecialUnits) do print ("[SU Att damage] SU "..k..", damage "..v); end
-	for k,v in pairs (damageToAllSpecialUnits) do print ("[SU Both damage] SU "..k..", damage "..v); end
+	for k,v in pairs (defenderResult.DamageToSpecialUnits) do LogManualAttack("[SU Def damage] SU "..k..", damage "..v); end
+	for k,v in pairs (attackerResult.DamageToSpecialUnits) do LogManualAttack("[SU Att damage] SU "..k..", damage "..v); end
+	for k,v in pairs (damageToAllSpecialUnits) do LogManualAttack("[SU Both damage] SU "..k..", damage "..v); end
 
 	--if all of defender's armies & SUs are killed & attacker still has at least 1 army or SU surviving, attack is successful, transfer the armies
 	--note that both sides reduced to 0 means attack is unsuccessful, territory not captured
