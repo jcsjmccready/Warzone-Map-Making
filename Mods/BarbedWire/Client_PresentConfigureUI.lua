@@ -163,6 +163,18 @@ function Create_Caltrop_Behaviour_UI(rootParent)
     caltropTrapsSpecialUnits = UI.CreateCheckBox(optionalsHeading)
         .SetText("Traps Special Units")
         .SetIsChecked(Mod.Settings.CaltropTrapsSpecialUnits == nil or Mod.Settings.CaltropTrapsSpecialUnits);
+    caltropTrapsSpecialUnits.SetOnValueChanged(function()
+        -- keep the immune unit's None option in sync, if its sub-options currently exist
+        if (not UI.IsDestroyed(caltropImmuneUnitNone)) then
+            if (not caltropTrapsSpecialUnits.GetIsChecked() and caltropImmuneUnitNone.GetIsChecked()) then
+                caltropImmuneUnitNone.SetIsChecked(false);
+                caltropImmuneUnitIgnores.SetIsChecked(true);
+                caltropImmuneUnitIgnores.SetInteractable(false);
+                caltropImmuneUnitDestroys.SetInteractable(true);
+            end
+            caltropImmuneUnitNone.SetInteractable(not caltropImmuneUnitNone.GetIsChecked() and caltropTrapsSpecialUnits.GetIsChecked());
+        end
+    end);
     caltropOnlyTriggersOnTrappableUnits = UI.CreateCheckBox(optionalsHeading)
         .SetText("Only trigger if trappable units attacked")
         .SetIsChecked(Mod.Settings.CaltropOnlyTriggersOnTrappableUnits == nil or Mod.Settings.CaltropOnlyTriggersOnTrappableUnits);
@@ -250,11 +262,16 @@ function Create_Caltrop_ImmuneUnit_SubOptions_UI(rootParent)
         .SetPreferredWidth(200);
 
     -- one radio group: ignore / destroy / none. None needs no setting of its own - it is just neither of the
-    -- other two saved, and is also the default.
+    -- other two saved, and is also the default. None only makes sense when the trap traps special units
+    -- (only then is the immune unit ever a candidate for trapping in the first place) - forced off None
+    -- (onto Ignore) below whenever Traps Special Units is off.
     local mode = 'none';
     if (Mod.Settings.CaltropImmuneUnitDestroys) then
         mode = 'destroy';
     elseif (Mod.Settings.CaltropImmuneUnitIgnores) then
+        mode = 'ignore';
+    end
+    if (mode == 'none' and not caltropTrapsSpecialUnits.GetIsChecked()) then
         mode = 'ignore';
     end
 
@@ -274,13 +291,20 @@ function Create_Caltrop_ImmuneUnit_SubOptions_UI(rootParent)
         .SetIsChecked(mode == 'none');
 
     -- the selected radio can't be clicked again (you can't unselect a radio group)
-    for _, radio in ipairs({ caltropImmuneUnitIgnores, caltropImmuneUnitDestroys, caltropImmuneUnitNone }) do
+    for _, radio in ipairs({ caltropImmuneUnitIgnores, caltropImmuneUnitDestroys }) do
         radio.SetOnValueChanged(function()
             radio.SetInteractable(not radio.GetIsChecked());
         end);
         -- initial load
         radio.SetInteractable(not radio.GetIsChecked());
     end
+
+    -- None is additionally disabled (unselectable) whenever Traps Special Units is off - with it off, the
+    -- immune unit is never trapped either way, so None (and its 'no-op' distinction from Ignore) is meaningless
+    caltropImmuneUnitNone.SetOnValueChanged(function()
+        caltropImmuneUnitNone.SetInteractable(not caltropImmuneUnitNone.GetIsChecked() and caltropTrapsSpecialUnits.GetIsChecked());
+    end);
+    caltropImmuneUnitNone.SetInteractable(not caltropImmuneUnitNone.GetIsChecked() and caltropTrapsSpecialUnits.GetIsChecked());
 end
 
 function Create_BarbedWireEnabled_UI(rootParent)
@@ -414,6 +438,18 @@ function Create_BarbedWire_Behaviour_UI(rootParent)
     barbedWireTrapsSpecialUnits = UI.CreateCheckBox(optionalsHeading)
         .SetText("Traps Special Units")
         .SetIsChecked(Mod.Settings.BarbedWireTrapsSpecialUnits or false);
+    barbedWireTrapsSpecialUnits.SetOnValueChanged(function()
+        -- keep the immune unit's None option in sync, if its sub-options currently exist
+        if (not UI.IsDestroyed(barbedWireImmuneUnitNone)) then
+            if (not barbedWireTrapsSpecialUnits.GetIsChecked() and barbedWireImmuneUnitNone.GetIsChecked()) then
+                barbedWireImmuneUnitNone.SetIsChecked(false);
+                barbedWireImmuneUnitIgnores.SetIsChecked(true);
+                barbedWireImmuneUnitIgnores.SetInteractable(false);
+                barbedWireImmuneUnitDestroys.SetInteractable(true);
+            end
+            barbedWireImmuneUnitNone.SetInteractable(not barbedWireImmuneUnitNone.GetIsChecked() and barbedWireTrapsSpecialUnits.GetIsChecked());
+        end
+    end);
     barbedWireOnlyTriggersOnTrappableUnits = UI.CreateCheckBox(optionalsHeading)
         .SetText("Only trigger if trappable units attacked")
         .SetIsChecked(Mod.Settings.BarbedWireOnlyTriggersOnTrappableUnits == nil or Mod.Settings.BarbedWireOnlyTriggersOnTrappableUnits);
@@ -501,11 +537,16 @@ function Create_BarbedWire_ImmuneUnit_SubOptions_UI(rootParent)
         .SetPreferredWidth(200);
 
     -- one radio group: ignore / destroy / none. None needs no setting of its own - it is just neither of the
-    -- other two saved, and is also the default.
+    -- other two saved, and is also the default. None only makes sense when the trap traps special units
+    -- (only then is the immune unit ever a candidate for trapping in the first place) - forced off None
+    -- (onto Ignore) below whenever Traps Special Units is off.
     local mode = 'none';
     if (Mod.Settings.BarbedWireImmuneUnitDestroys) then
         mode = 'destroy';
     elseif (Mod.Settings.BarbedWireImmuneUnitIgnores) then
+        mode = 'ignore';
+    end
+    if (mode == 'none' and not barbedWireTrapsSpecialUnits.GetIsChecked()) then
         mode = 'ignore';
     end
 
@@ -525,11 +566,18 @@ function Create_BarbedWire_ImmuneUnit_SubOptions_UI(rootParent)
         .SetIsChecked(mode == 'none');
 
     -- the selected radio can't be clicked again (you can't unselect a radio group)
-    for _, radio in ipairs({ barbedWireImmuneUnitIgnores, barbedWireImmuneUnitDestroys, barbedWireImmuneUnitNone }) do
+    for _, radio in ipairs({ barbedWireImmuneUnitIgnores, barbedWireImmuneUnitDestroys }) do
         radio.SetOnValueChanged(function()
             radio.SetInteractable(not radio.GetIsChecked());
         end);
         -- initial load
         radio.SetInteractable(not radio.GetIsChecked());
     end
+
+    -- None is additionally disabled (unselectable) whenever Traps Special Units is off - with it off, the
+    -- immune unit is never trapped either way, so None (and its 'no-op' distinction from Ignore) is meaningless
+    barbedWireImmuneUnitNone.SetOnValueChanged(function()
+        barbedWireImmuneUnitNone.SetInteractable(not barbedWireImmuneUnitNone.GetIsChecked() and barbedWireTrapsSpecialUnits.GetIsChecked());
+    end);
+    barbedWireImmuneUnitNone.SetInteractable(not barbedWireImmuneUnitNone.GetIsChecked() and barbedWireTrapsSpecialUnits.GetIsChecked());
 end
