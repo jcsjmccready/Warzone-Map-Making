@@ -1,4 +1,4 @@
-require("Utilities");
+require("Utilities.CommonUtils");
 
 ---Client_PresentSettingsUI hook
 ---@param rootParent RootParent
@@ -23,6 +23,10 @@ function Client_PresentSettingsUI(rootParent)
 
     if(Mod.Settings.isDamageTypeEmergencyBlockade) then
         damageTypeMessage = "an emergency blockade card is automatically played on it.";
+    end
+
+    if(Mod.Settings.isDamageTypeNuke) then
+        damageTypeMessage = "it is nuked.";
     end
 
     local additionalActions = {};

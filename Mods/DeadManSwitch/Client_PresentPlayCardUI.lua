@@ -1,4 +1,4 @@
-require('Utilities')
+require('Utilities.CommonUtils')
 
 ---Client_PresentPlayCardUI
 ---@param game GameClientHook
@@ -43,7 +43,7 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
 
                 local jumpToSpot = WL.RectangleVM.Create(td.MiddlePointX, td.MiddlePointY, td.MiddlePointX, td.MiddlePointY);
 
-                if (playCard("Build a Dead Man's Switch on " .. TargetTerritoryName, "CreateDMS_" .. TargetTerritoryID, WL.TurnPhase.Attacks, {}, jumpToSpot)) then
+                if (playCard("Build a Dead Man's Switch on " .. TargetTerritoryName, CREATE_DMS_MOD_DATA_PREFIX .. TargetTerritoryID, WL.TurnPhase.Attacks, {}, jumpToSpot)) then
                     Game.HighlightTerritories({});
                     close();
                 end
@@ -59,6 +59,7 @@ function TargetTerritoryClicked()
     PlayCardBtn.SetInteractable(false);
 end
 
+---@param terrDetails TerritoryDetails | nil # The clicked territory, nil if the click request was cancelled
 function TerritoryClicked(terrDetails)
 	if UI.IsDestroyed(TargetTerritoryBtn) then
 		-- Dialog was destroyed, so we don't need to intercept the click anymore
