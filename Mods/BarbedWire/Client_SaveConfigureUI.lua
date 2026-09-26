@@ -165,6 +165,18 @@ function Client_SaveConfigureUI(alert, addCard)
                 Mod.Settings.CaltropCardWeight);
 
             Mod.Settings.CaltropCardID = caltropCardID;
+        else
+            Mod.Settings.CaltropCost = caltropCost.GetValue();
+            Mod.Settings.CaltropMaxPerPlayer = caltropMaxPerPlayer.GetValue();
+
+            if (Mod.Settings.CaltropCost < 0) then
+                alert("Cost of a Caltrop cannot be less than 0");
+                return;
+            end
+            if (Mod.Settings.CaltropMaxPerPlayer < 1) then
+                alert("Maximum Caltrops a player can own at once must be at least 1");
+                return;
+            end
         end
     end
 

@@ -88,6 +88,7 @@ function Create_CaltropEnabled_UI(rootParent)
             caltropIsAcquiringTypeCommerce.SetInteractable(false);
             caltropIsAcquiringTypeCard.SetInteractable(true);
             UI.Destroy(caltropAcquiringSubOptionsVGroup);
+            Create_CaltropCommerce_SubOptions_UI(caltropAcquiringSubOptionsParent);
         end
     end);
 
@@ -97,6 +98,7 @@ function Create_CaltropEnabled_UI(rootParent)
         Create_CaltropCard_SubOptions_UI(caltropAcquiringSubOptionsParent);
     else
         caltropIsAcquiringTypeCommerce.SetInteractable(false);
+        Create_CaltropCommerce_SubOptions_UI(caltropAcquiringSubOptionsParent);
     end
 
     ---- Behaviour
@@ -136,6 +138,26 @@ function Create_CaltropCard_SubOptions_UI(rootParent)
         .SetSliderMinValue(0)
         .SetSliderMaxValue(5)
         .SetValue(Mod.Settings.CaltropInitialPieces or 1);
+end
+
+function Create_CaltropCommerce_SubOptions_UI(rootParent)
+    caltropAcquiringSubOptionsVGroup = UI.CreateVerticalLayoutGroup(rootParent);
+
+    UI.CreateLabel(caltropAcquiringSubOptionsVGroup).SetText('Commerce:').SetColor(BUTTON_COLOURS.LightBlue);
+
+    local horz = UI.CreateHorizontalLayoutGroup(caltropAcquiringSubOptionsVGroup);
+    UI.CreateLabel(horz).SetText('Cost of a Caltrop').SetPreferredWidth(290);
+    caltropCost = UI.CreateNumberInputField(horz)
+        .SetSliderMinValue(0)
+        .SetSliderMaxValue(50)
+        .SetValue(Mod.Settings.CaltropCost or 5);
+
+    local horz = UI.CreateHorizontalLayoutGroup(caltropAcquiringSubOptionsVGroup);
+    UI.CreateLabel(horz).SetText('Maximum number of Caltrops a player can own at once').SetPreferredWidth(290);
+    caltropMaxPerPlayer = UI.CreateNumberInputField(horz)
+        .SetSliderMinValue(1)
+        .SetSliderMaxValue(20)
+        .SetValue(Mod.Settings.CaltropMaxPerPlayer or 3);
 end
 
 function Create_Caltrop_Behaviour_UI(rootParent)

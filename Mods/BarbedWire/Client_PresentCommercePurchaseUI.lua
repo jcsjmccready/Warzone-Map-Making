@@ -4,108 +4,125 @@ require('Utilities')
 ---@param game GameClientHook
 ---@param close fun() # Zero parameter function that closes the dialog
 function Client_PresentCommercePurchaseUI(rootParent, game, close)
-    CommerceGame = game;
-    CommerceClose = close;
-
     local vert = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
 
-    local horz = UI.CreateHorizontalLayoutGroup(vert).SetFlexibleWidth(1);
-    UI.CreateLabel(horz).SetText("Barbed Wire").SetColor(BUTTON_COLOURS.Yellow).SetMinWidth(40);
-    UI.CreateLabel(horz).SetText("If a territory containing a Barbed Wire is successfully captured, on the following turn, attack/transfer orders out of that territory will be blocked.");
+    if (Mod.Settings.IncludeBarbedWire and Mod.Settings.isAcquiringTypeCard ~= nil and not Mod.Settings.isAcquiringTypeCard) then
+        Create_TrapCommerce_Section_UI(vert, game, "BarbedWire", "Barbed Wire",
+            "If a territory containing a Barbed Wire is successfully captured, on the following turn, attack/transfer orders out of that territory will be blocked.");
+    end
 
-    local horz = UI.CreateHorizontalLayoutGroup(vert).SetFlexibleWidth(1);
-    UI.CreateLabel(horz).SetText("Cost: " .. (Mod.Settings.BarbedWireCost or 0) .. " gold")
+    if (Mod.Settings.IncludeCaltrop and Mod.Settings.CaltropIsAcquiringTypeCard ~= nil and not Mod.Settings.CaltropIsAcquiringTypeCard) then
+        Create_TrapCommerce_Section_UI(vert, game, "Caltrop", "Caltrop",
+            "If a territory containing a Caltrop is successfully captured, on the following turn, attack/transfer orders out of that territory will be blocked.");
+    end
+end
+
+---One trap's "Cost / Limit / Build on Territory" section of the Commerce purchase dialog.
+---@param rootParent RootParent
+---@param game GameClientHook
+---@param prefix string # the trap's settings prefix, i.e. its V2_TrapType.Key ("BarbedWire" | "Caltrop")
+---@param displayName string
+---@param description string
+function Create_TrapCommerce_Section_UI(rootParent, game, prefix, displayName, description)
+    local vert = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
+
+    local headerHorz = UI.CreateHorizontalLayoutGroup(vert).SetFlexibleWidth(1);
+    UI.CreateLabel(headerHorz).SetText(displayName).SetColor(BUTTON_COLOURS.Yellow).SetMinWidth(60);
+    UI.CreateLabel(headerHorz).SetText(description);
+
+    local payloadPrefix = "Create" .. prefix .. "Commerce_";
+    local primedStructureID = Mod.PublicGameData[prefix .. "PrimedStructureID"];
+    local triggeredStructureID = Mod.PublicGameData[prefix .. "TriggeredStructureID"];
+
+    ---@return integer
+    local function countOwnedAndQueued()
+        local count = CountPlayerTrapPieces(game.LatestStanding, game.Us.ID, primedStructureID, triggeredStructureID);
+
+        for _, order in pairs(game.Orders) do
+            if (order.proxyType == 'GameOrderCustom' and startsWith(order.Payload, payloadPrefix)) then
+                count = count + 1;
+            end
+        end
+
+        return count;
+    end
+
+    ---@param currentCount integer
+    ---@return string
+    local function limitLabelText(currentCount)
+        return "Limit: " .. currentCount .. "/" .. (Mod.Settings[prefix .. "MaxPerPlayer"] or 0) .. " per player";
+    end
+
+    local costLimitHorz = UI.CreateHorizontalLayoutGroup(vert).SetFlexibleWidth(1);
+    UI.CreateLabel(costLimitHorz).SetText("Cost: " .. (Mod.Settings[prefix .. "Cost"] or 0) .. " gold")
         .SetFlexibleWidth(0.5)
         .SetColor(BUTTON_COLOURS.Bronze);
 
-    local currentCount = CommerceCountOwnedAndQueuedBarbedWire(game);
-
-    CommerceLimitLabel = UI.CreateLabel(horz).SetText(CommerceLimitLabelText(currentCount))
+    local limitLabel = UI.CreateLabel(costLimitHorz).SetText(limitLabelText(countOwnedAndQueued()))
         .SetFlexibleWidth(0.5)
         .SetColor(BUTTON_COLOURS.Bronze);
 
-    CommerceTargetTerritoryBtn = UI.CreateButton(vert)
+    local targetTerritoryBtn;
+
+    -- Territory on click callback
+    ---@param terrDetails TerritoryDetailsVM | nil
+    local function territoryClicked(terrDetails)
+        if UI.IsDestroyed(targetTerritoryBtn) then
+            -- Dialog was destroyed, so we don't need to intercept the click anymore
+            return WL.CancelClickIntercept;
+        end
+
+        if (terrDetails == nil) then
+            --The click request was cancelled. Let the player try again.
+            targetTerritoryBtn.SetInteractable(true);
+            return;
+        end
+
+        local terr = game.LatestStanding.Territories[terrDetails.ID];
+        if (terr == nil or terr.OwnerPlayerID ~= game.Us.ID) then
+            --Not a territory the player controls - reset and let them press the button again to retry.
+            targetTerritoryBtn.SetInteractable(true);
+            game.HighlightTerritories({});
+            return;
+        end
+
+        local cost = Mod.Settings[prefix .. "Cost"] or 0;
+        local order = WL.GameOrderCustom.Create(
+            game.Us.ID,
+            "Build a " .. displayName .. " on " .. terrDetails.Name,
+            payloadPrefix .. terrDetails.ID,
+            { [WL.ResourceType.Gold] = cost },
+            WL.TurnPhase.Attacks);
+
+        -- Re-assign rather than mutate in place: Orders is a snapshot, so table.insert on the value returned by
+        -- game.Orders alone wouldn't persist the new order back to the game.
+        local orders = game.Orders;
+        table.insert(orders, order);
+        game.Orders = orders;
+
+        limitLabel.SetText(limitLabelText(countOwnedAndQueued()));
+
+        -- Reset state
+        game.HighlightTerritories({});
+        targetTerritoryBtn.SetInteractable(true);
+    end
+
+    targetTerritoryBtn = UI.CreateButton(vert)
         .SetText("Build on Territory")
-        .SetOnClick(CommerceTargetTerritoryClicked)
+        .SetOnClick(function()
+            local currentCount = countOwnedAndQueued();
+            limitLabel.SetText(limitLabelText(currentCount));
+
+            local maxAllowed = Mod.Settings[prefix .. "MaxPerPlayer"] or 0;
+            if (currentCount >= maxAllowed) then
+                UI.Alert("You already own or have queued " .. currentCount .. " " .. displayName .. "(s). You can only have " .. maxAllowed .. ".");
+                return;
+            end
+
+            game.HighlightTerritories({}); --clear any territories highlighted from a previous failed territory selection
+            targetTerritoryBtn.SetInteractable(false);
+            UI.InterceptNextTerritoryClick(territoryClicked);
+        end)
         .SetFlexibleWidth(1)
         .SetColor(BUTTON_COLOURS.DarkGreen);
-end
-
----@param currentCount integer
-function CommerceLimitLabelText(currentCount)
-    return "Limit: " .. currentCount .. "/" .. (Mod.Settings.BarbedWireMaxPerPlayer or 0) .. " per player";
-end
-
----@param game GameClientHook
-function CommerceCountOwnedAndQueuedBarbedWire(game)
-    local primedStructureID = Mod.PublicGameData.BarbedWirePrimedStructureID;
-    local triggeredStructureID = Mod.PublicGameData.BarbedWireTriggeredStructureID;
-    local count = CountPlayerTrapPieces(game.LatestStanding, game.Us.ID, primedStructureID, triggeredStructureID);
-
-    for _, order in pairs(game.Orders) do
-        if (order.proxyType == 'GameOrderCustom' and startsWith(order.Payload, "CreateBarbedWireCommerce_")) then
-            count = count + 1;
-        end
-    end
-
-    return count;
-end
-
---- Initiate territory selection for the Barbed Wire purchase
-function CommerceTargetTerritoryClicked()
-    local currentCount = CommerceCountOwnedAndQueuedBarbedWire(CommerceGame);
-    CommerceLimitLabel.SetText(CommerceLimitLabelText(currentCount));
-
-    local maxAllowed = Mod.Settings.BarbedWireMaxPerPlayer or 0;
-    if (currentCount >= maxAllowed) then
-        UI.Alert("You already own or have queued " .. currentCount .. " Barbed Wire(s). You can only have " .. maxAllowed .. ".");
-        return;
-    end
-
-    CommerceGame.HighlightTerritories({}); --clear any territories highlighted from a previous failed territory selection
-    CommerceTargetTerritoryBtn.SetInteractable(false);
-    UI.InterceptNextTerritoryClick(CommerceTerritoryClicked);
-end
-
--- Territory on click callback
----@param terrDetails TerritoryDetailsVM | nil
-function CommerceTerritoryClicked(terrDetails)
-    if UI.IsDestroyed(CommerceTargetTerritoryBtn) then
-        -- Dialog was destroyed, so we don't need to intercept the click anymore
-        return WL.CancelClickIntercept;
-    end
-
-    if (terrDetails == nil) then
-        --The click request was cancelled. Let the player try again.
-        CommerceTargetTerritoryBtn.SetInteractable(true);
-        return;
-    end
-
-    local terr = CommerceGame.LatestStanding.Territories[terrDetails.ID];
-    if (terr == nil or terr.OwnerPlayerID ~= CommerceGame.Us.ID) then
-        --Not a territory the player controls - reset and let them press the button again to retry.
-        CommerceTargetTerritoryBtn.SetInteractable(true);
-        CommerceGame.HighlightTerritories({});
-        return;
-    end
-
-    local cost = Mod.Settings.BarbedWireCost or 0;
-    local order = WL.GameOrderCustom.Create(
-        CommerceGame.Us.ID,
-        "Build a Barbed Wire on " .. terrDetails.Name,
-        "CreateBarbedWireCommerce_" .. terrDetails.ID,
-        { [WL.ResourceType.Gold] = cost },
-        WL.TurnPhase.Attacks);
-
-    -- Re-assign rather than mutate in place: Orders is a snapshot, so table.insert on the value returned by
-    -- CommerceGame.Orders alone wouldn't persist the new order back to the game.
-    local orders = CommerceGame.Orders;
-    table.insert(orders, order);
-    CommerceGame.Orders = orders;
-
-    CommerceLimitLabel.SetText(CommerceLimitLabelText(CommerceCountOwnedAndQueuedBarbedWire(CommerceGame)));
-
-    -- Reset state
-    CommerceGame.HighlightTerritories({});
-    CommerceTargetTerritoryBtn.SetInteractable(true);
 end

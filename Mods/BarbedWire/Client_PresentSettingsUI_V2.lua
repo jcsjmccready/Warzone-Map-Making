@@ -76,13 +76,11 @@ function PresentSettingsV2.ShowTrap(rootParent, prefix, displayName, isAcquiring
         UI.CreateLabel(cardVGroup).SetText("Card Weight: " .. Mod.Settings[prefix .. "CardWeight"]);
         UI.CreateLabel(cardVGroup).SetText("Minimum Pieces: " .. Mod.Settings[prefix .. "MinPieces"]);
         UI.CreateLabel(cardVGroup).SetText("Initial Pieces: " .. Mod.Settings[prefix .. "InitialPieces"]);
-    elseif (prefix == "BarbedWire") then
+    else
         local commerceVGroup = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
         UI.CreateLabel(commerceVGroup).SetText(displayName .. " Commerce:");
         UI.CreateLabel(commerceVGroup).SetText("Cost: " .. Mod.Settings[prefix .. "Cost"] .. " gold");
         UI.CreateLabel(commerceVGroup).SetText("Limit: " .. Mod.Settings[prefix .. "MaxPerPlayer"] .. " per player");
-    else
-        UI.CreateLabel(rootParent).SetText(displayName .. " is acquired via Commerce");
     end
 
     UI.CreateVerticalLayoutGroup(rootParent);
