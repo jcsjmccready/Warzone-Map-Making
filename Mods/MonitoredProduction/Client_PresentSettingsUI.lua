@@ -7,38 +7,63 @@ function Client_PresentSettingsUI(rootParent)
 
     local descriptionVGroup = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
 
-    UI.CreateLabel(descriptionVGroup).SetText("At the end of the turn, your territories or cities provide a configurable amount of income while under the effect of a Reconnaissance or Surveillance Card.");
+    UI.CreateLabel(descriptionVGroup).SetText("Vision cards can be used to increase/decrease the income of territory owners");
 
     UI.CreateVerticalLayoutGroup(rootParent);
 
     local modVGroup = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
-    UI.CreateLabel(modVGroup).SetText("Mod Behaviour:").SetColor(SUBHEADING_COLOUR);
 
     if (Mod.Settings.ReconnaissanceEnabled or Mod.Settings.MonitorCities or Mod.Settings.MonitorTerritories) then
-        UI.CreateLabel(modVGroup).SetText("Reconnaissance:").SetColor(SUBHEADING_COLOUR2);
+        UI.CreateLabel(modVGroup).SetText("Reconnaissance:").SetColor(SUBHEADING_COLOUR);
 
-        if (Mod.Settings.MonitorCities) then
-            if (Mod.Settings.CityIncomeModePerCity) then
-                UI.CreateLabel(modVGroup).SetText(Mod.Settings.EffectStrength .. " increased gold per city");
-            elseif (Mod.Settings.CityIncomeModePerTerritoryWithCity) then
-                UI.CreateLabel(modVGroup).SetText(Mod.Settings.EffectStrength .. " increased gold per territory with a city");
-            end
-        elseif (Mod.Settings.MonitorTerritories) then
-            UI.CreateLabel(modVGroup).SetText(Mod.Settings.EffectStrength .. " increased income per territory");
-        end
+        local unitText = GetMonitoredUnitText(Mod.Settings.MonitorCities, Mod.Settings.CityIncomeModePerCity, Mod.Settings.CityIncomeModePerTerritoryWithCity, Mod.Settings.MonitorTerritories);
+        CreateStrengthLabels(modVGroup, Mod.Settings.EffectStrength or 0, Mod.Settings.OpponentEffectStrength or 0, unitText);
     end
 
     if (Mod.Settings.SurveillanceEnabled) then
         UI.CreateLabel(modVGroup).SetText("Surveillance:").SetColor(SUBHEADING_COLOUR2);
 
-        if (Mod.Settings.SurveillanceMonitorCities) then
-            if (Mod.Settings.SurveillanceCityIncomeModePerCity) then
-                UI.CreateLabel(modVGroup).SetText(Mod.Settings.SurveillanceEffectStrength .. " increased gold per city");
-            elseif (Mod.Settings.SurveillanceCityIncomeModePerTerritoryWithCity) then
-                UI.CreateLabel(modVGroup).SetText(Mod.Settings.SurveillanceEffectStrength .. " increased gold per territory with a city");
-            end
-        elseif (Mod.Settings.SurveillanceMonitorTerritories) then
-            UI.CreateLabel(modVGroup).SetText(Mod.Settings.SurveillanceEffectStrength .. " increased income per territory");
-        end
+        local unitText = GetMonitoredUnitText(Mod.Settings.SurveillanceMonitorCities, Mod.Settings.SurveillanceCityIncomeModePerCity, Mod.Settings.SurveillanceCityIncomeModePerTerritoryWithCity, Mod.Settings.SurveillanceMonitorTerritories);
+        CreateStrengthLabels(modVGroup, Mod.Settings.SurveillanceEffectStrength or 0, Mod.Settings.SurveillanceOpponentEffectStrength or 0, unitText);
     end
+end
+
+--returns e.g. "gold per city", or nil when the monitoring settings are incomplete
+function GetMonitoredUnitText(monitorCities, perCity, perTerritoryWithCity, monitorTerritories)
+    if (monitorCities) then
+        if (perCity) then
+            return "gold per city";
+        elseif (perTerritoryWithCity) then
+            return "gold per territory with a city";
+        end
+    elseif (monitorTerritories) then
+        return "income per territory";
+    end
+    return nil;
+end
+
+function CreateStrengthLabels(parent, strength, opponentStrength, unitText)
+    if (unitText == nil) then
+        return;
+    end
+
+    if (strength ~= 0) then
+        UI.CreateLabel(parent).SetText(FormatChange(strength) .. " " .. unitText .. " you or your team own");
+    end
+
+    if (opponentStrength ~= 0) then
+        UI.CreateLabel(parent).SetText(FormatChange(opponentStrength) .. " " .. unitText .. " an opponent owns");
+    end
+
+    if (strength < 0 or opponentStrength < 0) then
+        UI.CreateLabel(parent).SetText("Reductions cannot take a player below 0").SetColor(BUTTON_COLOURS.DarkGray);
+    end
+end
+
+--returns the value with an explicit sign, e.g. "+5" or "-3"
+function FormatChange(value)
+    if (value > 0) then
+        return "+" .. value;
+    end
+    return tostring(value);
 end

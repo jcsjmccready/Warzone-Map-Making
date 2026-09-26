@@ -60,11 +60,18 @@ function Create_ReconnaissanceConfig_UI(rootParent)
     UI.CreateLabel(reconConfigContent).SetText('Reconnaissance Settings:').SetColor(SUBHEADING_COLOUR);
 
     local horz = UI.CreateHorizontalLayoutGroup(reconConfigContent);
-    UI.CreateLabel(horz).SetText('Temporary income gained per instance of friendly reconned item:').SetPreferredWidth(290);
+    UI.CreateLabel(horz).SetText('Temporary income change per instance of friendly reconned item:').SetPreferredWidth(290);
     effectStrength = UI.CreateNumberInputField(horz)
-        .SetSliderMinValue(1)
+        .SetSliderMinValue(-5)
         .SetSliderMaxValue(20)
-        .SetValue(Mod.Settings.EffectStrength or 5);
+        .SetValue(Mod.Settings.EffectStrength or 2);
+
+    local opponentHorz = UI.CreateHorizontalLayoutGroup(reconConfigContent);
+    UI.CreateLabel(opponentHorz).SetText('Temporary income change per instance of opponent reconned item:').SetPreferredWidth(290);
+    opponentEffectStrength = UI.CreateNumberInputField(opponentHorz)
+        .SetSliderMinValue(-5)
+        .SetSliderMaxValue(20)
+        .SetValue(Mod.Settings.OpponentEffectStrength or -2);
 
     local monitorHeading = UI.CreateVerticalLayoutGroup(reconConfigContent);
     UI.CreateLabel(monitorHeading).SetText('Monitoring Category:');
@@ -165,11 +172,18 @@ function Create_SurveillanceConfig_UI(rootParent)
     UI.CreateLabel(surveillanceConfigContent).SetText('Surveillance Settings:').SetColor(BUTTON_COLOURS.LightBlue);
 
     local horz = UI.CreateHorizontalLayoutGroup(surveillanceConfigContent);
-    UI.CreateLabel(horz).SetText('Temporary income gained per instance of friendly surveilled item:').SetPreferredWidth(290);
+    UI.CreateLabel(horz).SetText('Temporary income change per instance of friendly surveilled item:').SetPreferredWidth(290);
     surveillanceEffectStrength = UI.CreateNumberInputField(horz)
-        .SetSliderMinValue(1)
+        .SetSliderMinValue(-5)
         .SetSliderMaxValue(20)
-        .SetValue(Mod.Settings.SurveillanceEffectStrength or 5);
+        .SetValue(Mod.Settings.SurveillanceEffectStrength or 1);
+
+    local opponentHorz = UI.CreateHorizontalLayoutGroup(surveillanceConfigContent);
+    UI.CreateLabel(opponentHorz).SetText('Temporary income change per instance of opponent surveilled item:').SetPreferredWidth(290);
+    surveillanceOpponentEffectStrength = UI.CreateNumberInputField(opponentHorz)
+        .SetSliderMinValue(-5)
+        .SetSliderMaxValue(20)
+        .SetValue(Mod.Settings.SurveillanceOpponentEffectStrength or -1);
 
     local surveillanceMonitorHeading = UI.CreateVerticalLayoutGroup(surveillanceConfigContent);
     UI.CreateLabel(surveillanceMonitorHeading).SetText('Monitoring Category:');

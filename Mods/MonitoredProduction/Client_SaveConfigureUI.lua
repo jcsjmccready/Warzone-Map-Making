@@ -17,6 +17,7 @@ function Client_SaveConfigureUI(alert, addCard)
         Mod.Settings.MonitorCities = monitorCities.GetIsChecked();
         Mod.Settings.MonitorTerritories = monitorTerritories.GetIsChecked();
         Mod.Settings.EffectStrength = effectStrength.GetValue();
+        Mod.Settings.OpponentEffectStrength = opponentEffectStrength.GetValue();
 
         if (Mod.Settings.MonitorCities) then
             Mod.Settings.CityIncomeModePerCity = cityIncomeModePerCity.GetIsChecked();
@@ -25,8 +26,8 @@ function Client_SaveConfigureUI(alert, addCard)
             Mod.Settings.TerritoryIncomeModePerTerritory = true; -- replace this logic if we ever extend the territory income mode to have more than one option
         end
 
-        if (Mod.Settings.EffectStrength < 1) then
-            alert("Reconnaissance effect strength cannot be less than 1");
+        if (Mod.Settings.EffectStrength == 0 and Mod.Settings.OpponentEffectStrength == 0) then
+            alert("Reconnaissance friendly and opponent effect strengths cannot both be 0");
             return;
         end
     end
@@ -37,6 +38,7 @@ function Client_SaveConfigureUI(alert, addCard)
         Mod.Settings.SurveillanceMonitorCities = surveillanceMonitorCities.GetIsChecked();
         Mod.Settings.SurveillanceMonitorTerritories = surveillanceMonitorTerritories.GetIsChecked();
         Mod.Settings.SurveillanceEffectStrength = surveillanceEffectStrength.GetValue();
+        Mod.Settings.SurveillanceOpponentEffectStrength = surveillanceOpponentEffectStrength.GetValue();
 
         if (Mod.Settings.SurveillanceMonitorCities) then
             Mod.Settings.SurveillanceCityIncomeModePerCity = surveillanceCityIncomeModePerCity.GetIsChecked();
@@ -45,8 +47,8 @@ function Client_SaveConfigureUI(alert, addCard)
             Mod.Settings.SurveillanceTerritoryIncomeModePerTerritory = true; -- replace this logic if we ever extend the territory income mode to have more than one option
         end
 
-        if (Mod.Settings.SurveillanceEffectStrength < 1) then
-            alert("Surveillance effect strength cannot be less than 1");
+        if (Mod.Settings.SurveillanceEffectStrength == 0 and Mod.Settings.SurveillanceOpponentEffectStrength == 0) then
+            alert("Surveillance friendly and opponent effect strengths cannot both be 0");
             return;
         end
     end
