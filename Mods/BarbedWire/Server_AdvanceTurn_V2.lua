@@ -137,19 +137,22 @@ function V2.HandleAttackTransferFromTriggeredTraps(trapTypes, game, order, resul
 	local existingStructures = game.ServerGame.LatestTurnStanding.Territories[order.From].Structures;
 	if (existingStructures == nil) then return false; end;
 
-	-- Which trap types are triggered on order.From and actually apply to this stack. A trap that ignores
-	-- immune units doesn't apply at all (not even to the other units) when its immune unit is moving.
+	-- Which triggered trap types at order.From actually apply to this stack. An immune unit that ignores
+	-- its trap only exempts itself - it doesn't grant immunity to the rest of the stack, so armies and
+	-- other special units travelling alongside it can still be trapped.
 	local trapsArmies = false;
-	local trapsSpecialUnits = false;
+	local trapsSpecialUnitTraps = {};
 	local blockingTrapNames = {};
 	for _, trapType in ipairs(trapTypes) do
 		local _, triggeredStructId = V2.GetStructureIds(trapType);
 		if ((existingStructures[triggeredStructId] or 0) > 0) then
 			local trapSettings = V2.GetTrapSettings(trapType);
-			if (not (trapSettings.ImmuneUnitIgnores and V2.HasImmuneUnit(trapSettings, result.ActualArmies.SpecialUnits))) then
+			if (V2.HasTrappableUnits(trapSettings, result.ActualArmies)) then
 				-- most restrictive wins: something is trapped if any applicable trap traps it
-				trapsArmies = trapsArmies or trapSettings.TrapsArmies;
-				trapsSpecialUnits = trapsSpecialUnits or trapSettings.TrapsSpecialUnits;
+				trapsArmies = trapsArmies or (trapSettings.TrapsArmies and result.ActualArmies.NumArmies > 0);
+				if (trapSettings.TrapsSpecialUnits) then
+					table.insert(trapsSpecialUnitTraps, trapSettings);
+				end
 				table.insert(blockingTrapNames, trapType.DisplayName);
 			end
 		end
@@ -158,14 +161,27 @@ function V2.HandleAttackTransferFromTriggeredTraps(trapTypes, game, order, resul
 	if (#blockingTrapNames == 0) then return false; end;
 	local blockedBy = table.concat(blockingTrapNames, " and ");
 
-	local blockingArmies = trapsArmies and result.ActualArmies.NumArmies > 0;
-	local blockingSpecialUnits = trapsSpecialUnits and #result.ActualArmies.SpecialUnits > 0;
+	local remainingSpecialUnits = {};
+	local blockingSpecialUnits = false;
+	for _, specialUnit in ipairs(result.ActualArmies.SpecialUnits) do
+		local trapped = false;
+		for _, trapSettings in ipairs(trapsSpecialUnitTraps) do
+			if (not (trapSettings.ImmuneUnitIgnores and V2.IsImmuneUnit(trapSettings, specialUnit))) then
+				trapped = true;
+				break;
+			end
+		end
+		if (trapped) then
+			blockingSpecialUnits = true;
+		else
+			table.insert(remainingSpecialUnits, specialUnit);
+		end
+	end
 
 	-- nothing the traps here are configured to trap is actually in the moving stack
-	if (not blockingArmies and not blockingSpecialUnits) then return false; end;
+	if (not trapsArmies and not blockingSpecialUnits) then return false; end;
 
 	local remainingNumArmies = trapsArmies and 0 or result.ActualArmies.NumArmies;
-	local remainingSpecialUnits = trapsSpecialUnits and {} or result.ActualArmies.SpecialUnits;
 
 	if (remainingNumArmies == 0 and #remainingSpecialUnits == 0) then
 		-- everything present is trapped: a simple full block. WZ hasn't finished processing this order yet,
