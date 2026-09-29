@@ -19,7 +19,7 @@ function Client_SaveConfigureUI(alert, addCard)
             alert("Barbed Wire immune unit name cannot be empty");
             return;
         end
-        Mod.Settings.BarbedWireImmuneUnitIgnores = barbedWireIsImmuneUnitEnabled.GetIsChecked() and barbedWireImmuneUnitIgnores.GetIsChecked();
+        Mod.Settings.BarbedWireImmuneUnitSharesImmunity = barbedWireIsImmuneUnitEnabled.GetIsChecked() and barbedWireImmuneUnitSharesImmunity.GetIsChecked();
         Mod.Settings.BarbedWireImmuneUnitDestroys = barbedWireIsImmuneUnitEnabled.GetIsChecked() and barbedWireImmuneUnitDestroys.GetIsChecked();
 
         Mod.Settings.BarbedWireTriggerDuration = barbedWireTriggerDuration.GetValue();
@@ -103,7 +103,7 @@ function Client_SaveConfigureUI(alert, addCard)
             alert("Caltrop immune unit name cannot be empty");
             return;
         end
-        Mod.Settings.CaltropImmuneUnitIgnores = caltropIsImmuneUnitEnabled.GetIsChecked() and caltropImmuneUnitIgnores.GetIsChecked();
+        Mod.Settings.CaltropImmuneUnitSharesImmunity = caltropIsImmuneUnitEnabled.GetIsChecked() and caltropImmuneUnitSharesImmunity.GetIsChecked();
         Mod.Settings.CaltropImmuneUnitDestroys = caltropIsImmuneUnitEnabled.GetIsChecked() and caltropImmuneUnitDestroys.GetIsChecked();
 
         Mod.Settings.CaltropTriggerDuration = caltropTriggerDuration.GetValue();

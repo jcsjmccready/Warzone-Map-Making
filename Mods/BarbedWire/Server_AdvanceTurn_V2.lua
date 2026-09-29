@@ -15,7 +15,7 @@ require("Utilities");
 ---@field Lifespan integer | nil # Turns before a piece expires - only meaningful when HasLimitedLifespan is true
 ---@field IsImmuneUnitEnabled boolean # Whether the immune unit gets special treatment (ignore or destroy) rather than being trapped like any other special unit
 ---@field ImmuneUnitName string # Name of the custom special unit that gets the immune unit behaviour below - only meaningful when IsImmuneUnitEnabled is true
----@field ImmuneUnitIgnores boolean # The immune unit ignores this trap entirely - only meaningful when IsImmuneUnitEnabled is true
+---@field ImmuneUnitSharesImmunity boolean # The immune unit shares its immunity with the whole moving stack - only meaningful when IsImmuneUnitEnabled is true
 ---@field ImmuneUnitDestroys boolean # The immune unit destroys this trap on entry/exit - only meaningful when IsImmuneUnitEnabled is true
 
 ---@class V2_TrapType
@@ -137,7 +137,7 @@ function V2.HandleAttackTransferFromTriggeredTraps(trapTypes, game, order, resul
 	local existingStructures = game.ServerGame.LatestTurnStanding.Territories[order.From].Structures;
 	if (existingStructures == nil) then return false; end;
 
-	-- Which trap types are triggered on order.From and actually apply to this stack. ImmuneUnitIgnores
+	-- Which trap types are triggered on order.From and actually apply to this stack. ImmuneUnitSharesImmunity
 	-- means the immune unit SHARES its immunity with the whole stack it's travelling with - if it's
 	-- present, the trap doesn't apply to anything in the stack, not just to the immune unit itself.
 	local trapsArmies = false;
@@ -147,7 +147,7 @@ function V2.HandleAttackTransferFromTriggeredTraps(trapTypes, game, order, resul
 		local _, triggeredStructId = V2.GetStructureIds(trapType);
 		if ((existingStructures[triggeredStructId] or 0) > 0) then
 			local trapSettings = V2.GetTrapSettings(trapType);
-			if (not (trapSettings.ImmuneUnitIgnores and V2.HasImmuneUnit(trapSettings, result.ActualArmies.SpecialUnits))) then
+			if (not (trapSettings.ImmuneUnitSharesImmunity and V2.HasImmuneUnit(trapSettings, result.ActualArmies.SpecialUnits))) then
 				-- most restrictive wins: something is trapped if any applicable trap traps it
 				trapsArmies = trapsArmies or trapSettings.TrapsArmies;
 				trapsSpecialUnits = trapsSpecialUnits or trapSettings.TrapsSpecialUnits;
@@ -353,9 +353,9 @@ function V2.HasTrappableUnits(trapSettings, armies)
 	end
 
 	if (trapSettings.TrapsSpecialUnits and armies.SpecialUnits ~= nil) then
-		local immuneUnitIgnores = trapSettings.IsImmuneUnitEnabled and trapSettings.ImmuneUnitIgnores;
+		local immuneUnitSharesImmunity = trapSettings.IsImmuneUnitEnabled and trapSettings.ImmuneUnitSharesImmunity;
 		for _, specialUnit in ipairs(armies.SpecialUnits) do
-			if (not (immuneUnitIgnores and V2.IsImmuneUnit(trapSettings, specialUnit))) then
+			if (not (immuneUnitSharesImmunity and V2.IsImmuneUnit(trapSettings, specialUnit))) then
 				return true;
 			end
 		end
@@ -852,7 +852,7 @@ function V2.GetTrapSettings(trapType)
 		Lifespan = Mod.Settings[prefix .. "Lifespan"],
 		IsImmuneUnitEnabled = Mod.Settings[prefix .. "IsImmuneUnitEnabled"] or false,
 		ImmuneUnitName = Mod.Settings[prefix .. "ImmuneUnitName"] or "Tank",
-		ImmuneUnitIgnores = Mod.Settings[prefix .. "ImmuneUnitIgnores"] or false,
+		ImmuneUnitSharesImmunity = Mod.Settings[prefix .. "ImmuneUnitSharesImmunity"] or false,
 		ImmuneUnitDestroys = Mod.Settings[prefix .. "ImmuneUnitDestroys"] or false,
 	};
 end

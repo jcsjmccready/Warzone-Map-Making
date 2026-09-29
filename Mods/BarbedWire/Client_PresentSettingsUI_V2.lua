@@ -58,7 +58,7 @@ function PresentSettingsV2.ShowTrap(rootParent, prefix, displayName, isAcquiring
         if (Mod.Settings[prefix .. "ImmuneUnitDestroys"]) then
             line("Immune unit (" .. unitName .. ") destroys " .. displayName .. " on entry/exit");
         end
-        if (Mod.Settings[prefix .. "ImmuneUnitIgnores"]) then
+        if (Mod.Settings[prefix .. "ImmuneUnitSharesImmunity"]) then
             line("Armies with the immune unit (" .. unitName .. ") ignore triggered " .. displayName);
         end
     end
