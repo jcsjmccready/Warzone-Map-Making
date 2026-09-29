@@ -55,7 +55,7 @@ function PresentSettingsV2.ShowTrap(rootParent, prefix, displayName, isAcquiring
 
     if (Mod.Settings[prefix .. "IsImmuneUnitEnabled"]) then
         local unitName = Mod.Settings[prefix .. "ImmuneUnitName"] or "Tank";
-        if (Mod.Settings[prefix .. "ImmuneUnitDestroys"]) then
+        if (Mod.Settings[prefix .. "ImmuneUnitDestroysTrap"]) then
             line("Immune unit (" .. unitName .. ") destroys " .. displayName .. " on entry/exit");
         end
         if (Mod.Settings[prefix .. "ImmuneUnitSharesImmunity"]) then

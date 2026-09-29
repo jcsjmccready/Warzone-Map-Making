@@ -20,7 +20,7 @@ function Client_SaveConfigureUI(alert, addCard)
             return;
         end
         Mod.Settings.BarbedWireImmuneUnitSharesImmunity = barbedWireIsImmuneUnitEnabled.GetIsChecked() and barbedWireImmuneUnitSharesImmunity.GetIsChecked();
-        Mod.Settings.BarbedWireImmuneUnitDestroys = barbedWireIsImmuneUnitEnabled.GetIsChecked() and barbedWireImmuneUnitDestroys.GetIsChecked();
+        Mod.Settings.BarbedWireImmuneUnitDestroysTrap = barbedWireIsImmuneUnitEnabled.GetIsChecked() and barbedWireImmuneUnitDestroysTrap.GetIsChecked();
 
         Mod.Settings.BarbedWireTriggerDuration = barbedWireTriggerDuration.GetValue();
         if (Mod.Settings.BarbedWireTriggerDuration < 1) then
@@ -104,7 +104,7 @@ function Client_SaveConfigureUI(alert, addCard)
             return;
         end
         Mod.Settings.CaltropImmuneUnitSharesImmunity = caltropIsImmuneUnitEnabled.GetIsChecked() and caltropImmuneUnitSharesImmunity.GetIsChecked();
-        Mod.Settings.CaltropImmuneUnitDestroys = caltropIsImmuneUnitEnabled.GetIsChecked() and caltropImmuneUnitDestroys.GetIsChecked();
+        Mod.Settings.CaltropImmuneUnitDestroysTrap = caltropIsImmuneUnitEnabled.GetIsChecked() and caltropImmuneUnitDestroysTrap.GetIsChecked();
 
         Mod.Settings.CaltropTriggerDuration = caltropTriggerDuration.GetValue();
         if (Mod.Settings.CaltropTriggerDuration < 1) then

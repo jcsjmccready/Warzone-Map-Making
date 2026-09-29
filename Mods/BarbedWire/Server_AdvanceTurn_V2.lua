@@ -16,7 +16,7 @@ require("Utilities");
 ---@field IsImmuneUnitEnabled boolean # Whether the immune unit gets special treatment (ignore or destroy) rather than being trapped like any other special unit
 ---@field ImmuneUnitName string # Name of the custom special unit that gets the immune unit behaviour below - only meaningful when IsImmuneUnitEnabled is true
 ---@field ImmuneUnitSharesImmunity boolean # The immune unit shares its immunity with the whole moving stack - only meaningful when IsImmuneUnitEnabled is true
----@field ImmuneUnitDestroys boolean # The immune unit destroys this trap on entry/exit - only meaningful when IsImmuneUnitEnabled is true
+---@field ImmuneUnitDestroysTrap boolean # The immune unit destroys this trap on entry/exit - only meaningful when IsImmuneUnitEnabled is true
 
 ---@class V2_TrapType
 ---@field Key string # "BarbedWire" | "Caltrop" - the one distinguisher (see above)
@@ -283,7 +283,7 @@ function V2.HandleAttackTransferToTraps(trapTypes, game, order, result, addNewOr
 	V2.HandleTrapTriggers(trapTypes, game, order, result, remainingStructuresTo, addNewOrder);
 end
 
----If <Prefix>ImmuneUnitDestroys is on and the moving stack includes its immune unit, destroys any trap at both ends of
+---If <Prefix>ImmuneUnitDestroysTrap is on and the moving stack includes its immune unit, destroys any trap at both ends of
 ---the order (it attacks into order.To and comes from order.From).
 ---@param trapType V2_TrapType
 ---@param game GameServerHook
@@ -294,7 +294,7 @@ end
 ---@return table<EnumStructureType, integer> | nil remainingStructuresTo the (possibly trap-cleared) structures at order.To, for HandleTrapTriggers to use
 function V2.HandleImmuneUnitDestroyTrap(trapType, game, order, result, remainingStructuresTo, addNewOrder)
 	local trapSettings = V2.GetTrapSettings(trapType);
-	if (not (trapSettings.ImmuneUnitDestroys and result.ActualArmies ~= nil and result.ActualArmies.SpecialUnits ~= nil)) then
+	if (not (trapSettings.ImmuneUnitDestroysTrap and result.ActualArmies ~= nil and result.ActualArmies.SpecialUnits ~= nil)) then
 		return remainingStructuresTo;
 	end
 
@@ -853,7 +853,7 @@ function V2.GetTrapSettings(trapType)
 		IsImmuneUnitEnabled = Mod.Settings[prefix .. "IsImmuneUnitEnabled"] or false,
 		ImmuneUnitName = Mod.Settings[prefix .. "ImmuneUnitName"] or "Tank",
 		ImmuneUnitSharesImmunity = Mod.Settings[prefix .. "ImmuneUnitSharesImmunity"] or false,
-		ImmuneUnitDestroys = Mod.Settings[prefix .. "ImmuneUnitDestroys"] or false,
+		ImmuneUnitDestroysTrap = Mod.Settings[prefix .. "ImmuneUnitDestroysTrap"] or false,
 	};
 end
 

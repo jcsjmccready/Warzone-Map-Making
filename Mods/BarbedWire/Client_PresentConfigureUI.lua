@@ -192,7 +192,7 @@ function Create_Caltrop_Behaviour_UI(rootParent)
                 caltropImmuneUnitNone.SetIsChecked(false);
                 caltropImmuneUnitSharesImmunity.SetIsChecked(true);
                 caltropImmuneUnitSharesImmunity.SetInteractable(false);
-                caltropImmuneUnitDestroys.SetInteractable(true);
+                caltropImmuneUnitDestroysTrap.SetInteractable(true);
             end
             caltropImmuneUnitNone.SetInteractable(not caltropImmuneUnitNone.GetIsChecked() and caltropTrapsSpecialUnits.GetIsChecked());
         end
@@ -250,7 +250,7 @@ function Create_Caltrop_Behaviour_UI(rootParent)
         else
            UI.Destroy(caltropImmuneUnitSupportHeading);
            caltropImmuneUnitSharesImmunity.SetIsChecked(false);
-           caltropImmuneUnitDestroys.SetIsChecked(false);
+           caltropImmuneUnitDestroysTrap.SetIsChecked(false);
         end
     end);
 
@@ -288,7 +288,7 @@ function Create_Caltrop_ImmuneUnit_SubOptions_UI(rootParent)
     -- (only then is the immune unit ever a candidate for trapping in the first place) - forced off None
     -- (onto Ignore) below whenever Traps Special Units is off.
     local mode = 'none';
-    if (Mod.Settings.CaltropImmuneUnitDestroys) then
+    if (Mod.Settings.CaltropImmuneUnitDestroysTrap) then
         mode = 'destroy';
     elseif (Mod.Settings.CaltropImmuneUnitSharesImmunity) then
         mode = 'ignore';
@@ -304,7 +304,7 @@ function Create_Caltrop_ImmuneUnit_SubOptions_UI(rootParent)
         .SetText('Armies/special units share the immunity')
         .SetIsChecked(mode == 'ignore');
 
-    caltropImmuneUnitDestroys = UI.CreateRadioButton(caltropImmuneUnitSupportHeading).SetGroup(caltropImmuneUnitBehaviourGroup)
+    caltropImmuneUnitDestroysTrap = UI.CreateRadioButton(caltropImmuneUnitSupportHeading).SetGroup(caltropImmuneUnitBehaviourGroup)
         .SetText('Immune unit destroys Caltrops on entry/exit')
         .SetIsChecked(mode == 'destroy');
 
@@ -313,7 +313,7 @@ function Create_Caltrop_ImmuneUnit_SubOptions_UI(rootParent)
         .SetIsChecked(mode == 'none');
 
     -- the selected radio can't be clicked again (you can't unselect a radio group)
-    for _, radio in ipairs({ caltropImmuneUnitSharesImmunity, caltropImmuneUnitDestroys }) do
+    for _, radio in ipairs({ caltropImmuneUnitSharesImmunity, caltropImmuneUnitDestroysTrap }) do
         radio.SetOnValueChanged(function()
             radio.SetInteractable(not radio.GetIsChecked());
         end);
@@ -467,7 +467,7 @@ function Create_BarbedWire_Behaviour_UI(rootParent)
                 barbedWireImmuneUnitNone.SetIsChecked(false);
                 barbedWireImmuneUnitSharesImmunity.SetIsChecked(true);
                 barbedWireImmuneUnitSharesImmunity.SetInteractable(false);
-                barbedWireImmuneUnitDestroys.SetInteractable(true);
+                barbedWireImmuneUnitDestroysTrap.SetInteractable(true);
             end
             barbedWireImmuneUnitNone.SetInteractable(not barbedWireImmuneUnitNone.GetIsChecked() and barbedWireTrapsSpecialUnits.GetIsChecked());
         end
@@ -525,7 +525,7 @@ function Create_BarbedWire_Behaviour_UI(rootParent)
         else
            UI.Destroy(barbedWireImmuneUnitSupportHeading);
            barbedWireImmuneUnitSharesImmunity.SetIsChecked(false);
-           barbedWireImmuneUnitDestroys.SetIsChecked(false);
+           barbedWireImmuneUnitDestroysTrap.SetIsChecked(false);
         end
     end);
 
@@ -563,7 +563,7 @@ function Create_BarbedWire_ImmuneUnit_SubOptions_UI(rootParent)
     -- (only then is the immune unit ever a candidate for trapping in the first place) - forced off None
     -- (onto Ignore) below whenever Traps Special Units is off.
     local mode = 'none';
-    if (Mod.Settings.BarbedWireImmuneUnitDestroys) then
+    if (Mod.Settings.BarbedWireImmuneUnitDestroysTrap) then
         mode = 'destroy';
     elseif (Mod.Settings.BarbedWireImmuneUnitSharesImmunity) then
         mode = 'ignore';
@@ -579,7 +579,7 @@ function Create_BarbedWire_ImmuneUnit_SubOptions_UI(rootParent)
         .SetText('Armies/special units share the immunity')
         .SetIsChecked(mode == 'ignore');
 
-    barbedWireImmuneUnitDestroys = UI.CreateRadioButton(barbedWireImmuneUnitSupportHeading).SetGroup(barbedWireImmuneUnitBehaviourGroup)
+    barbedWireImmuneUnitDestroysTrap = UI.CreateRadioButton(barbedWireImmuneUnitSupportHeading).SetGroup(barbedWireImmuneUnitBehaviourGroup)
         .SetText('Immune unit destroys barbed wire on entry/exit')
         .SetIsChecked(mode == 'destroy');
 
@@ -588,7 +588,7 @@ function Create_BarbedWire_ImmuneUnit_SubOptions_UI(rootParent)
         .SetIsChecked(mode == 'none');
 
     -- the selected radio can't be clicked again (you can't unselect a radio group)
-    for _, radio in ipairs({ barbedWireImmuneUnitSharesImmunity, barbedWireImmuneUnitDestroys }) do
+    for _, radio in ipairs({ barbedWireImmuneUnitSharesImmunity, barbedWireImmuneUnitDestroysTrap }) do
         radio.SetOnValueChanged(function()
             radio.SetInteractable(not radio.GetIsChecked());
         end);
