@@ -147,21 +147,50 @@ function V2.HandleAttackTransferFromTriggeredTraps(trapTypes, game, order, resul
 	if (existingStructures == nil) then return false; end;
 
 	-- Which trap types are triggered on order.From and actually apply to this stack. ImmuneUnitSharesImmunity
-	-- means the immune unit SHARES its immunity with the whole stack it's travelling with - if it's
-	-- present, the trap doesn't apply to anything in the stack, not just to the immune unit itself.
-	local trapsArmies = false;
-	local trapsSpecialUnits = false;
-	local blockingTrapNames = {};
+	-- means the immune unit SHARES its immunity with the whole stack it's travelling with - but only if the
+	-- immune unit is actually going to make it out itself. If some OTHER triggered trap here would trap the
+	-- immune unit anyway (it isn't that trap's own recognized+shared immune unit), the immune unit isn't
+	-- really escorting anyone, so its trap's shared immunity shouldn't exempt the rest of the stack.
+	local triggeredTraps = {};
 	for _, trapType in ipairs(trapTypes) do
 		local _, triggeredStructId = V2.GetStructureIds(trapType);
 		if ((existingStructures[triggeredStructId] or 0) > 0) then
-			local trapSettings = V2.GetTrapSettings(trapType);
-			if (not (trapSettings.ImmuneUnitSharesImmunity and V2.HasImmuneUnit(trapSettings, result.ActualArmies.SpecialUnits))) then
-				-- most restrictive wins: something is trapped if any applicable trap traps it
-				trapsArmies = trapsArmies or trapSettings.TrapsArmies;
-				trapsSpecialUnits = trapsSpecialUnits or trapSettings.TrapsSpecialUnits;
-				table.insert(blockingTrapNames, trapType.DisplayName);
+			table.insert(triggeredTraps, { TrapType = trapType, Settings = V2.GetTrapSettings(trapType) });
+		end
+	end
+
+	-- a special unit escapes special-unit-trapping only if every triggered trap that traps special units
+	-- either doesn't apply to it, or specifically recognizes it as its own shared immune unit
+	local function specialUnitEscapes(unit)
+		for _, triggered in ipairs(triggeredTraps) do
+			local settings = triggered.Settings;
+			if (settings.TrapsSpecialUnits and not (settings.ImmuneUnitSharesImmunity and V2.IsImmuneUnit(settings, unit))) then
+				return false;
 			end
+		end
+		return true;
+	end
+
+	local trapsArmies = false;
+	local trapsSpecialUnits = false;
+	local blockingTrapNames = {};
+	for _, triggered in ipairs(triggeredTraps) do
+		local trapSettings = triggered.Settings;
+		local immuneUnitTrulyEscorting = false;
+		if (trapSettings.ImmuneUnitSharesImmunity) then
+			for _, unit in ipairs(result.ActualArmies.SpecialUnits) do
+				if (V2.IsImmuneUnit(trapSettings, unit) and specialUnitEscapes(unit)) then
+					immuneUnitTrulyEscorting = true;
+					break;
+				end
+			end
+		end
+
+		if (not immuneUnitTrulyEscorting) then
+			-- most restrictive wins: something is trapped if any applicable trap traps it
+			trapsArmies = trapsArmies or trapSettings.TrapsArmies;
+			trapsSpecialUnits = trapsSpecialUnits or trapSettings.TrapsSpecialUnits;
+			table.insert(blockingTrapNames, triggered.TrapType.DisplayName);
 		end
 	end
 
@@ -181,9 +210,13 @@ function V2.HandleAttackTransferFromTriggeredTraps(trapTypes, game, order, resul
 		-- everything present is trapped: a simple full block. WZ hasn't finished processing this order yet,
 		-- so overwriting ActualArmies here is enough - WZ recomputes the rest of the order (casualties,
 		-- success) against this smaller force itself.
+		local trappedNumArmies = result.ActualArmies.NumArmies;
+		local trappedNumSpecialUnits = #result.ActualArmies.SpecialUnits;
+		local trappedDescription = DescribeArmyMovement(trappedNumArmies, {}) .. (trappedNumSpecialUnits > 0 and (" and " .. trappedNumSpecialUnits .. " special unit(s)") or "");
+
 		result.ActualArmies = WL.Armies.Create(0);
-		local event = WL.GameOrderEvent.Create(order.PlayerID, 'Movement blocked by ' .. blockedBy, {}, {});
-		event.TerritoryAnnotationsOpt = { [order.From] = WL.TerritoryAnnotation.Create("Armies trapped", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany)) };
+		local event = WL.GameOrderEvent.Create(order.PlayerID, 'Movement blocked by ' .. blockedBy .. " (" .. trappedDescription .. " trapped)", {}, {});
+		event.TerritoryAnnotationsOpt = { [order.From] = WL.TerritoryAnnotation.Create("Fully trapped", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany)) };
 		event.Icon = "Blocked"
 		addNewOrder(event);
 		return false;
