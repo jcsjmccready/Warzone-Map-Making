@@ -117,7 +117,16 @@ end
 ---@param skipThisOrder fun(modOrderControl: EnumModOrderControl) # Allows you to skip the current order
 ---@param addNewOrder fun(order: GameOrder) # Adds a game order, will be processed before any of the rest of the orders
 function V2.HandleAttackTransfer(game, order, result, skipThisOrder, addNewOrder)
-	V2.HandleAttackTransferFromTriggeredTraps(V2.AllTrapTypes, game, order, result, skipThisOrder, addNewOrder);
+	local tookOverOrder = V2.HandleAttackTransferFromTriggeredTraps(V2.AllTrapTypes, game, order, result, skipThisOrder, addNewOrder);
+	if (tookOverOrder) then
+		-- The order was skipped and manually resolved against a reduced stack (some of it stayed behind,
+		-- trapped). `result` still reflects the original, untrapped stack, so running the order.To trap
+		-- logic against it here would apply destination-side trap effects (triggering/ImmuneUnitDestroysTrap)
+		-- to units that never actually arrived. ResolvePartialTrapBlock already ran that logic itself
+		-- against the portion that actually moved, so there's nothing left to do here.
+		return;
+	end
+
 	V2.HandleAttackTransferToTraps(V2.AllTrapTypes, game, order, result, addNewOrder);
 end
 
@@ -138,26 +147,57 @@ function V2.HandleAttackTransferFromTriggeredTraps(trapTypes, game, order, resul
 	if (existingStructures == nil) then return false; end;
 
 	-- Which trap types are triggered on order.From and actually apply to this stack. ImmuneUnitSharesImmunity
-	-- means the immune unit SHARES its immunity with the whole stack it's travelling with - if it's
-	-- present, the trap doesn't apply to anything in the stack, not just to the immune unit itself.
-	local trapsArmies = false;
-	local trapsSpecialUnits = false;
-	local blockingTrapNames = {};
+	-- means the immune unit SHARES its immunity with the whole stack it's travelling with - but only if the
+	-- immune unit is actually going to make it out itself. If some OTHER triggered trap here would trap the
+	-- immune unit anyway (it isn't that trap's own recognized+shared immune unit), the immune unit isn't
+	-- really escorting anyone, so its trap's shared immunity shouldn't exempt the rest of the stack.
+	local triggeredTraps = {};
 	for _, trapType in ipairs(trapTypes) do
 		local _, triggeredStructId = V2.GetStructureIds(trapType);
 		if ((existingStructures[triggeredStructId] or 0) > 0) then
-			local trapSettings = V2.GetTrapSettings(trapType);
-			if (not (trapSettings.ImmuneUnitSharesImmunity and V2.HasImmuneUnit(trapSettings, result.ActualArmies.SpecialUnits))) then
-				-- most restrictive wins: something is trapped if any applicable trap traps it
-				trapsArmies = trapsArmies or trapSettings.TrapsArmies;
-				trapsSpecialUnits = trapsSpecialUnits or trapSettings.TrapsSpecialUnits;
-				table.insert(blockingTrapNames, trapType.DisplayName);
+			table.insert(triggeredTraps, { TrapType = trapType, Settings = V2.GetTrapSettings(trapType) });
+		end
+	end
+
+	-- a special unit escapes special-unit-trapping only if every triggered trap that traps special units
+	-- either doesn't apply to it, or specifically recognizes it as its own shared immune unit
+	local function specialUnitEscapes(unit)
+		for _, triggered in ipairs(triggeredTraps) do
+			local settings = triggered.Settings;
+			if (settings.TrapsSpecialUnits and not (settings.ImmuneUnitSharesImmunity and V2.IsImmuneUnit(settings, unit))) then
+				return false;
 			end
+		end
+		return true;
+	end
+
+	local trapsArmies = false;
+	local trapsSpecialUnits = false;
+	local blockingTrapNames = {};
+	for _, triggered in ipairs(triggeredTraps) do
+		local trapSettings = triggered.Settings;
+		local immuneUnitTrulyEscorting = false;
+		if (trapSettings.ImmuneUnitSharesImmunity) then
+			for _, unit in ipairs(result.ActualArmies.SpecialUnits) do
+				if (V2.IsImmuneUnit(trapSettings, unit) and specialUnitEscapes(unit)) then
+					immuneUnitTrulyEscorting = true;
+					break;
+				end
+			end
+		end
+
+		if (not immuneUnitTrulyEscorting) then
+			-- most restrictive wins: something is trapped if any applicable trap traps it
+			trapsArmies = trapsArmies or trapSettings.TrapsArmies;
+			trapsSpecialUnits = trapsSpecialUnits or trapSettings.TrapsSpecialUnits;
+			table.insert(blockingTrapNames, triggered.TrapType.DisplayName);
 		end
 	end
 
 	if (#blockingTrapNames == 0) then return false; end;
-	local blockedBy = table.concat(blockingTrapNames, " and ");
+	-- name the specific trap when only one type is involved, otherwise keep it generic rather than
+	-- listing every type (eg. "Barbed Wire and Caltrop")
+	local blockedBy = #blockingTrapNames == 1 and blockingTrapNames[1] or "triggered traps";
 
 	local blockingArmies = trapsArmies and result.ActualArmies.NumArmies > 0;
 	local blockingSpecialUnits = trapsSpecialUnits and #result.ActualArmies.SpecialUnits > 0;
@@ -172,9 +212,13 @@ function V2.HandleAttackTransferFromTriggeredTraps(trapTypes, game, order, resul
 		-- everything present is trapped: a simple full block. WZ hasn't finished processing this order yet,
 		-- so overwriting ActualArmies here is enough - WZ recomputes the rest of the order (casualties,
 		-- success) against this smaller force itself.
+		local trappedNumArmies = result.ActualArmies.NumArmies;
+		local trappedNumSpecialUnits = #result.ActualArmies.SpecialUnits;
+		local trappedDescription = DescribeArmyMovement(trappedNumArmies, {}) .. (trappedNumSpecialUnits > 0 and (" and " .. trappedNumSpecialUnits .. " special unit(s)") or "");
+
 		result.ActualArmies = WL.Armies.Create(0);
-		local event = WL.GameOrderEvent.Create(order.PlayerID, 'Movement blocked by ' .. blockedBy, {}, {});
-		event.TerritoryAnnotationsOpt = { [order.From] = WL.TerritoryAnnotation.Create("Armies trapped", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany)) };
+		local event = WL.GameOrderEvent.Create(order.PlayerID, 'Movement blocked by ' .. blockedBy .. " (" .. trappedDescription .. " trapped)", {}, {});
+		event.TerritoryAnnotationsOpt = { [order.From] = WL.TerritoryAnnotation.Create("Fully trapped", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany)) };
 		event.Icon = "Blocked"
 		addNewOrder(event);
 		return false;
@@ -186,13 +230,16 @@ function V2.HandleAttackTransferFromTriggeredTraps(trapTypes, game, order, resul
 	-- source. Take over entirely instead: skip the order, and manually resolve it as an attack/transfer
 	-- of only the untrapped portion via process_manual_attack, leaving the trapped portion at order.From.
 	skipThisOrder(WL.ModOrderControl.SkipAndSupressSkippedMessage);
-	V2.ResolvePartialTrapBlock(blockedBy, game, order, result, remainingNumArmies, remainingSpecialUnits, addNewOrder);
+	V2.ResolvePartialTrapBlock(trapTypes, blockedBy, game, order, result, remainingNumArmies, remainingSpecialUnits, addNewOrder);
 	return true;
 end
 
 ---Manually resolves an attack/transfer order that a triggered trap has only partially blocked: the units
 ---in remainingNumArmies/remainingSpecialUnits move as normal (fighting if order.To is hostile), while
----everything else in the original order.ActualArmies stays behind at order.From, trapped.
+---everything else in the original order.ActualArmies stays behind at order.From, trapped. Afterwards, runs
+---order.To's own trap logic (triggering/ImmuneUnitDestroysTrap) against what actually moved, since the
+---caller (HandleAttackTransfer) skips that step itself once an order has been taken over like this.
+---@param trapTypes V2_TrapType[]
 ---@param blockedBy string # names of the trap(s) doing the blocking, for the event message
 ---@param game GameServerHook
 ---@param order GameOrderAttackTransfer
@@ -200,7 +247,7 @@ end
 ---@param remainingNumArmies integer
 ---@param remainingSpecialUnits SpecialUnit[]
 ---@param addNewOrder fun(order: GameOrder) # Adds a game order, will be processed before any of the rest of the orders
-function V2.ResolvePartialTrapBlock(blockedBy, game, order, result, remainingNumArmies, remainingSpecialUnits, addNewOrder)
+function V2.ResolvePartialTrapBlock(trapTypes, blockedBy, game, order, result, remainingNumArmies, remainingSpecialUnits, addNewOrder)
 	local fromTerritory = game.ServerGame.LatestTurnStanding.Territories[order.From];
 	local toTerritory = game.ServerGame.LatestTurnStanding.Territories[order.To];
 	local fromTerritoryName = game.Map.Territories[order.From].Name;
@@ -209,6 +256,11 @@ function V2.ResolvePartialTrapBlock(blockedBy, game, order, result, remainingNum
 	local trappedNumArmies = result.ActualArmies.NumArmies - remainingNumArmies;
 	local trappedNumSpecialUnits = #result.ActualArmies.SpecialUnits - #remainingSpecialUnits;
 	local trappedDescription = DescribeArmyMovement(trappedNumArmies, {}) .. (trappedNumSpecialUnits > 0 and (" and " .. trappedNumSpecialUnits .. " special unit(s)") or "");
+
+	-- the force that's actually moving/attacking, for both process_manual_attack and (further below)
+	-- order.To's own trap logic
+	local movingArmies = WL.Armies.Create(remainingNumArmies, remainingSpecialUnits);
+	local movedIsSuccessful = true; -- transfers always "succeed" for order.To trap-arrival purposes
 
 	local fromMod = WL.TerritoryModification.Create(order.From);
 	local toMod = WL.TerritoryModification.Create(order.To);
@@ -221,13 +273,18 @@ function V2.ResolvePartialTrapBlock(blockedBy, game, order, result, remainingNum
 		fromMod.SetArmiesTo = fromTerritory.NumArmies.NumArmies - remainingNumArmies;
 		fromMod.RemoveSpecialUnitsOpt = map(remainingSpecialUnits, function(unit) return unit.ID end);
 
-		toMod.AddArmies = remainingNumArmies;
+		-- only set AddArmies when there's actually armies to add - elsewhere in this file (eg.
+		-- QueueExtraSpecialUnitEvents) a special-units-only TerritoryModification always leaves AddArmies
+		-- unset rather than explicitly zeroed, so match that here for a special-units-only move
+		if (remainingNumArmies > 0) then
+			toMod.AddArmies = remainingNumArmies;
+		end
 		extraToChunks = AssignAddSpecialUnits(toMod, remainingSpecialUnits);
 
 		message = DescribeArmyMovement(remainingNumArmies, remainingSpecialUnits) .. " transferred to " .. toTerritoryName .. " from " .. fromTerritoryName;
 	else
-		local movingArmies = WL.Armies.Create(remainingNumArmies, remainingSpecialUnits);
 		local attackResult = process_manual_attack(game, movingArmies, toTerritory, nil, addNewOrder, false);
+		movedIsSuccessful = attackResult.IsSuccessful;
 
 		if (attackResult.IsSuccessful) then
 			fromMod.SetArmiesTo = fromTerritory.NumArmies.NumArmies - remainingNumArmies;
@@ -259,6 +316,11 @@ function V2.ResolvePartialTrapBlock(blockedBy, game, order, result, remainingNum
 
 	QueueExtraSpecialUnitEvents(order.From, extraFromChunks, order.PlayerID, addNewOrder);
 	QueueExtraSpecialUnitEvents(order.To, extraToChunks, order.PlayerID, addNewOrder);
+
+	-- order.To's own trap logic (triggering/ImmuneUnitDestroysTrap), against the force that actually
+	-- moved/attacked rather than the original stale stack HandleAttackTransfer's caller would otherwise use
+	local movedResult = { ActualArmies = movingArmies, IsAttack = result.IsAttack, IsSuccessful = movedIsSuccessful };
+	V2.HandleAttackTransferToTraps(trapTypes, game, order, movedResult, addNewOrder);
 end
 
 ---@param trapTypes V2_TrapType[]
@@ -551,27 +613,27 @@ function V2.ExpireTrap(trapType, game, addNewOrder)
 
 		local structures = territory.Structures;
 		if ((duePrimed ~= nil or dueTriggered ~= nil) and structures ~= nil) then
-			local changed = false;
+			-- accumulate as deltas (AddStructuresOpt), not an absolute snapshot (SetStructuresOpt): this
+			-- runs once per trap type this turn-end, and LatestTurnStanding won't reflect an earlier trap
+			-- type's own queued-but-not-yet-committed change here, so overwriting the whole structures
+			-- table would undo it
+			local structureDeltas = {};
 
 			local existingPrimed = structures[primedStructId];
 			if (duePrimed ~= nil and existingPrimed ~= nil and existingPrimed > 0) then
 				-- clamp in case the structure count and tracked pieces ever disagree, so we never go negative
-				local expiringCount = math.min(duePrimed, existingPrimed);
-				structures[primedStructId] = existingPrimed - expiringCount;
-				changed = true;
+				structureDeltas[primedStructId] = -math.min(duePrimed, existingPrimed);
 			end
 
 			local existingTriggered = structures[triggeredStructId];
 			if (dueTriggered ~= nil and existingTriggered ~= nil and existingTriggered > 0) then
-				local expiringCount = math.min(dueTriggered, existingTriggered);
-				structures[triggeredStructId] = existingTriggered - expiringCount;
-				changed = true;
+				structureDeltas[triggeredStructId] = -math.min(dueTriggered, existingTriggered);
 			end
 
-			if (changed) then
+			if (next(structureDeltas) ~= nil) then
 				anyExpired = true;
 				local territoryModification = WL.TerritoryModification.Create(territory.ID);
-				territoryModification.SetStructuresOpt = structures;
+				territoryModification.AddStructuresOpt = structureDeltas;
 
 				table.insert(territoryModifications, territoryModification);
 				territoryAnnotations[territory.ID] = WL.TerritoryAnnotation.Create(trapType.DisplayName .. " expired", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany));
@@ -633,14 +695,18 @@ function V2.ResetTriggeredTrap(trapType, game, addNewOrder)
 			-- clamp in case the structure count and tracked pieces ever disagree, so we never go negative
 			local resettingCount = math.min(dueCount, structures[triggeredStructId]);
 
-			structures[triggeredStructId] = structures[triggeredStructId] - resettingCount;
+			-- deltas (AddStructuresOpt), not an absolute snapshot (SetStructuresOpt): this runs once per
+			-- trap type this turn-end, and LatestTurnStanding won't reflect an earlier trap type's own
+			-- queued-but-not-yet-committed change here, so overwriting the whole structures table would
+			-- undo it (eg. a just-reset Barbed Wire getting re-triggered by Caltrop's own reset afterward)
+			local structureDeltas = { [triggeredStructId] = -resettingCount };
 			if (not trapSettings.SingleUse) then
-				structures[primedStructId] = (structures[primedStructId] or 0) + resettingCount;
+				structureDeltas[primedStructId] = resettingCount;
 			end
 
 			anyReset = true;
 			local territoryModification = WL.TerritoryModification.Create(territoryId);
-			territoryModification.SetStructuresOpt = structures;
+			territoryModification.AddStructuresOpt = structureDeltas;
 
 			table.insert(territoryModifications, territoryModification);
 		end
@@ -722,13 +788,11 @@ function V2.BuildTrapStructures(trapType, game, addNewOrder)
 			table.insert(trapPieces, newPiece);
 		end
 
-		local structures = game.ServerGame.LatestTurnStanding.Territories[territoryID].Structures;
-
-		if (structures == nil) then structures = {}; end;
-		structures[primedStructId] = (structures[primedStructId] or 0) + numToBuild;
-
+		-- delta (AddStructuresOpt), not an absolute snapshot (SetStructuresOpt): this runs once per trap
+		-- type this turn-end, and LatestTurnStanding won't reflect an earlier trap type's own
+		-- queued-but-not-yet-committed change here, so overwriting the whole structures table would undo it
 		local territoryModification = WL.TerritoryModification.Create(territoryID);
-		territoryModification.SetStructuresOpt = structures;
+		territoryModification.AddStructuresOpt = { [primedStructId] = numToBuild };
 
 		local pendingDms = first(pendingGroup);
 		if (pendingDms ~= nil) then
