@@ -117,7 +117,16 @@ end
 ---@param skipThisOrder fun(modOrderControl: EnumModOrderControl) # Allows you to skip the current order
 ---@param addNewOrder fun(order: GameOrder) # Adds a game order, will be processed before any of the rest of the orders
 function V2.HandleAttackTransfer(game, order, result, skipThisOrder, addNewOrder)
-	V2.HandleAttackTransferFromTriggeredTraps(V2.AllTrapTypes, game, order, result, skipThisOrder, addNewOrder);
+	local tookOverOrder = V2.HandleAttackTransferFromTriggeredTraps(V2.AllTrapTypes, game, order, result, skipThisOrder, addNewOrder);
+	if (tookOverOrder) then
+		-- The order was skipped and manually resolved against a reduced stack (some of it stayed behind,
+		-- trapped). `result` still reflects the original, untrapped stack, so running the order.To trap
+		-- logic against it here would apply destination-side trap effects (triggering/ImmuneUnitDestroysTrap)
+		-- to units that never actually arrived. Skip it; the moved-on portion doesn't interact with
+		-- order.To's traps for now.
+		return;
+	end
+
 	V2.HandleAttackTransferToTraps(V2.AllTrapTypes, game, order, result, addNewOrder);
 end
 
