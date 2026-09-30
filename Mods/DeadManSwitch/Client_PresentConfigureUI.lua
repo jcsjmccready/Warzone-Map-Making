@@ -1,4 +1,4 @@
-require("Utilities");
+require("Utilities.CommonUtils");
 
 ---Client_PresentConfigureUI hook
 ---@param rootParent RootParent
@@ -7,6 +7,7 @@ Create_UI_Controls(rootParent);
 
 end;
 
+---@param rootParent RootParent
 function Create_UI_Controls(rootParent)
     local mainModUI = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
 
@@ -44,6 +45,7 @@ function Create_UI_Controls(rootParent)
     -- bomb damage
     local damageTypeBombHeading = UI.CreateVerticalLayoutGroup(damageTypeHeading);
     isDamageTypeBomb = UI.CreateRadioButton(damageTypeBombHeading).SetGroup(triggerDamageType).SetText('Play Bomb Card').SetIsChecked(Mod.Settings.isDamageTypeBomb or true);
+    UI.CreateLabel(damageTypeBombHeading).SetText('Does not work if DMS owner is neutral*').SetColor(BUTTON_COLOURS.DarkGray);
 
     isDamageTypeBomb.SetOnValueChanged(function() 
 
@@ -111,13 +113,34 @@ function Create_UI_Controls(rootParent)
         end
     end);
 
+    -- nuke damage
+    local damageTypeNukeHeading = UI.CreateVerticalLayoutGroup(damageTypeHeading);
+    isDamageTypeNuke = UI.CreateRadioButton(damageTypeNukeHeading).SetGroup(triggerDamageType)
+    .SetText('Play Nuke Card')
+    .SetIsChecked(Mod.Settings.isDamageTypeNuke or false);
+
+    UI.CreateLabel(damageTypeNukeHeading).SetText('Requires and configured via Nuke mod by Krinid*').SetColor(BUTTON_COLOURS.DarkGray);
+
+    isDamageTypeNuke.SetOnValueChanged(function()
+
+        if(isDamageTypeNuke.GetIsChecked()) then
+            isDamageTypeNuke.SetInteractable(false);
+        else
+           isDamageTypeNuke.SetInteractable(true);
+        end
+    end);
+
     ---- Additional trigger actions (can stack with each other and with the trigger action above)
     local additionalActionsHeading = UI.CreateVerticalLayoutGroup(mainModUI);
     UI.CreateLabel(additionalActionsHeading).SetText('Additional trigger actions:').SetColor(SUBHEADING_COLOUR);
 
     isDamageTypeSanction = UI.CreateCheckBox(additionalActionsHeading).SetText('Play Sanction Card').SetIsChecked(Mod.Settings.isDamageTypeSanction or false);
     isDamageTypeDiplomacy = UI.CreateCheckBox(additionalActionsHeading).SetText('Play Diplomacy Card').SetIsChecked(Mod.Settings.isDamageTypeDiplomacy or false);
+    UI.CreateLabel(additionalActionsHeading).SetText('Does not work if DMS owner is neutral*').SetColor(BUTTON_COLOURS.DarkGray);
+
     isDamageTypeSpy = UI.CreateCheckBox(additionalActionsHeading).SetText('Play Spy Card').SetIsChecked(Mod.Settings.isDamageTypeSpy or false);
+    UI.CreateLabel(additionalActionsHeading).SetText('Does not work if DMS owner is neutral*').SetColor(BUTTON_COLOURS.DarkGray);
+
 
     local optionalsHeading = UI.CreateVerticalLayoutGroup(mainModUI);
     UI.CreateLabel(optionalsHeading).SetText('Optionals:').SetColor(SUBHEADING_COLOUR);
@@ -144,8 +167,12 @@ function Create_UI_Controls(rootParent)
     if(isDamageTypeEmergencyBlockade.GetIsChecked()) then -- one time check for loading up from settings
         isDamageTypeEmergencyBlockade.SetInteractable(false);
     end
+    if(isDamageTypeNuke.GetIsChecked()) then -- one time check for loading up from settings
+        isDamageTypeNuke.SetInteractable(false);
+    end
 end;
 
+---@param rootParent VerticalLayoutGroup
 function Create_PercentageDamage_SubOptions_UI(rootParent)
     percentageDamageHeading = UI.CreateVerticalLayoutGroup(rootParent);
 
@@ -165,6 +192,7 @@ function Create_PercentageDamage_SubOptions_UI(rootParent)
         .SetValue(Mod.Settings.PercentageMinDamage or 1);
 end;
 
+---@param rootParent VerticalLayoutGroup
 function Create_FlatDamage_SubOptions_UI(rootParent)
     flatDamageHeading = UI.CreateVerticalLayoutGroup(rootParent);
 
@@ -176,6 +204,7 @@ function Create_FlatDamage_SubOptions_UI(rootParent)
         .SetValue(Mod.Settings.FlatDamage or 15);
 end;
 
+---@param rootParent VerticalLayoutGroup
 function Create_Card_SubOptions_UI(rootParent)
     cardOptionsHeading = UI.CreateVerticalLayoutGroup(rootParent);
 

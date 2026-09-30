@@ -1,4 +1,4 @@
-require("Utilities");
+require("Utilities.CommonUtils");
 
 ---Client_SaveConfigureUI hook
 ---@param alert fun(message: string) # Alert the player that something is wrong, for example, when a setting is not configured correctly. When invoked, cancels the player from saving and returning
@@ -34,6 +34,11 @@ function Client_SaveConfigureUI(alert, addCard)
     Mod.Settings.isDamageTypeEmergencyBlockade = isDamageTypeEmergencyBlockade.GetIsChecked();
     if(Mod.Settings.isDamageTypeEmergencyBlockade) then
         damageTypeMessage = "an emergency blockade card is automatically played on it.";
+    end
+
+    Mod.Settings.isDamageTypeNuke = isDamageTypeNuke.GetIsChecked();
+    if(Mod.Settings.isDamageTypeNuke) then
+        damageTypeMessage = "it is nuked.";
     end
 
     Mod.Settings.isDamageTypeSanction = isDamageTypeSanction.GetIsChecked();

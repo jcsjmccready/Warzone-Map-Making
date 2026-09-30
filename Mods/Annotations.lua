@@ -1,7 +1,7 @@
 ---@meta _
 
 -------------------------------
---- Warzone Version: 5.38.0 ---
+--- Warzone Version: 6.05.0 ---
 -------------------------------
 
 ---@class ProxyObject # Proxy object class
@@ -88,7 +88,7 @@
 ---@field SpeedSamplesForBoot integer[] # Not documented
 ---@field State EnumGamePlayerState # The State of the player in this game
 ---@field Surrendered boolean # True if the player has surrendered
----@field Team TeamID # The identifier of the team this player is on. -1 means the player is in no team at all
+---@field Team TeamID # The identifier of the team this player is on. -1 means the player is in no team at all. Note that since V6.05 players can switch teams. This is tracked in the game standing, this field will show only the team the player started on
 ---@field TimesBooted integer # The amount of times the player has been booted from this game
 ---@field TimesComeBackFromAI integer # The number of times the player has taken back control after being an AI
 ---@field TurnSince DateTime # The DateTime of when the last turn advanced and the player was able to create their orders
@@ -127,6 +127,7 @@
 ---@field Territories table<TerritoryID, TerritoryStanding> # Table containing all the TerritoryStandings, identified by the TerritoryID
 ---@field Resources table<PlayerID, table<EnumResourceType, integer>> # Table containing the resources of each player
 ---@field IncomeMods IncomeMod[] # Array containing all the income modifications made last turn. Writable in the Server_StartGame hook
+---@field TeamOverridesOpt table<PlayerID, TeamID> # Table containing the overridden teams of each player
 ---@field NumResources fun(playerID: PlayerID, type: EnumResourceType): integer # Returns the amount of this resource type a player has
 
 ---@class TerritoryStanding: ProxyObject # Territory standing
@@ -316,6 +317,7 @@
 ---@field ModID ModID | nil # The ID of the mod who created this order
 ---@field TerritoryAnnotationsOpt table<TerritoryID, TerritoryAnnotation> # When the order is selected in the orders list by the player, these messages will be presented on top of the territories specified
 ---@field Icon string # The name of the icon that will appear in the orderlist. Must be a 40x40 pixels png file
+---@field AssignTeamOpt table<PlayerID, TeamID> # Assign players to a team. A TeamID of -1 will remove the player from their team
 
 ---@class GameOrderCustom: GameOrder # Custom game order, mostly used for creating custom client orders that are processed into GameOrderEvents on the server side
 ---@field Message string # The message that appear in the order list
@@ -1057,7 +1059,13 @@
 ---@field RandomCitiesDistribution EnumValue # Distribution mode ID for a random cities distribution
 ---@field CustomScenario EnumValue # Distribution mode ID for a custom scenario
 
----@class UI # Root component containing all UI related objects
+---@class BaseUI
+---@field Alert fun(text: string) # Creates a small alert box with the passed text
+---@field PromptFromList fun(message: string, options: ListOption[]) # Allows a client to pick an option from a list
+---@field InterceptNextTerritoryClick fun(callback: fun(terrDetails: TerritoryDetails)) # Intercept the next click on a territory, then invokes the passed function with the TerritoryDetails of the clicked territory. In the callback function, returning `WL.CancelClickIntercept` will allow the normal action to take place instead of blocking it
+---@field InterceptNextBonusLinkClick fun(callback: fun(bonusDetails: BonusDetails)) # Intercept the next click on a bonus link, then invokes the passed function with the BonusDetails of the clicked bonus. In the callback function, returning `WL.CancelClickIntercept` will allow the normal action to take place instead of blocking it
+
+---@class UI: BaseUI # Root component containing all UI related objects
 ---@field CreateEmpty fun(parent: UIObject): Empty # Creates a container that displays nothing. Used to create a better layout
 ---@field CreateVerticalLayoutGroup fun(parent: UIObject): VerticalLayoutGroup # Creates a VerticalLayoutGroup that will display all it's children vertically
 ---@field CreateHorizontalLayoutGroup fun(parent: UIObject): HorizontalLayoutGroup # Create a HorizontalLayoutGroup that will display all it's children horizontally
@@ -1070,10 +1078,6 @@
 ---@field CreateNumberInputField fun(parent: UIObject): NumberInputField # A UI object for inputting number values
 ---@field Destroy fun(object: UIObject) # Destroys and removes the passed UI object, note that all children are also destroyed
 ---@field IsDestroyed fun(object: UIObject | nil): boolean # Returns whether the passed UI object is destroyed or not
----@field Alert fun(text: string) # Creates a small alert box with the passed text
----@field PromptFromList fun(message: string, options: ListOption[]) # Allows a client to pick an option from a list
----@field InterceptNextTerritoryClick fun(callback: fun(terrDetails: TerritoryDetails)) # Intercept the next click on a territory, then invokes the passed function with the TerritoryDetails of the clicked territory. In the callback function, returning `WL.CancelClickIntercept` will allow the normal action to take place instead of blocking it
----@field InterceptNextBonusLinkClick fun(callback: fun(bonusDetails: BonusDetails)) # Intercept the next click on a bonus link, then invokes the passed function with the BonusDetails of the clicked bonus. In the callback function, returning `WL.CancelClickIntercept` will allow the normal action to take place instead of blocking it
 
 ---@class ListOption # Small table for option
 ---@field text string # The text displayed on the option
@@ -1233,7 +1237,7 @@
 ---@field SetMinHeight fun(minHeight: number): NumberInputField # Set the minimum height of the object
 ---@field SetOnValueChanged fun(callback: fun()): NumberInputField # Sets the function that will be called when the value is changed
 ---@field GetOnValueChanged fun(): fun() # Gets the function that will be called when the value is changed
----@
+
 ---@class RootParent: UIObject # The root parent of any dialog. Note that this parent should only have 1 child
 ---@field SetPreferredWidth fun(width: number): RootParent # Set the preferred width of the object. It may not be this wide if there is not enough space, and it may be wider if FlexibleWidth is greater than 0. Defaults to -1, which is a special value meaning the object will meansure its own size based on its contents. Returns itself
 ---@field SetPreferredHeight fun(height: number): RootParent # Set the preferred height of the object. It may not be this tall if there is not enough space, and it may be taller if FlexibleHeight is greater than 0. Defaults to -1, which is a special value meaning the object will meansure its own size based on its contents. Returns itself
