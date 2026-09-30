@@ -195,7 +195,9 @@ function V2.HandleAttackTransferFromTriggeredTraps(trapTypes, game, order, resul
 	end
 
 	if (#blockingTrapNames == 0) then return false; end;
-	local blockedBy = table.concat(blockingTrapNames, " and ");
+	-- name the specific trap when only one type is involved, otherwise keep it generic rather than
+	-- listing every type (eg. "Barbed Wire and Caltrop")
+	local blockedBy = #blockingTrapNames == 1 and blockingTrapNames[1] or "triggered traps";
 
 	local blockingArmies = trapsArmies and result.ActualArmies.NumArmies > 0;
 	local blockingSpecialUnits = trapsSpecialUnits and #result.ActualArmies.SpecialUnits > 0;
