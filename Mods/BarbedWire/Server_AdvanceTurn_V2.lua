@@ -598,27 +598,27 @@ function V2.ExpireTrap(trapType, game, addNewOrder)
 
 		local structures = territory.Structures;
 		if ((duePrimed ~= nil or dueTriggered ~= nil) and structures ~= nil) then
-			local changed = false;
+			-- accumulate as deltas (AddStructuresOpt), not an absolute snapshot (SetStructuresOpt): this
+			-- runs once per trap type this turn-end, and LatestTurnStanding won't reflect an earlier trap
+			-- type's own queued-but-not-yet-committed change here, so overwriting the whole structures
+			-- table would undo it
+			local structureDeltas = {};
 
 			local existingPrimed = structures[primedStructId];
 			if (duePrimed ~= nil and existingPrimed ~= nil and existingPrimed > 0) then
 				-- clamp in case the structure count and tracked pieces ever disagree, so we never go negative
-				local expiringCount = math.min(duePrimed, existingPrimed);
-				structures[primedStructId] = existingPrimed - expiringCount;
-				changed = true;
+				structureDeltas[primedStructId] = -math.min(duePrimed, existingPrimed);
 			end
 
 			local existingTriggered = structures[triggeredStructId];
 			if (dueTriggered ~= nil and existingTriggered ~= nil and existingTriggered > 0) then
-				local expiringCount = math.min(dueTriggered, existingTriggered);
-				structures[triggeredStructId] = existingTriggered - expiringCount;
-				changed = true;
+				structureDeltas[triggeredStructId] = -math.min(dueTriggered, existingTriggered);
 			end
 
-			if (changed) then
+			if (next(structureDeltas) ~= nil) then
 				anyExpired = true;
 				local territoryModification = WL.TerritoryModification.Create(territory.ID);
-				territoryModification.SetStructuresOpt = structures;
+				territoryModification.AddStructuresOpt = structureDeltas;
 
 				table.insert(territoryModifications, territoryModification);
 				territoryAnnotations[territory.ID] = WL.TerritoryAnnotation.Create(trapType.DisplayName .. " expired", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany));
@@ -680,14 +680,18 @@ function V2.ResetTriggeredTrap(trapType, game, addNewOrder)
 			-- clamp in case the structure count and tracked pieces ever disagree, so we never go negative
 			local resettingCount = math.min(dueCount, structures[triggeredStructId]);
 
-			structures[triggeredStructId] = structures[triggeredStructId] - resettingCount;
+			-- deltas (AddStructuresOpt), not an absolute snapshot (SetStructuresOpt): this runs once per
+			-- trap type this turn-end, and LatestTurnStanding won't reflect an earlier trap type's own
+			-- queued-but-not-yet-committed change here, so overwriting the whole structures table would
+			-- undo it (eg. a just-reset Barbed Wire getting re-triggered by Caltrop's own reset afterward)
+			local structureDeltas = { [triggeredStructId] = -resettingCount };
 			if (not trapSettings.SingleUse) then
-				structures[primedStructId] = (structures[primedStructId] or 0) + resettingCount;
+				structureDeltas[primedStructId] = resettingCount;
 			end
 
 			anyReset = true;
 			local territoryModification = WL.TerritoryModification.Create(territoryId);
-			territoryModification.SetStructuresOpt = structures;
+			territoryModification.AddStructuresOpt = structureDeltas;
 
 			table.insert(territoryModifications, territoryModification);
 		end
@@ -769,13 +773,11 @@ function V2.BuildTrapStructures(trapType, game, addNewOrder)
 			table.insert(trapPieces, newPiece);
 		end
 
-		local structures = game.ServerGame.LatestTurnStanding.Territories[territoryID].Structures;
-
-		if (structures == nil) then structures = {}; end;
-		structures[primedStructId] = (structures[primedStructId] or 0) + numToBuild;
-
+		-- delta (AddStructuresOpt), not an absolute snapshot (SetStructuresOpt): this runs once per trap
+		-- type this turn-end, and LatestTurnStanding won't reflect an earlier trap type's own
+		-- queued-but-not-yet-committed change here, so overwriting the whole structures table would undo it
 		local territoryModification = WL.TerritoryModification.Create(territoryID);
-		territoryModification.SetStructuresOpt = structures;
+		territoryModification.AddStructuresOpt = { [primedStructId] = numToBuild };
 
 		local pendingDms = first(pendingGroup);
 		if (pendingDms ~= nil) then
