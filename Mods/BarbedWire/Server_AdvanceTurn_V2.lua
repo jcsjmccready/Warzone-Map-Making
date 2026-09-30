@@ -122,8 +122,8 @@ function V2.HandleAttackTransfer(game, order, result, skipThisOrder, addNewOrder
 		-- The order was skipped and manually resolved against a reduced stack (some of it stayed behind,
 		-- trapped). `result` still reflects the original, untrapped stack, so running the order.To trap
 		-- logic against it here would apply destination-side trap effects (triggering/ImmuneUnitDestroysTrap)
-		-- to units that never actually arrived. Skip it; the moved-on portion doesn't interact with
-		-- order.To's traps for now.
+		-- to units that never actually arrived. ResolvePartialTrapBlock already ran that logic itself
+		-- against the portion that actually moved, so there's nothing left to do here.
 		return;
 	end
 
@@ -230,13 +230,16 @@ function V2.HandleAttackTransferFromTriggeredTraps(trapTypes, game, order, resul
 	-- source. Take over entirely instead: skip the order, and manually resolve it as an attack/transfer
 	-- of only the untrapped portion via process_manual_attack, leaving the trapped portion at order.From.
 	skipThisOrder(WL.ModOrderControl.SkipAndSupressSkippedMessage);
-	V2.ResolvePartialTrapBlock(blockedBy, game, order, result, remainingNumArmies, remainingSpecialUnits, addNewOrder);
+	V2.ResolvePartialTrapBlock(trapTypes, blockedBy, game, order, result, remainingNumArmies, remainingSpecialUnits, addNewOrder);
 	return true;
 end
 
 ---Manually resolves an attack/transfer order that a triggered trap has only partially blocked: the units
 ---in remainingNumArmies/remainingSpecialUnits move as normal (fighting if order.To is hostile), while
----everything else in the original order.ActualArmies stays behind at order.From, trapped.
+---everything else in the original order.ActualArmies stays behind at order.From, trapped. Afterwards, runs
+---order.To's own trap logic (triggering/ImmuneUnitDestroysTrap) against what actually moved, since the
+---caller (HandleAttackTransfer) skips that step itself once an order has been taken over like this.
+---@param trapTypes V2_TrapType[]
 ---@param blockedBy string # names of the trap(s) doing the blocking, for the event message
 ---@param game GameServerHook
 ---@param order GameOrderAttackTransfer
@@ -244,7 +247,7 @@ end
 ---@param remainingNumArmies integer
 ---@param remainingSpecialUnits SpecialUnit[]
 ---@param addNewOrder fun(order: GameOrder) # Adds a game order, will be processed before any of the rest of the orders
-function V2.ResolvePartialTrapBlock(blockedBy, game, order, result, remainingNumArmies, remainingSpecialUnits, addNewOrder)
+function V2.ResolvePartialTrapBlock(trapTypes, blockedBy, game, order, result, remainingNumArmies, remainingSpecialUnits, addNewOrder)
 	local fromTerritory = game.ServerGame.LatestTurnStanding.Territories[order.From];
 	local toTerritory = game.ServerGame.LatestTurnStanding.Territories[order.To];
 	local fromTerritoryName = game.Map.Territories[order.From].Name;
@@ -253,6 +256,11 @@ function V2.ResolvePartialTrapBlock(blockedBy, game, order, result, remainingNum
 	local trappedNumArmies = result.ActualArmies.NumArmies - remainingNumArmies;
 	local trappedNumSpecialUnits = #result.ActualArmies.SpecialUnits - #remainingSpecialUnits;
 	local trappedDescription = DescribeArmyMovement(trappedNumArmies, {}) .. (trappedNumSpecialUnits > 0 and (" and " .. trappedNumSpecialUnits .. " special unit(s)") or "");
+
+	-- the force that's actually moving/attacking, for both process_manual_attack and (further below)
+	-- order.To's own trap logic
+	local movingArmies = WL.Armies.Create(remainingNumArmies, remainingSpecialUnits);
+	local movedIsSuccessful = true; -- transfers always "succeed" for order.To trap-arrival purposes
 
 	local fromMod = WL.TerritoryModification.Create(order.From);
 	local toMod = WL.TerritoryModification.Create(order.To);
@@ -275,8 +283,8 @@ function V2.ResolvePartialTrapBlock(blockedBy, game, order, result, remainingNum
 
 		message = DescribeArmyMovement(remainingNumArmies, remainingSpecialUnits) .. " transferred to " .. toTerritoryName .. " from " .. fromTerritoryName;
 	else
-		local movingArmies = WL.Armies.Create(remainingNumArmies, remainingSpecialUnits);
 		local attackResult = process_manual_attack(game, movingArmies, toTerritory, nil, addNewOrder, false);
+		movedIsSuccessful = attackResult.IsSuccessful;
 
 		if (attackResult.IsSuccessful) then
 			fromMod.SetArmiesTo = fromTerritory.NumArmies.NumArmies - remainingNumArmies;
@@ -308,6 +316,11 @@ function V2.ResolvePartialTrapBlock(blockedBy, game, order, result, remainingNum
 
 	QueueExtraSpecialUnitEvents(order.From, extraFromChunks, order.PlayerID, addNewOrder);
 	QueueExtraSpecialUnitEvents(order.To, extraToChunks, order.PlayerID, addNewOrder);
+
+	-- order.To's own trap logic (triggering/ImmuneUnitDestroysTrap), against the force that actually
+	-- moved/attacked rather than the original stale stack HandleAttackTransfer's caller would otherwise use
+	local movedResult = { ActualArmies = movingArmies, IsAttack = result.IsAttack, IsSuccessful = movedIsSuccessful };
+	V2.HandleAttackTransferToTraps(trapTypes, game, order, movedResult, addNewOrder);
 end
 
 ---@param trapTypes V2_TrapType[]
