@@ -230,7 +230,12 @@ function V2.ResolvePartialTrapBlock(blockedBy, game, order, result, remainingNum
 		fromMod.SetArmiesTo = fromTerritory.NumArmies.NumArmies - remainingNumArmies;
 		fromMod.RemoveSpecialUnitsOpt = map(remainingSpecialUnits, function(unit) return unit.ID end);
 
-		toMod.AddArmies = remainingNumArmies;
+		-- only set AddArmies when there's actually armies to add - elsewhere in this file (eg.
+		-- QueueExtraSpecialUnitEvents) a special-units-only TerritoryModification always leaves AddArmies
+		-- unset rather than explicitly zeroed, so match that here for a special-units-only move
+		if (remainingNumArmies > 0) then
+			toMod.AddArmies = remainingNumArmies;
+		end
 		extraToChunks = AssignAddSpecialUnits(toMod, remainingSpecialUnits);
 
 		message = DescribeArmyMovement(remainingNumArmies, remainingSpecialUnits) .. " transferred to " .. toTerritoryName .. " from " .. fromTerritoryName;
