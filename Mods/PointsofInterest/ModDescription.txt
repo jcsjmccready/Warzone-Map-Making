@@ -1,0 +1,2 @@
+This mod lets players build Points of Interest on any territory through the commerce menu. There is one structure for each letter of the NATO alphabet (Alpha to Zulu).
+Points of Interest belong to the whole lobby rather than to a player, and cannot be removed once built. Each letter can be configured to give No Fog, Light Fog or Heavy Fog visibility of the territory it is on.
