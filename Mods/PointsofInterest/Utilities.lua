@@ -10,10 +10,10 @@ NATO_NAMES = {
 --Visibility options shown in the configure UI, in display order. Key is what is stored in Mod.Settings
 VISIBILITY_OPTIONS = {
     { Key = "NoFog", Text = "No Fog" },
-    { Key = "LightFog", Text = "Light Fog" },
+    { Key = "Default", Text = "Default" },
     { Key = "HeavyFog", Text = "Heavy Fog" },
 };
-DEFAULT_VISIBILITY = "HeavyFog";
+DEFAULT_VISIBILITY = "Default";
 
 --FogMod priority. Below 9000 so a FogMod can never hide a player's own territories
 FOG_MOD_PRIORITY = 8000;
@@ -31,16 +31,15 @@ function GetVisibilityText(key)
     return key;
 end
 
---Converts a stored visibility key into the standing fog level a FogMod should apply. Returns nil for Heavy Fog:
---that is the game's default for an unseen territory, so no FogMod is needed (and a Fogged FogMod would wrongly
---hide the territory from the players who can already see it)
+--Converts a stored visibility key into the standing fog level a FogMod should apply. Returns nil for Default, which
+--makes no changes so the lobby's own fog settings decide what is shown
 ---@param key string
 ---@return EnumStandingFogLevel | nil
 function GetStandingFogLevel(key)
     if (key == "NoFog") then
         return WL.StandingFogLevel.Visible;
-    elseif (key == "LightFog") then
-        return WL.StandingFogLevel.OwnerOnly;
+    elseif (key == "HeavyFog") then
+        return WL.StandingFogLevel.Fogged;
     end
     return nil;
 end

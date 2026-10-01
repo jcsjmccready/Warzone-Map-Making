@@ -11,7 +11,7 @@ function Client_PresentConfigureUI(rootParent)
     poiCost = UI.CreateNumberInputField(horz)
         .SetSliderMinValue(0)
         .SetSliderMaxValue(50)
-        .SetValue(Mod.Settings.PoICost or 5);
+        .SetValue(Mod.Settings.PoICost or 0);
 
     UI.CreateLabel(mainModUI).SetText('Visibility of the territory a Point of Interest is on:').SetColor(SUBHEADING_COLOUR);
 
