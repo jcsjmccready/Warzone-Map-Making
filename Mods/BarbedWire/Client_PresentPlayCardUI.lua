@@ -15,8 +15,6 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
 
     closeCardsDialog();
 
-    -- Both Barbed Wire and Caltrop use this same hook, since it's per-mod not per-card - figure out
-    -- which one was actually played so we build the right thing with the right wording.
     local trapDisplayName;
     local trapModDataPrefix;
     if (cardInstance.CardID == Mod.Settings.BarbedWireCardID) then

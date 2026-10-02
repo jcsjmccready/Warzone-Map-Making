@@ -119,8 +119,7 @@ end
 function V2.HandleAttackTransfer(game, order, result, skipThisOrder, addNewOrder)
 	local tookOverOrder = V2.HandleAttackTransferFromTriggeredTraps(V2.AllTrapTypes, game, order, result, skipThisOrder, addNewOrder);
 	if (tookOverOrder) then
-		-- ResolvePartialTrapBlock already resolved this order and ran order.To's trap logic itself,
-		-- against the reduced stack; `result` here is stale (still the original, untrapped stack).
+		-- manually handled from and to logic already, result is now stale so exit early
 		return;
 	end
 
@@ -143,8 +142,7 @@ function V2.HandleAttackTransferFromTriggeredTraps(trapTypes, game, order, resul
 	local existingStructures = game.ServerGame.LatestTurnStanding.Territories[order.From].Structures;
 	if (existingStructures == nil) then return false; end;
 
-	-- ImmuneUnitSharesImmunity only exempts the rest of the stack if its immune unit actually escapes -
-	-- if some OTHER triggered trap here would catch it regardless, it isn't escorting anyone.
+	-- ImmuneUnitSharesImmunity only works if the unit itself can move
 	local triggeredTraps = {};
 	for _, trapType in ipairs(trapTypes) do
 		local _, triggeredStructId = V2.GetStructureIds(trapType);
@@ -200,9 +198,7 @@ function V2.HandleAttackTransferFromTriggeredTraps(trapTypes, game, order, resul
 	local remainingSpecialUnits = trapsSpecialUnits and {} or result.ActualArmies.SpecialUnits;
 
 	if (remainingNumArmies == 0 and #remainingSpecialUnits == 0) then
-		-- everything present is trapped: a simple full block. WZ hasn't finished processing this order yet,
-		-- so overwriting ActualArmies here is enough - WZ recomputes the rest of the order (casualties,
-		-- success) against this smaller force itself.
+		-- full block - override ActualArmies and let wz handle it
 		local trappedNumArmies = result.ActualArmies.NumArmies;
 		local trappedNumSpecialUnits = #result.ActualArmies.SpecialUnits;
 		local trappedDescription = DescribeArmyMovement(trappedNumArmies, {}) .. (trappedNumSpecialUnits > 0 and (" and " .. trappedNumSpecialUnits .. " special unit(s)") or "");
@@ -215,11 +211,7 @@ function V2.HandleAttackTransferFromTriggeredTraps(trapTypes, game, order, resul
 		return false;
 	end
 
-	-- Only part of the stack is trapped. We can't just shrink ActualArmies and let WZ carry on: WZ would
-	-- resolve the attack's casualties/success using the REDUCED force's numbers alone as if that's all
-	-- that ever existed, silently discarding the trapped units instead of leaving them behind at the
-	-- source. Take over entirely instead: skip the order, and manually resolve it as an attack/transfer
-	-- of only the untrapped portion via process_manual_attack, leaving the trapped portion at order.From.
+	-- partially trapped - have to manually compute the order with the remaining forces
 	skipThisOrder(WL.ModOrderControl.SkipAndSupressSkippedMessage);
 	V2.ResolvePartialTrapBlock(trapTypes, blockedBy, game, order, result, remainingNumArmies, remainingSpecialUnits, addNewOrder);
 	return true;
@@ -600,9 +592,6 @@ function V2.ExpireTrap(trapType, game, addNewOrder)
 
 		local structures = territory.Structures;
 		if ((duePrimed ~= nil or dueTriggered ~= nil) and structures ~= nil) then
-			-- AddStructuresOpt deltas, not a SetStructuresOpt snapshot: this runs once per trap type this
-			-- turn-end, and LatestTurnStanding won't reflect another trap type's own change queued earlier
-			-- in the same pass, so overwriting the whole table here would undo it.
 			local structureDeltas = {};
 
 			local existingPrimed = structures[primedStructId];
@@ -681,7 +670,6 @@ function V2.ResetTriggeredTrap(trapType, game, addNewOrder)
 			-- clamp in case the structure count and tracked pieces ever disagree, so we never go negative
 			local resettingCount = math.min(dueCount, structures[triggeredStructId]);
 
-			-- AddStructuresOpt deltas, not a SetStructuresOpt snapshot - see ExpireTrap above
 			local structureDeltas = { [triggeredStructId] = -resettingCount };
 			if (not trapSettings.SingleUse) then
 				structureDeltas[primedStructId] = resettingCount;
@@ -771,7 +759,6 @@ function V2.BuildTrapStructures(trapType, game, addNewOrder)
 			table.insert(trapPieces, newPiece);
 		end
 
-		-- AddStructuresOpt delta, not a SetStructuresOpt snapshot - see ExpireTrap above
 		local territoryModification = WL.TerritoryModification.Create(territoryID);
 		territoryModification.AddStructuresOpt = { [primedStructId] = numToBuild };
 
