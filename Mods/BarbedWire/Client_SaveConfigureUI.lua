@@ -125,7 +125,7 @@ function Client_SaveConfigureUI(alert, addCard)
             Mod.Settings.CaltropLifespan = caltropLifespan.GetValue();
 
             if (Mod.Settings.CaltropLifespan < 2) then
-                alert("Tank Caltrop lifespan cannot be less than 2");
+                alert("Caltrop lifespan cannot be less than 2");
                 return;
             end
         end
@@ -139,26 +139,26 @@ function Client_SaveConfigureUI(alert, addCard)
             Mod.Settings.CaltropInitialPieces = caltropInitialPieces.GetValue();
 
             if (Mod.Settings.CaltropNumPieces < 1) then
-                alert("Number of Tank Caltrop pieces cannot be less than 1");
+                alert("Number of Caltrop pieces cannot be less than 1");
                 return;
             end
             if (Mod.Settings.CaltropCardWeight < 0) then
-                alert("Tank Caltrop card weight cannot be less than 0");
+                alert("Caltrop card weight cannot be less than 0");
                 return;
             end
             if (Mod.Settings.CaltropMinPieces < 0) then
-                alert("Minimum Tank Caltrop pieces cannot be less than 0");
+                alert("Minimum Caltrop pieces cannot be less than 0");
                 return;
             end
             if (Mod.Settings.CaltropInitialPieces < 0) then
-                alert("Initial Tank Caltrop pieces cannot be less than 0");
+                alert("Initial Caltrop pieces cannot be less than 0");
                 return;
             end
 
             local caltropCardID = addCard(
-                "Tank Caltrop Card",
-                "Play this card to create Tank Caltrops on any territory you control (at the end of the turn).",
-                "TankCaltropCard.png",
+                "Caltrop Card",
+                "Play this card to create Caltrops on any territory you control (at the end of the turn).",
+                "CaltropCard.png",
                 Mod.Settings.CaltropNumPieces,
                 Mod.Settings.CaltropMinPieces,
                 Mod.Settings.CaltropInitialPieces,
@@ -181,7 +181,7 @@ function Client_SaveConfigureUI(alert, addCard)
     end
 
     if(Mod.Settings.IncludeBarbedWire == false and Mod.Settings.IncludeCaltrop == false) then
-        alert("You must include at least one of the two: Barbed Wire, Tank Caltrops");
+        alert("You must include at least one of the two: Barbed Wire, Caltrops");
         return;
     end
 end

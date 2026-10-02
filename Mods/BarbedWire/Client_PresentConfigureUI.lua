@@ -59,9 +59,11 @@ function Create_CaltropEnabled_UI(rootParent)
 
     ---- Acquiring type
     local acquiringTypeHeading = UI.CreateVerticalLayoutGroup(caltropEnabledVHeading);
+
     UI.CreateLabel(acquiringTypeHeading)
         .SetText('Acquiring type:')
         .SetColor(BUTTON_COLOURS.LightBlue);
+
     local acquiringType = UI.CreateRadioButtonGroup(acquiringTypeHeading);
 
     local caltropAcquiringSubOptionsParent = UI.CreateVerticalLayoutGroup(caltropEnabledVHeading);
@@ -182,6 +184,7 @@ function Create_Caltrop_Behaviour_UI(rootParent)
     caltropTrapsArmies = UI.CreateCheckBox(optionalsHeading)
         .SetText("Traps armies")
         .SetIsChecked(Mod.Settings.CaltropTrapsArmies or false);
+
     caltropTrapsSpecialUnits = UI.CreateCheckBox(optionalsHeading)
         .SetText("Traps Special Units")
         .SetIsChecked(Mod.Settings.CaltropTrapsSpecialUnits == nil or Mod.Settings.CaltropTrapsSpecialUnits);
@@ -197,9 +200,11 @@ function Create_Caltrop_Behaviour_UI(rootParent)
             caltropImmuneUnitNone.SetInteractable(not caltropImmuneUnitNone.GetIsChecked() and caltropTrapsSpecialUnits.GetIsChecked());
         end
     end);
+
     caltropOnlyTriggersOnTrappableUnits = UI.CreateCheckBox(optionalsHeading)
         .SetText("Only trigger if trappable units attacked")
         .SetIsChecked(Mod.Settings.CaltropOnlyTriggersOnTrappableUnits == nil or Mod.Settings.CaltropOnlyTriggersOnTrappableUnits);
+
     UI.CreateLabel(optionalsHeading).SetText("");
 
     caltropIsImmuneUnitEnabled = UI.CreateCheckBox(optionalsHeading)
@@ -210,23 +215,30 @@ function Create_Caltrop_Behaviour_UI(rootParent)
     UI.CreateLabel(optionalsHeading).SetText("");
 
     UI.CreateLabel(optionalsHeading).SetText('Lifespan Behaviour').SetColor(BUTTON_COLOURS.LightBlue);
+
     caltropBombDestroys = UI.CreateCheckBox(optionalsHeading)
         .SetText("Bomb destroys")
         .SetIsChecked(Mod.Settings.CaltropBombDestroys or false);
+
     caltropSingleUse = UI.CreateCheckBox(optionalsHeading)
         .SetText("Caltrops are single use (destroyed instead of resetting) ")
         .SetIsChecked(Mod.Settings.CaltropSingleUse or false);
+
     caltropHasLimitedLifespan = UI.CreateCheckBox(optionalsHeading)
         .SetText("Caltrops have a limited lifespan?")
         .SetIsChecked(Mod.Settings.CaltropHasLimitedLifespan or false);
     local caltropLifespanContainer = UI.CreateVerticalLayoutGroup(optionalsHeading);
+
     UI.CreateLabel(optionalsHeading).SetText('Misc.').SetColor(BUTTON_COLOURS.LightBlue);
+
     caltropAllyTriggers = UI.CreateCheckBox(optionalsHeading)
         .SetText("Allies trigger Caltrops")
         .SetIsChecked(Mod.Settings.CaltropAllyTriggers or false);
+
     caltropCancelsAirlifts = UI.CreateCheckBox(optionalsHeading)
         .SetText("Cancels Airlifts")
         .SetIsChecked(Mod.Settings.CaltropCancelsAirlifts or false);
+
     UI.CreateLabel(optionalsHeading).SetText("Applies to both primed and triggered Caltrops*").SetColor(BUTTON_COLOURS.DarkGray);
 
     -- Lifespan sub-options
@@ -298,6 +310,7 @@ function Create_Caltrop_ImmuneUnit_SubOptions_UI(rootParent)
     end
 
     UI.CreateLabel(caltropImmuneUnitSupportHeading).SetText('Additional Behaviour');
+
     caltropImmuneUnitBehaviourGroup = UI.CreateRadioButtonGroup(caltropImmuneUnitSupportHeading);
 
     caltropImmuneUnitSharesImmunity = UI.CreateRadioButton(caltropImmuneUnitSupportHeading).SetGroup(caltropImmuneUnitBehaviourGroup)
@@ -334,9 +347,11 @@ function Create_BarbedWireEnabled_UI(rootParent)
 
     ---- Acquiring type
     local acquiringTypeHeading = UI.CreateVerticalLayoutGroup(barbedWireEnabledVHeading);
+
     UI.CreateLabel(acquiringTypeHeading)
         .SetText('Acquiring type:')
         .SetColor(SUBHEADING_COLOUR);
+
     local acquiringType = UI.CreateRadioButtonGroup(acquiringTypeHeading);
 
     local acquiringSubOptionsParent = UI.CreateVerticalLayoutGroup(barbedWireEnabledVHeading);
@@ -457,6 +472,7 @@ function Create_BarbedWire_Behaviour_UI(rootParent)
     barbedWireTrapsArmies = UI.CreateCheckBox(optionalsHeading)
         .SetText("Traps armies")
         .SetIsChecked(Mod.Settings.BarbedWireTrapsArmies == nil or Mod.Settings.BarbedWireTrapsArmies);
+
     barbedWireTrapsSpecialUnits = UI.CreateCheckBox(optionalsHeading)
         .SetText("Traps Special Units")
         .SetIsChecked(Mod.Settings.BarbedWireTrapsSpecialUnits or false);
@@ -472,9 +488,11 @@ function Create_BarbedWire_Behaviour_UI(rootParent)
             barbedWireImmuneUnitNone.SetInteractable(not barbedWireImmuneUnitNone.GetIsChecked() and barbedWireTrapsSpecialUnits.GetIsChecked());
         end
     end);
+
     barbedWireOnlyTriggersOnTrappableUnits = UI.CreateCheckBox(optionalsHeading)
         .SetText("Only trigger if trappable units attacked")
         .SetIsChecked(Mod.Settings.BarbedWireOnlyTriggersOnTrappableUnits == nil or Mod.Settings.BarbedWireOnlyTriggersOnTrappableUnits);
+
     UI.CreateLabel(optionalsHeading).SetText("");
 
     barbedWireIsImmuneUnitEnabled = UI.CreateCheckBox(optionalsHeading)
@@ -485,23 +503,30 @@ function Create_BarbedWire_Behaviour_UI(rootParent)
     UI.CreateLabel(optionalsHeading).SetText("");
 
     UI.CreateLabel(optionalsHeading).SetText('Lifespan Behaviour').SetColor(SUBHEADING_COLOUR);
+
     barbedWireBombDestroys = UI.CreateCheckBox(optionalsHeading)
         .SetText("Bomb destroys")
         .SetIsChecked(Mod.Settings.BarbedWireBombDestroys or false);
+
     barbedWireSingleUse = UI.CreateCheckBox(optionalsHeading)
         .SetText("Wire is single use (destroyed instead of resetting) ")
         .SetIsChecked(Mod.Settings.BarbedWireSingleUse or false);
+
     barbedWireHasLimitedLifespan = UI.CreateCheckBox(optionalsHeading)
         .SetText("Wire has a limited lifespan?")
         .SetIsChecked(Mod.Settings.BarbedWireHasLimitedLifespan or false);
     local barbedWireLifespanContainer = UI.CreateVerticalLayoutGroup(optionalsHeading);
+
     UI.CreateLabel(optionalsHeading).SetText('Misc.').SetColor(SUBHEADING_COLOUR);
+
     barbedWireAllyTriggers = UI.CreateCheckBox(optionalsHeading)
         .SetText("Allies trigger barbed wire")
         .SetIsChecked(Mod.Settings.BarbedWireAllyTriggers or false);
+
     barbedWireCancelsAirlifts = UI.CreateCheckBox(optionalsHeading)
         .SetText("Cancels Airlifts")
         .SetIsChecked(Mod.Settings.BarbedWireCancelsAirlifts or false);
+
     UI.CreateLabel(optionalsHeading).SetText("Applies to both primed and triggered barbed wire*").SetColor(BUTTON_COLOURS.DarkGray);
 
     -- Lifespan sub-options
@@ -573,6 +598,7 @@ function Create_BarbedWire_ImmuneUnit_SubOptions_UI(rootParent)
     end
 
     UI.CreateLabel(barbedWireImmuneUnitSupportHeading).SetText('Additional Behaviour');
+
     barbedWireImmuneUnitBehaviourGroup = UI.CreateRadioButtonGroup(barbedWireImmuneUnitSupportHeading);
 
     barbedWireImmuneUnitSharesImmunity = UI.CreateRadioButton(barbedWireImmuneUnitSupportHeading).SetGroup(barbedWireImmuneUnitBehaviourGroup)
