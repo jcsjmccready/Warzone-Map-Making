@@ -295,10 +295,7 @@ function Create_Caltrop_ImmuneUnit_SubOptions_UI(rootParent)
         .SetText(Mod.Settings.CaltropImmuneUnitName or 'Tank')
         .SetPreferredWidth(200);
 
-    -- one radio group: ignore / destroy / none. None needs no setting of its own - it is just neither of the
-    -- other two saved, and is also the default. None only makes sense when the trap traps special units
-    -- (only then is the immune unit ever a candidate for trapping in the first place) - forced off None
-    -- (onto Ignore) below whenever Traps Special Units is off.
+    -- ignore / destroy / none radio group - None has no setting of its own, forced to Ignore below when Traps Special Units is off
     local mode = 'none';
     if (Mod.Settings.CaltropImmuneUnitDestroysTrap) then
         mode = 'destroy';
@@ -334,8 +331,7 @@ function Create_Caltrop_ImmuneUnit_SubOptions_UI(rootParent)
         radio.SetInteractable(not radio.GetIsChecked());
     end
 
-    -- None is additionally disabled (unselectable) whenever Traps Special Units is off - with it off, the
-    -- immune unit is never trapped either way, so None (and its 'no-op' distinction from Ignore) is meaningless
+    -- None is meaningless (and disabled) when Traps Special Units is off, since nothing is trapped either way
     caltropImmuneUnitNone.SetOnValueChanged(function()
         caltropImmuneUnitNone.SetInteractable(not caltropImmuneUnitNone.GetIsChecked() and caltropTrapsSpecialUnits.GetIsChecked());
     end);
@@ -583,10 +579,7 @@ function Create_BarbedWire_ImmuneUnit_SubOptions_UI(rootParent)
         .SetText(Mod.Settings.BarbedWireImmuneUnitName or 'Tank')
         .SetPreferredWidth(200);
 
-    -- one radio group: ignore / destroy / none. None needs no setting of its own - it is just neither of the
-    -- other two saved, and is also the default. None only makes sense when the trap traps special units
-    -- (only then is the immune unit ever a candidate for trapping in the first place) - forced off None
-    -- (onto Ignore) below whenever Traps Special Units is off.
+    -- ignore / destroy / none radio group - None has no setting of its own, forced to Ignore below when Traps Special Units is off
     local mode = 'none';
     if (Mod.Settings.BarbedWireImmuneUnitDestroysTrap) then
         mode = 'destroy';
@@ -622,8 +615,7 @@ function Create_BarbedWire_ImmuneUnit_SubOptions_UI(rootParent)
         radio.SetInteractable(not radio.GetIsChecked());
     end
 
-    -- None is additionally disabled (unselectable) whenever Traps Special Units is off - with it off, the
-    -- immune unit is never trapped either way, so None (and its 'no-op' distinction from Ignore) is meaningless
+    -- None is meaningless (and disabled) when Traps Special Units is off, since nothing is trapped either way
     barbedWireImmuneUnitNone.SetOnValueChanged(function()
         barbedWireImmuneUnitNone.SetInteractable(not barbedWireImmuneUnitNone.GetIsChecked() and barbedWireTrapsSpecialUnits.GetIsChecked());
     end);
