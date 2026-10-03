@@ -26,36 +26,35 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
         Close = close;
         setMaxSize(400, 270);
         local vert = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1); --set flexible width so things don't jump around while we change InstructionLabel
-        local buttonsHGroup = UI.CreateHorizontalLayoutGroup(vert).SetFlexibleWidth(1);
-        TargetTerritoryBtn = UI.CreateButton(buttonsHGroup)
+
+        TargetTerritoryInstructionLabel = UI.CreateLabel(vert).SetText("").SetAlignment(WL.TextAlignmentOptions.Center);
+
+        --Laid out like the Airlift card: selector column (40%), the word "on" (20%), icon column (40%)
+        local top = UI.CreateHorizontalLayoutGroup(vert).SetFlexibleWidth(1);
+
+        local selectorColumn = UI.CreateVerticalLayoutGroup(top).SetFlexibleWidth(0.4).SetCenter(true);
+        TargetTerritoryBtn = UI.CreateButton(selectorColumn)
             .SetText("Select Territory")
-            .SetOnClick(TargetTerritoryClicked)
-            .SetFlexibleWidth(0.3);
-
-        TargetTerritoryInstructionLabel = UI.CreateLabel(vert).SetText("");
-
-        --Reads as: [Bomb Shelter icon] on [selected territory]
-        local selectionRow = UI.CreateHorizontalLayoutGroup(vert).SetFlexibleWidth(1);
-        local iconColumn = UI.CreateVerticalLayoutGroup(selectionRow).SetCenter(true).SetPreferredWidth(70);
-        UI.CreateImage(iconColumn).SetSprite("Bomb Shelter.png").SetPreferredWidth(60).SetPreferredHeight(60);
-        local onColumn = UI.CreateVerticalLayoutGroup(selectionRow).SetCenter(true).SetPreferredWidth(30);
-        UI.CreateLabel(onColumn).SetText("on").SetAlignment(WL.TextAlignmentOptions.Center);
-        local selectorColumn = UI.CreateHorizontalLayoutGroup(selectionRow).SetFlexibleWidth(1);
+            .SetColor("#242D9A")
+            .SetOnClick(TargetTerritoryClicked);
 
         --UI.CreateSnapshot doesn't exist in older app versions, so the snapshot is skipped there
         TargetTerritorySnapshot = nil;
         TargetTerritorySnapshotVert = nil;
         if (UI.CreateSnapshot ~= nil) then
-            --the holder keeps the snapshot to the left of the name label when it is recreated
-            TargetTerritorySnapshotVert = UI.CreateVerticalLayoutGroup(selectorColumn);
-            TargetTerritoryNameLabel = UI.CreateLabel(selectorColumn).SetText(" ").SetFlexibleWidth(1);
+            --the holder keeps the snapshot above the name label when it is recreated
+            TargetTerritorySnapshotVert = UI.CreateVerticalLayoutGroup(selectorColumn).SetCenter(true);
+            TargetTerritoryNameLabel = UI.CreateLabel(selectorColumn).SetText(" ").SetAlignment(WL.TextAlignmentOptions.Center);
         end
 
-        PlayCardBtn = UI.CreateButton(buttonsHGroup)
+        local onColumn = UI.CreateVerticalLayoutGroup(top).SetFlexibleWidth(0.2).SetCenter(true);
+        UI.CreateLabel(onColumn).SetText("on").SetColor("#DDDDDD").SetAlignment(WL.TextAlignmentOptions.Center);
+
+        local iconColumn = UI.CreateVerticalLayoutGroup(top).SetFlexibleWidth(0.4).SetCenter(true);
+        PlayCardBtn = UI.CreateButton(iconColumn)
             .SetText("Build Bomb Shelter")
             .SetInteractable(false)
             .SetColor(BUTTON_COLOURS.DarkGreen)
-            .SetFlexibleWidth(0.7)
             .SetOnClick(function()
                 if (TargetTerritoryID == nil) then
                     TargetTerritoryInstructionLabel.SetText("You must select a territory first").SetColor(ERROR_COLOUR);
@@ -71,6 +70,7 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
                     close();
                 end
             end);
+        UI.CreateImage(iconColumn).SetSprite("Bomb Shelter.png").SetPreferredWidth(60).SetPreferredHeight(60);
 
         TargetTerritoryClicked(); --start in selection mode so the player doesn't need to press the button first
     end);
