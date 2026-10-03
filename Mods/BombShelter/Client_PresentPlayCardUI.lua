@@ -34,14 +34,19 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
 
         TargetTerritoryInstructionLabel = UI.CreateLabel(vert).SetText("");
 
+        --Left column holds the territory selector, right column holds the Bomb Shelter icon
+        local selectionRow = UI.CreateHorizontalLayoutGroup(vert).SetFlexibleWidth(1);
+        local selectorColumn = UI.CreateHorizontalLayoutGroup(selectionRow).SetFlexibleWidth(1);
+        local iconColumn = UI.CreateVerticalLayoutGroup(selectionRow).SetCenter(true).SetPreferredWidth(70);
+        UI.CreateImage(iconColumn).SetSprite("Bomb Shelter.png").SetPreferredWidth(60).SetPreferredHeight(60);
+
         --UI.CreateSnapshot doesn't exist in older app versions, so the snapshot is skipped there
         TargetTerritorySnapshot = nil;
         TargetTerritorySnapshotVert = nil;
         if (UI.CreateSnapshot ~= nil) then
             --the holder keeps the snapshot to the left of the name label when it is recreated
-            local selectionRow = UI.CreateHorizontalLayoutGroup(vert).SetFlexibleWidth(1);
-            TargetTerritorySnapshotVert = UI.CreateVerticalLayoutGroup(selectionRow);
-            TargetTerritoryNameLabel = UI.CreateLabel(selectionRow).SetText(" ").SetFlexibleWidth(1);
+            TargetTerritorySnapshotVert = UI.CreateVerticalLayoutGroup(selectorColumn);
+            TargetTerritoryNameLabel = UI.CreateLabel(selectorColumn).SetText(" ").SetFlexibleWidth(1);
         end
 
         PlayCardBtn = UI.CreateButton(buttonsHGroup)
