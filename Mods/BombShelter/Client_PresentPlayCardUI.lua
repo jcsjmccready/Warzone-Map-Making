@@ -120,7 +120,9 @@ function TerritoryClicked(terrDetails)
         Game.HighlightTerritories({});
     else
         --Territory was clicked, remember its ID
-        TargetTerritoryInstructionLabel.SetText("Selected territory: " .. terrDetails.Name).SetColor(TEXT_DEFAULT_COLOUR);
+        --The snapshot shows the selection, so the text is only needed when the app is too old to have snapshots
+        local selectedText = TargetTerritorySnapshotVert ~= nil and "" or ("Selected territory: " .. terrDetails.Name);
+        TargetTerritoryInstructionLabel.SetText(selectedText).SetColor(TEXT_DEFAULT_COLOUR);
         TargetTerritoryID = terrDetails.ID;
         TargetTerritoryName = terrDetails.Name;
         ShowTargetSnapshot(terrDetails.ID, terrDetails.Name);
