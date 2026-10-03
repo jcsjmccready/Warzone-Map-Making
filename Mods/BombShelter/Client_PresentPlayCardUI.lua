@@ -94,7 +94,7 @@ end
 function TargetTerritoryClicked()
     Game.HighlightTerritories({}); --clear any territories highlighted from a previous failed territory selection
     UI.InterceptNextTerritoryClick(TerritoryClicked);
-    TargetTerritoryInstructionLabel.SetText("Please click on the territory you wish to build the Bomb Shelter on.").SetColor(TEXT_DEFAULT_COLOUR);
+    TargetTerritoryInstructionLabel.SetText("Please click on the territory you wish to build on").SetColor(TEXT_DEFAULT_COLOUR);
     TargetTerritoryBtn.SetInteractable(false);
     PlayCardBtn.SetInteractable(false);
 end
