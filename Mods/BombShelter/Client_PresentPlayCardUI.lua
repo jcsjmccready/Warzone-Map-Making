@@ -59,9 +59,9 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
                 end
             end);
 
-        --identical min/preferred widths (small enough to fit the dialog) with equal flexible width split the row evenly and keep the icon from shifting when the snapshot appears and changes the selector column's content width
+        --identical preferred widths (small enough to fit the dialog) with equal flexible width split the row evenly and keep the icon from shifting when the snapshot appears and changes the selector column's content width
         local displayRow = UI.CreateHorizontalLayoutGroup(vert).SetFlexibleWidth(1);
-        local selectorColumn = UI.CreateVerticalLayoutGroup(displayRow).SetMinWidth(120).SetPreferredWidth(120).SetFlexibleWidth(1).SetCenter(true);
+        local selectorColumn = UI.CreateVerticalLayoutGroup(displayRow).SetPreferredWidth(120).SetFlexibleWidth(1).SetCenter(true);
 
         --UI.CreateSnapshot doesn't exist in older app versions, so the snapshot is skipped there
         TargetTerritorySnapshot = nil;
@@ -72,7 +72,7 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
             TargetTerritoryNameLabel = UI.CreateLabel(selectorColumn).SetText(" ").SetAlignment(WL.TextAlignmentOptions.Center);
         end
 
-        local iconColumn = UI.CreateVerticalLayoutGroup(displayRow).SetMinWidth(120).SetPreferredWidth(120).SetFlexibleWidth(1).SetCenter(true);
+        local iconColumn = UI.CreateVerticalLayoutGroup(displayRow).SetPreferredWidth(120).SetFlexibleWidth(1).SetCenter(true);
         UI.CreateImage(iconColumn).SetSprite("Bomb Shelter.png").SetPreferredWidth(60).SetPreferredHeight(60);
         UI.CreateLabel(iconColumn).SetText("(Bomb Shelter)").SetAlignment(WL.TextAlignmentOptions.Center); --also mirrors the territory name label so both columns are the same height
 
