@@ -80,7 +80,7 @@ end
 function ShowTargetSnapshot(terrID, name)
     if (TargetTerritorySnapshotVert == nil) then return; end
     if (TargetTerritorySnapshot == nil) then
-        TargetTerritorySnapshot = UI.CreateSnapshot(TargetTerritorySnapshotVert).SetPreferredWidth(100).SetPreferredHeight(100);
+        TargetTerritorySnapshot = UI.CreateSnapshot(TargetTerritorySnapshotVert).SetPreferredWidth(60).SetPreferredHeight(60);
     end
     TargetTerritorySnapshot.SetTerritoryIDs({ terrID });
     TargetTerritoryNameLabel.SetText(name);
