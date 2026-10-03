@@ -31,17 +31,19 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
 
         TargetTerritoryInstructionLabel = UI.CreateLabel(vert).SetText(INSTRUCTION_TEXT).SetAlignment(WL.TextAlignmentOptions.Center);
 
-        --Two equal columns: the buttons share one row, and the snapshot and icon share the row below
+        --Two equal columns (buttons get equal preferred widths, otherwise the longer label would claim more of the row): the buttons share one row, and the snapshot and icon share the row below
         local buttonsRow = UI.CreateHorizontalLayoutGroup(vert).SetFlexibleWidth(1);
         TargetTerritoryBtn = UI.CreateButton(buttonsRow)
             .SetText("Select Territory")
             .SetColor("#242D9A")
+            .SetPreferredWidth(150)
             .SetFlexibleWidth(1)
             .SetOnClick(TargetTerritoryClicked);
         PlayCardBtn = UI.CreateButton(buttonsRow)
             .SetText("Build")
             .SetInteractable(false)
             .SetColor(BUTTON_COLOURS.DarkGreen)
+            .SetPreferredWidth(150)
             .SetFlexibleWidth(1)
             .SetOnClick(function()
                 if (TargetTerritoryID == nil) then
