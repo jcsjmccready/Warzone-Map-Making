@@ -1,5 +1,7 @@
 require('Utilities')
 
+INSTRUCTION_TEXT = "Please click on your territory, then build";
+
 ---Client_PresentPlayCardUI
 ---@param game GameClientHook
 ---@param cardInstance CardInstance # Read-only data about the card that the player is attempting to play
@@ -27,7 +29,7 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
         setMaxSize(400, 285);
         local vert = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1); --set flexible width so things don't jump around while we change InstructionLabel
 
-        TargetTerritoryInstructionLabel = UI.CreateLabel(vert).SetText("").SetAlignment(WL.TextAlignmentOptions.Center);
+        TargetTerritoryInstructionLabel = UI.CreateLabel(vert).SetText(INSTRUCTION_TEXT).SetAlignment(WL.TextAlignmentOptions.Center);
 
         --Two equal columns: the buttons share one row, and the snapshot and icon share the row below
         local buttonsRow = UI.CreateHorizontalLayoutGroup(vert).SetFlexibleWidth(1);
@@ -97,7 +99,7 @@ end
 function TargetTerritoryClicked()
     Game.HighlightTerritories({}); --clear any territories highlighted from a previous failed territory selection
     UI.InterceptNextTerritoryClick(TerritoryClicked);
-    TargetTerritoryInstructionLabel.SetText("Please click on the territory you wish to build on").SetColor(TEXT_DEFAULT_COLOUR);
+    TargetTerritoryInstructionLabel.SetText(INSTRUCTION_TEXT).SetColor(TEXT_DEFAULT_COLOUR);
     TargetTerritoryBtn.SetInteractable(false);
     PlayCardBtn.SetInteractable(false);
 end
@@ -111,7 +113,7 @@ function TerritoryClicked(terrDetails)
 
     if (terrDetails == nil) then
         --The click request was cancelled. Return to our default state.
-        TargetTerritoryInstructionLabel.SetText("");
+        TargetTerritoryInstructionLabel.SetText(INSTRUCTION_TEXT).SetColor(TEXT_DEFAULT_COLOUR);
         TargetTerritoryID = nil;
         TargetTerritoryName = nil;
         PlayCardBtn.SetInteractable(false);
@@ -131,9 +133,7 @@ function TerritoryClicked(terrDetails)
         Game.HighlightTerritories({});
     else
         --Territory was clicked, remember its ID
-        --The snapshot shows the selection, so the text is only needed when the app is too old to have snapshots
-        local selectedText = TargetTerritorySnapshotVert ~= nil and "" or ("Selected territory: " .. terrDetails.Name);
-        TargetTerritoryInstructionLabel.SetText(selectedText).SetColor(TEXT_DEFAULT_COLOUR);
+        TargetTerritoryInstructionLabel.SetText(INSTRUCTION_TEXT).SetColor(TEXT_DEFAULT_COLOUR);
         TargetTerritoryID = terrDetails.ID;
         TargetTerritoryName = terrDetails.Name;
         ShowTargetSnapshot(terrDetails.ID, terrDetails.Name);
