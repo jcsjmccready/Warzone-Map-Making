@@ -68,12 +68,13 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
         TargetTerritorySnapshotVert = nil;
         if (UI.CreateSnapshot ~= nil) then
             --the holder keeps the snapshot above the name label when it is recreated
-            TargetTerritorySnapshotVert = UI.CreateVerticalLayoutGroup(selectorColumn).SetCenter(true);
+            TargetTerritorySnapshotVert = UI.CreateVerticalLayoutGroup(selectorColumn).SetCenter(true).SetPreferredHeight(60); --fixed height so the row doesn't resize when the snapshot appears
             TargetTerritoryNameLabel = UI.CreateLabel(selectorColumn).SetText(" ").SetAlignment(WL.TextAlignmentOptions.Center);
         end
 
         local iconColumn = UI.CreateVerticalLayoutGroup(displayRow).SetPreferredWidth(180).SetFlexibleWidth(1).SetCenter(true);
         UI.CreateImage(iconColumn).SetSprite("Bomb Shelter.png").SetPreferredWidth(60).SetPreferredHeight(60);
+        UI.CreateLabel(iconColumn).SetText(" "); --blank label mirrors the territory name label so both columns are the same height
 
         TargetTerritoryClicked(); --start in selection mode so the player doesn't need to press the button first
     end);
