@@ -36,11 +36,11 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
 
         --UI.CreateSnapshot doesn't exist in older app versions, so the snapshot is skipped there
         TargetTerritorySnapshot = nil;
+        TargetTerritorySnapshotVert = nil;
         if (UI.CreateSnapshot ~= nil) then
-            --The snapshot stays blank until given territories; sizing it now keeps the dialog from jumping when one is selected
-            local snapshotVert = UI.CreateVerticalLayoutGroup(vert).SetFlexibleWidth(1).SetCenter(true);
-            TargetTerritorySnapshot = UI.CreateSnapshot(snapshotVert).SetPreferredWidth(100).SetPreferredHeight(100);
-            TargetTerritoryNameLabel = UI.CreateLabel(snapshotVert).SetText(" ").SetAlignment(WL.TextAlignmentOptions.Center);
+            --holder keeps the snapshot above the name label when it is recreated
+            TargetTerritorySnapshotVert = UI.CreateVerticalLayoutGroup(vert).SetFlexibleWidth(1).SetCenter(true);
+            TargetTerritoryNameLabel = UI.CreateLabel(vert).SetText(" ").SetAlignment(WL.TextAlignmentOptions.Center);
         end
 
         PlayCardBtn = UI.CreateButton(buttonsHGroup)
@@ -66,10 +66,21 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
     end);
 end
 
+--SetTerritoryIDs rejects an empty list, so the snapshot is destroyed to clear it and recreated on the next selection
 function ClearTargetSnapshot()
     if (TargetTerritorySnapshot == nil) then return; end
-    TargetTerritorySnapshot.SetTerritoryIDs({});
+    UI.Destroy(TargetTerritorySnapshot);
+    TargetTerritorySnapshot = nil;
     TargetTerritoryNameLabel.SetText(" ");
+end
+
+function ShowTargetSnapshot(terrID, name)
+    if (TargetTerritorySnapshotVert == nil) then return; end
+    if (TargetTerritorySnapshot == nil) then
+        TargetTerritorySnapshot = UI.CreateSnapshot(TargetTerritorySnapshotVert).SetPreferredWidth(100).SetPreferredHeight(100);
+    end
+    TargetTerritorySnapshot.SetTerritoryIDs({ terrID });
+    TargetTerritoryNameLabel.SetText(name);
 end
 
 function TargetTerritoryClicked()
@@ -112,10 +123,7 @@ function TerritoryClicked(terrDetails)
         TargetTerritoryInstructionLabel.SetText("Selected territory: " .. terrDetails.Name).SetColor(TEXT_DEFAULT_COLOUR);
         TargetTerritoryID = terrDetails.ID;
         TargetTerritoryName = terrDetails.Name;
-        if (TargetTerritorySnapshot ~= nil) then
-            TargetTerritorySnapshot.SetTerritoryIDs({ terrDetails.ID });
-            TargetTerritoryNameLabel.SetText(terrDetails.Name);
-        end
+        ShowTargetSnapshot(terrDetails.ID, terrDetails.Name);
         PlayCardBtn.SetInteractable(true);
         Game.HighlightTerritories({TargetTerritoryID});
     end
