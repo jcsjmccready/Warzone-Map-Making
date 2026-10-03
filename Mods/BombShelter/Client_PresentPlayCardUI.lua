@@ -39,7 +39,7 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
             .SetFlexibleWidth(1)
             .SetOnClick(TargetTerritoryClicked);
         PlayCardBtn = UI.CreateButton(buttonsRow)
-            .SetText("Build Bomb Shelter")
+            .SetText("Build")
             .SetInteractable(false)
             .SetColor(BUTTON_COLOURS.DarkGreen)
             .SetFlexibleWidth(1)
@@ -74,7 +74,7 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
 
         local iconColumn = UI.CreateVerticalLayoutGroup(displayRow).SetPreferredWidth(180).SetFlexibleWidth(1).SetCenter(true);
         UI.CreateImage(iconColumn).SetSprite("Bomb Shelter.png").SetPreferredWidth(60).SetPreferredHeight(60);
-        UI.CreateLabel(iconColumn).SetText(" "); --blank label mirrors the territory name label so both columns are the same height
+        UI.CreateLabel(iconColumn).SetText("(Bomb Shelter)").SetAlignment(WL.TextAlignmentOptions.Center); --also mirrors the territory name label so both columns are the same height
 
         TargetTerritoryClicked(); --start in selection mode so the player doesn't need to press the button first
     end);
