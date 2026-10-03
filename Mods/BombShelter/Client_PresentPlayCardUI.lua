@@ -24,7 +24,7 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
 
     game.CreateDialog(function(rootParent, setMaxSize, setScrollable, game, close)
         Close = close;
-        setMaxSize(400, 320);
+        setMaxSize(400, 285);
         local vert = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1); --set flexible width so things don't jump around while we change InstructionLabel
 
         TargetTerritoryInstructionLabel = UI.CreateLabel(vert).SetText("").SetAlignment(WL.TextAlignmentOptions.Center);
@@ -57,8 +57,9 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
                 end
             end);
 
+        --equal preferred widths keep the icon from shifting when the snapshot appears and changes the selector column's content width
         local displayRow = UI.CreateHorizontalLayoutGroup(vert).SetFlexibleWidth(1);
-        local selectorColumn = UI.CreateVerticalLayoutGroup(displayRow).SetFlexibleWidth(1).SetCenter(true);
+        local selectorColumn = UI.CreateVerticalLayoutGroup(displayRow).SetPreferredWidth(180).SetFlexibleWidth(1).SetCenter(true);
 
         --UI.CreateSnapshot doesn't exist in older app versions, so the snapshot is skipped there
         TargetTerritorySnapshot = nil;
@@ -69,7 +70,7 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
             TargetTerritoryNameLabel = UI.CreateLabel(selectorColumn).SetText(" ").SetAlignment(WL.TextAlignmentOptions.Center);
         end
 
-        local iconColumn = UI.CreateVerticalLayoutGroup(displayRow).SetFlexibleWidth(1).SetCenter(true);
+        local iconColumn = UI.CreateVerticalLayoutGroup(displayRow).SetPreferredWidth(180).SetFlexibleWidth(1).SetCenter(true);
         UI.CreateImage(iconColumn).SetSprite("Bomb Shelter.png").SetPreferredWidth(60).SetPreferredHeight(60);
 
         TargetTerritoryClicked(); --start in selection mode so the player doesn't need to press the button first
