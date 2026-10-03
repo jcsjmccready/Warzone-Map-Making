@@ -24,7 +24,7 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
 
     game.CreateDialog(function(rootParent, setMaxSize, setScrollable, game, close)
         Close = close;
-        setMaxSize(400, 200);
+        setMaxSize(400, 320);
         local vert = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1); --set flexible width so things don't jump around while we change InstructionLabel
         local buttonsHGroup = UI.CreateHorizontalLayoutGroup(vert).SetFlexibleWidth(1);
         TargetTerritoryBtn = UI.CreateButton(buttonsHGroup)
@@ -33,6 +33,11 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
             .SetFlexibleWidth(0.3);
 
         TargetTerritoryInstructionLabel = UI.CreateLabel(vert).SetText("");
+
+        --The snapshot stays blank until given territories; sizing it now keeps the dialog from jumping when one is selected
+        local snapshotVert = UI.CreateVerticalLayoutGroup(vert).SetFlexibleWidth(1).SetCenter(true);
+        TargetTerritorySnapshot = UI.CreateSnapshot(snapshotVert).SetPreferredWidth(100).SetPreferredHeight(100);
+        TargetTerritoryNameLabel = UI.CreateLabel(snapshotVert).SetText(" ").SetAlignment(WL.TextAlignmentOptions.Center);
 
         PlayCardBtn = UI.CreateButton(buttonsHGroup)
             .SetText("Build Bomb Shelter")
@@ -57,6 +62,11 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
     end);
 end
 
+function ClearTargetSnapshot()
+    TargetTerritorySnapshot.SetTerritoryIDs({});
+    TargetTerritoryNameLabel.SetText(" ");
+end
+
 function TargetTerritoryClicked()
     Game.HighlightTerritories({}); --clear any territories highlighted from a previous failed territory selection
     UI.InterceptNextTerritoryClick(TerritoryClicked);
@@ -78,6 +88,7 @@ function TerritoryClicked(terrDetails)
         TargetTerritoryID = nil;
         TargetTerritoryName = nil;
         PlayCardBtn.SetInteractable(false);
+        ClearTargetSnapshot();
         Game.HighlightTerritories({});
         return;
     end
@@ -89,12 +100,15 @@ function TerritoryClicked(terrDetails)
         TargetTerritoryID = nil;
         TargetTerritoryName = nil;
         PlayCardBtn.SetInteractable(false);
+        ClearTargetSnapshot();
         Game.HighlightTerritories({});
     else
         --Territory was clicked, remember its ID
         TargetTerritoryInstructionLabel.SetText("Selected territory: " .. terrDetails.Name).SetColor(TEXT_DEFAULT_COLOUR);
         TargetTerritoryID = terrDetails.ID;
         TargetTerritoryName = terrDetails.Name;
+        TargetTerritorySnapshot.SetTerritoryIDs({ terrDetails.ID });
+        TargetTerritoryNameLabel.SetText(terrDetails.Name);
         PlayCardBtn.SetInteractable(true);
         Game.HighlightTerritories({TargetTerritoryID});
     end
