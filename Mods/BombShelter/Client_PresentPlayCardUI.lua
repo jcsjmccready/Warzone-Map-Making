@@ -38,9 +38,10 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
         TargetTerritorySnapshot = nil;
         TargetTerritorySnapshotVert = nil;
         if (UI.CreateSnapshot ~= nil) then
-            --holder keeps the snapshot above the name label when it is recreated
-            TargetTerritorySnapshotVert = UI.CreateVerticalLayoutGroup(vert).SetFlexibleWidth(1).SetCenter(true);
-            TargetTerritoryNameLabel = UI.CreateLabel(vert).SetText(" ").SetAlignment(WL.TextAlignmentOptions.Center);
+            --the holder keeps the snapshot to the left of the name label when it is recreated
+            local selectionRow = UI.CreateHorizontalLayoutGroup(vert).SetFlexibleWidth(1);
+            TargetTerritorySnapshotVert = UI.CreateVerticalLayoutGroup(selectionRow);
+            TargetTerritoryNameLabel = UI.CreateLabel(selectionRow).SetText(" ").SetFlexibleWidth(1);
         end
 
         PlayCardBtn = UI.CreateButton(buttonsHGroup)
@@ -63,6 +64,8 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
                     close();
                 end
             end);
+
+        TargetTerritoryClicked(); --start in selection mode so the player doesn't need to press the button first
     end);
 end
 
