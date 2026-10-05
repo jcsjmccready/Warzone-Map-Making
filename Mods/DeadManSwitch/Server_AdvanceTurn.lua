@@ -107,7 +107,7 @@ function Trigger_Primary_Action(territoryModification, game, order, result, addN
 	elseif (Mod.Settings.isDamageTypeFlat) then
 		local damageAmount = Mod.Settings.FlatDamage * numberOfDMS;
 		local damageArmies = WL.Armies.Create(damageAmount + result.AttackingArmiesKilled.NumArmies);
-		territoryModification.SetArmiesTo = result.ActualArmies.Subtract(damageArmies).NumArmies;
+		territoryModification.SetArmiesTo = math.max(0, result.ActualArmies.NumArmies - damageArmies.NumArmies);
 
 		Add_Dms_Triggered_Event(order, territoryModification, addNewOrder);
 
@@ -150,11 +150,11 @@ function Trigger_Primary_Action(territoryModification, game, order, result, addN
 		local remainingArmies = armiesAfterAttack;
 
 		for _ = 1, numberOfDMS do
-			remainingArmies = math.floor(remainingArmies * (1 - Mod.Settings.PercentageDamage) + 0.5);
+			remainingArmies = math.max(0, math.floor(remainingArmies * (1 - Mod.Settings.PercentageDamage) + 0.5));
 		end
 
 		local minimumRemainingArmies = math.max(0, armiesAfterAttack - (Mod.Settings.PercentageMinDamage * numberOfDMS));
-		territoryModification.SetArmiesTo = math.min(remainingArmies, minimumRemainingArmies);
+		territoryModification.SetArmiesTo = math.max(0, math.min(remainingArmies, minimumRemainingArmies));
 
 		Add_Dms_Triggered_Event(order, territoryModification, addNewOrder);
 	end
