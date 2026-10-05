@@ -150,7 +150,7 @@ function Trigger_Primary_Action(territoryModification, game, order, result, addN
 		local remainingArmies = armiesAfterAttack;
 
 		for _ = 1, numberOfDMS do
-			remainingArmies = math.floor(remainingArmies * (1 - Mod.Settings.PercentageDamage) + 0.5);
+			remainingArmies = math.max(0, math.floor(remainingArmies * (1 - Mod.Settings.PercentageDamage) + 0.5));
 		end
 
 		local minimumRemainingArmies = math.max(0, armiesAfterAttack - (Mod.Settings.PercentageMinDamage * numberOfDMS));
