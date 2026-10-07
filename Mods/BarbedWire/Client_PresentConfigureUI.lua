@@ -162,6 +162,18 @@ function Create_CaltropCommerce_SubOptions_UI(rootParent)
         .SetValue(Mod.Settings.CaltropMaxPerPlayer or 3);
 end
 
+function Caltrop_UpdateTrapDependentOptions()
+    local neitherTrapped = not caltropTrapsArmies.GetIsChecked() and not caltropTrapsSpecialUnits.GetIsChecked();
+    caltropOnlyTriggersOnTrappableUnits.SetInteractable(not neitherTrapped);
+    caltropIsImmuneUnitEnabled.SetInteractable(not neitherTrapped);
+    if (neitherTrapped) then
+        caltropOnlyTriggersOnTrappableUnits.SetIsChecked(false);
+        if (caltropIsImmuneUnitEnabled.GetIsChecked()) then
+            caltropIsImmuneUnitEnabled.SetIsChecked(false); -- triggers its own OnValueChanged, below
+        end
+    end
+end
+
 function Create_Caltrop_Behaviour_UI(rootParent)
     caltropVHeading = UI.CreateVerticalLayoutGroup(rootParent);
 
@@ -184,6 +196,7 @@ function Create_Caltrop_Behaviour_UI(rootParent)
     caltropTrapsArmies = UI.CreateCheckBox(optionalsHeading)
         .SetText("Traps armies")
         .SetIsChecked(Mod.Settings.CaltropTrapsArmies or false);
+    caltropTrapsArmies.SetOnValueChanged(function() Caltrop_UpdateTrapDependentOptions(); end);
 
     caltropTrapsSpecialUnits = UI.CreateCheckBox(optionalsHeading)
         .SetText("Traps Special Units")
@@ -199,6 +212,7 @@ function Create_Caltrop_Behaviour_UI(rootParent)
             end
             caltropImmuneUnitNone.SetInteractable(not caltropImmuneUnitNone.GetIsChecked() and caltropTrapsSpecialUnits.GetIsChecked());
         end
+        Caltrop_UpdateTrapDependentOptions();
     end);
 
     caltropOnlyTriggersOnTrappableUnits = UI.CreateCheckBox(optionalsHeading)
@@ -211,6 +225,8 @@ function Create_Caltrop_Behaviour_UI(rootParent)
         .SetText("Enable immune special unit")
         .SetIsChecked(Mod.Settings.CaltropIsImmuneUnitEnabled or false);
     local caltropImmuneUnitContainer = UI.CreateVerticalLayoutGroup(optionalsHeading);
+
+    Caltrop_UpdateTrapDependentOptions();
 
     UI.CreateLabel(optionalsHeading).SetText("");
 
@@ -446,6 +462,20 @@ function Create_BarbedWireCommerce_SubOptions_UI(rootParent)
         .SetValue(Mod.Settings.BarbedWireMaxPerPlayer or 3);
 end
 
+---"Only trigger if trappable units attacked" and the immune unit are both meaningless once nothing is
+---ever trapped at all - disables (and unchecks) them while that's the case.
+function BarbedWire_UpdateTrapDependentOptions()
+    local neitherTrapped = not barbedWireTrapsArmies.GetIsChecked() and not barbedWireTrapsSpecialUnits.GetIsChecked();
+    barbedWireOnlyTriggersOnTrappableUnits.SetInteractable(not neitherTrapped);
+    barbedWireIsImmuneUnitEnabled.SetInteractable(not neitherTrapped);
+    if (neitherTrapped) then
+        barbedWireOnlyTriggersOnTrappableUnits.SetIsChecked(false);
+        if (barbedWireIsImmuneUnitEnabled.GetIsChecked()) then
+            barbedWireIsImmuneUnitEnabled.SetIsChecked(false); -- triggers its own OnValueChanged, below
+        end
+    end
+end
+
 function Create_BarbedWire_Behaviour_UI(rootParent)
     barbedWireVHeading = UI.CreateVerticalLayoutGroup(rootParent);
 
@@ -468,6 +498,7 @@ function Create_BarbedWire_Behaviour_UI(rootParent)
     barbedWireTrapsArmies = UI.CreateCheckBox(optionalsHeading)
         .SetText("Traps armies")
         .SetIsChecked(Mod.Settings.BarbedWireTrapsArmies == nil or Mod.Settings.BarbedWireTrapsArmies);
+    barbedWireTrapsArmies.SetOnValueChanged(function() BarbedWire_UpdateTrapDependentOptions(); end);
 
     barbedWireTrapsSpecialUnits = UI.CreateCheckBox(optionalsHeading)
         .SetText("Traps Special Units")
@@ -483,6 +514,7 @@ function Create_BarbedWire_Behaviour_UI(rootParent)
             end
             barbedWireImmuneUnitNone.SetInteractable(not barbedWireImmuneUnitNone.GetIsChecked() and barbedWireTrapsSpecialUnits.GetIsChecked());
         end
+        BarbedWire_UpdateTrapDependentOptions();
     end);
 
     barbedWireOnlyTriggersOnTrappableUnits = UI.CreateCheckBox(optionalsHeading)
@@ -495,6 +527,8 @@ function Create_BarbedWire_Behaviour_UI(rootParent)
         .SetText("Enable immune special unit")
         .SetIsChecked(Mod.Settings.BarbedWireIsImmuneUnitEnabled or false);
     local barbedWireImmuneUnitContainer = UI.CreateVerticalLayoutGroup(optionalsHeading);
+
+    BarbedWire_UpdateTrapDependentOptions();
 
     UI.CreateLabel(optionalsHeading).SetText("");
 

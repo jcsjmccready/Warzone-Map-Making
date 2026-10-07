@@ -7,13 +7,11 @@ function Client_PresentCommercePurchaseUI(rootParent, game, close)
     local vert = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
 
     if (Mod.Settings.IncludeBarbedWire and Mod.Settings.isAcquiringTypeCard ~= nil and not Mod.Settings.isAcquiringTypeCard) then
-        Create_TrapCommerce_Section_UI(vert, game, "BarbedWire", "Barbed Wire",
-            "If a territory containing a Barbed Wire is successfully captured, on the following turn, attack/transfer orders out of that territory will be blocked.");
+        Create_TrapCommerce_Section_UI(vert, game, "BarbedWire", "Barbed Wire", BuildTrapCommerceDescription("BarbedWire", "Barbed Wire"));
     end
 
     if (Mod.Settings.IncludeCaltrop and Mod.Settings.CaltropIsAcquiringTypeCard ~= nil and not Mod.Settings.CaltropIsAcquiringTypeCard) then
-        Create_TrapCommerce_Section_UI(vert, game, "Caltrop", "Caltrop",
-            "If a territory containing a Caltrop is successfully captured, on the following turn, attack/transfer orders out of that territory will be blocked.");
+        Create_TrapCommerce_Section_UI(vert, game, "Caltrop", "Caltrop", BuildTrapCommerceDescription("Caltrop", "Caltrop"));
     end
 end
 

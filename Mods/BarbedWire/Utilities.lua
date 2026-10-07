@@ -21,6 +21,58 @@ function MigrateModSettings()
     end
 end
 
+---@param prefix string # the trap's settings prefix, i.e. its V2_TrapType.Key ("BarbedWire" | "Caltrop")
+---@param displayName string
+---@return string # starts with a space if non-empty, so it can be appended directly after an intro sentence
+function BuildTrapEffectDescription(prefix, displayName)
+    local trapsArmies = Mod.Settings[prefix .. "TrapsArmies"];
+    local trapsSpecialUnits = Mod.Settings[prefix .. "TrapsSpecialUnits"];
+
+    local blockedUnitsDescription;
+    if (trapsArmies and trapsSpecialUnits) then
+        blockedUnitsDescription = "armies and special units";
+    elseif (trapsArmies) then
+        blockedUnitsDescription = "armies";
+    elseif (trapsSpecialUnits) then
+        blockedUnitsDescription = "special units";
+    end
+
+    local immuneUnitClause = "";
+    if (Mod.Settings[prefix .. "IsImmuneUnitEnabled"]) then
+        immuneUnitClause = " " .. (Mod.Settings[prefix .. "ImmuneUnitName"] or "Tank") .. "'s have special behaviour.";
+    end
+
+    -- neither armies nor special units are trapped, so nothing is actually blocked - don't claim otherwise
+    if (blockedUnitsDescription == nil) then
+        return immuneUnitClause;
+    end
+
+    local triggerDuration = Mod.Settings[prefix .. "TriggerDuration"] or 1;
+    local turnWord = triggerDuration == 1 and "turn" or "turns";
+
+    return " If a territory containing a " .. displayName .. " is successfully captured, on the following " ..
+        triggerDuration .. " " .. turnWord .. ", attack/transfer orders out of that territory will skip " ..
+        blockedUnitsDescription .. "." .. immuneUnitClause;
+end
+
+---Builds a trap's card description. See BuildTrapEffectDescription for the dynamic part.
+---@param prefix string # the trap's settings prefix, i.e. its V2_TrapType.Key ("BarbedWire" | "Caltrop")
+---@param displayName string
+---@return string
+function BuildTrapCardDescription(prefix, displayName)
+    local intro = "Play this card to create a " .. displayName .. " on any territory you control (at the end of the turn).";
+    return intro .. BuildTrapEffectDescription(prefix, displayName);
+end
+
+---Builds a trap's Commerce purchase description. See BuildTrapEffectDescription for the dynamic part.
+---@param prefix string # the trap's settings prefix, i.e. its V2_TrapType.Key ("BarbedWire" | "Caltrop")
+---@param displayName string
+---@return string
+function BuildTrapCommerceDescription(prefix, displayName)
+    local intro = "Build a " .. displayName .. " on any territory you control (at the end of the turn).";
+    return intro .. BuildTrapEffectDescription(prefix, displayName);
+end
+
 function GetSettingsVersionForDisplay()
     if (Mod.Settings.Version ~= nil) then
         return Mod.Settings.Version;

@@ -5,183 +5,257 @@ function Client_SaveConfigureUI(alert, addCard)
 
     Mod.Settings.Version = LATEST_SETTINGS_VERSION;
 
-    Mod.Settings.isAcquiringTypeCard = isAcquiringTypeCard.GetIsChecked();
-
     -- GetSettingsVersionForDisplay() (Utilities.lua) relies on this being written unconditionally on every
     -- save to detect "never saved" vs "saved pre-Version". If a second include-setting is added alongside
     -- this one, update GetSettingsVersionForDisplay() to check for either rather than just this field.
     Mod.Settings.IncludeBarbedWire = includeBarbedWire.GetIsChecked();
-
     if(Mod.Settings.IncludeBarbedWire) then
-        Mod.Settings.BarbedWireIsImmuneUnitEnabled = barbedWireIsImmuneUnitEnabled.GetIsChecked();
-        Mod.Settings.BarbedWireImmuneUnitName = barbedWireIsImmuneUnitEnabled.GetIsChecked() and (barbedWireImmuneUnitName.GetText():match("^%s*(.-)%s*$")) or nil;
-        if (Mod.Settings.BarbedWireIsImmuneUnitEnabled and (Mod.Settings.BarbedWireImmuneUnitName == nil or Mod.Settings.BarbedWireImmuneUnitName:match("^%s*$"))) then
-            alert("Barbed Wire immune unit name cannot be empty");
-            return;
-        end
-        Mod.Settings.BarbedWireImmuneUnitSharesImmunity = barbedWireIsImmuneUnitEnabled.GetIsChecked() and barbedWireImmuneUnitSharesImmunity.GetIsChecked();
-        Mod.Settings.BarbedWireImmuneUnitDestroysTrap = barbedWireIsImmuneUnitEnabled.GetIsChecked() and barbedWireImmuneUnitDestroysTrap.GetIsChecked();
-
-        Mod.Settings.BarbedWireTriggerDuration = barbedWireTriggerDuration.GetValue();
-        if (Mod.Settings.BarbedWireTriggerDuration < 1) then
-            alert("Trigger duration cannot be less than 1");
-            return;
-        end
-
-        Mod.Settings.BarbedWireAllyTriggers = barbedWireAllyTriggers.GetIsChecked();
-        Mod.Settings.BarbedWireTrapsArmies = barbedWireTrapsArmies.GetIsChecked();
-        Mod.Settings.BarbedWireCancelsAirlifts = barbedWireCancelsAirlifts.GetIsChecked();
-        Mod.Settings.BarbedWireTrapsSpecialUnits = barbedWireTrapsSpecialUnits.GetIsChecked();
-        Mod.Settings.BarbedWireOnlyTriggersOnTrappableUnits = barbedWireOnlyTriggersOnTrappableUnits.GetIsChecked();
-        Mod.Settings.BarbedWireBombDestroys = barbedWireBombDestroys.GetIsChecked();
-        Mod.Settings.BarbedWireSingleUse = barbedWireSingleUse.GetIsChecked();
-
-        Mod.Settings.BarbedWireHasLimitedLifespan = barbedWireHasLimitedLifespan.GetIsChecked();
-        if(Mod.Settings.BarbedWireHasLimitedLifespan) then
-            Mod.Settings.BarbedWireLifespan = barbedWireLifespan.GetValue();
-
-            if (Mod.Settings.BarbedWireLifespan < 2) then
-                alert("Barbed wire lifespan cannot be less than 2");
-                return;
-            end
-        end
-
-        if(Mod.Settings.isAcquiringTypeCard) then
-            Mod.Settings.BarbedWireNumPieces = barbedWireNumPieces.GetValue();
-            Mod.Settings.BarbedWireCardWeight = math.floor(barbedWireCardWeight.GetValue() * 100 + 0.5) / 100;
-            Mod.Settings.BarbedWireMinPieces = barbedWireMinPieces.GetValue();
-            Mod.Settings.BarbedWireInitialPieces = barbedWireInitialPieces.GetValue();
-
-            if (Mod.Settings.BarbedWireNumPieces < 1) then
-                alert("Number of barbed wire pieces cannot be less than 1");
-                return;
-            end
-            if (Mod.Settings.BarbedWireCardWeight < 0) then
-                alert("Barbed wire card weight cannot be less than 0");
-                return;
-            end
-            if (Mod.Settings.BarbedWireMinPieces < 0) then
-                alert("Minimum barbed wire pieces cannot be less than 0");
-                return;
-            end
-            if (Mod.Settings.BarbedWireInitialPieces < 0) then
-                alert("Initial barbed wire pieces cannot be less than 0");
-                return;
-            end
-
-            local barbedWireCardID = addCard(
-                "Barbed Wire Card",
-                "Play this card to create a Barbed Wire on any territory you control (at the end of the turn). If this territory is succesfully captured, on the following turn, attack/transfer orders out of that territory will be blocked.",
-                "BarbedWireCard.png",
-                Mod.Settings.BarbedWireNumPieces, 
-                Mod.Settings.BarbedWireMinPieces,
-                Mod.Settings.BarbedWireInitialPieces,
-                Mod.Settings.BarbedWireCardWeight);
-
-            Mod.Settings.BarbedWireCardID = barbedWireCardID;
-        else
-            Mod.Settings.BarbedWireCost = barbedWireCost.GetValue();
-            Mod.Settings.BarbedWireMaxPerPlayer = barbedWireMaxPerPlayer.GetValue();
-
-            if (Mod.Settings.BarbedWireCost < 0) then
-                alert("Cost of a Barbed Wire cannot be less than 0");
-                return;
-            end
-            if (Mod.Settings.BarbedWireMaxPerPlayer < 1) then
-                alert("Maximum Barbed Wire a player can own at once must be at least 1");
-                return;
-            end
-        end
+        if (not Save_BarbedWire_Enabled(alert, addCard)) then return; end
+    else
+        Save_BarbedWire_Disabled();
     end
 
     Mod.Settings.IncludeCaltrop = includeCaltrop.GetIsChecked();
-
     if(Mod.Settings.IncludeCaltrop) then
-        Mod.Settings.CaltropIsImmuneUnitEnabled = caltropIsImmuneUnitEnabled.GetIsChecked();
-        Mod.Settings.CaltropImmuneUnitName = caltropIsImmuneUnitEnabled.GetIsChecked() and (caltropImmuneUnitName.GetText():match("^%s*(.-)%s*$")) or nil;
-        if (Mod.Settings.CaltropIsImmuneUnitEnabled and (Mod.Settings.CaltropImmuneUnitName == nil or Mod.Settings.CaltropImmuneUnitName:match("^%s*$"))) then
-            alert("Caltrop immune unit name cannot be empty");
-            return;
-        end
-        Mod.Settings.CaltropImmuneUnitSharesImmunity = caltropIsImmuneUnitEnabled.GetIsChecked() and caltropImmuneUnitSharesImmunity.GetIsChecked();
-        Mod.Settings.CaltropImmuneUnitDestroysTrap = caltropIsImmuneUnitEnabled.GetIsChecked() and caltropImmuneUnitDestroysTrap.GetIsChecked();
-
-        Mod.Settings.CaltropTriggerDuration = caltropTriggerDuration.GetValue();
-        if (Mod.Settings.CaltropTriggerDuration < 1) then
-            alert("Trigger duration cannot be less than 1");
-            return;
-        end
-
-        Mod.Settings.CaltropAllyTriggers = caltropAllyTriggers.GetIsChecked();
-        Mod.Settings.CaltropTrapsArmies = caltropTrapsArmies.GetIsChecked();
-        Mod.Settings.CaltropCancelsAirlifts = caltropCancelsAirlifts.GetIsChecked();
-        Mod.Settings.CaltropTrapsSpecialUnits = caltropTrapsSpecialUnits.GetIsChecked();
-        Mod.Settings.CaltropOnlyTriggersOnTrappableUnits = caltropOnlyTriggersOnTrappableUnits.GetIsChecked();
-        Mod.Settings.CaltropBombDestroys = caltropBombDestroys.GetIsChecked();
-        Mod.Settings.CaltropSingleUse = caltropSingleUse.GetIsChecked();
-
-        Mod.Settings.CaltropHasLimitedLifespan = caltropHasLimitedLifespan.GetIsChecked();
-        if(Mod.Settings.CaltropHasLimitedLifespan) then
-            Mod.Settings.CaltropLifespan = caltropLifespan.GetValue();
-
-            if (Mod.Settings.CaltropLifespan < 2) then
-                alert("Caltrop lifespan cannot be less than 2");
-                return;
-            end
-        end
-
-        Mod.Settings.CaltropIsAcquiringTypeCard = caltropIsAcquiringTypeCard.GetIsChecked();
-
-        if(Mod.Settings.CaltropIsAcquiringTypeCard) then
-            Mod.Settings.CaltropNumPieces = caltropNumPieces.GetValue();
-            Mod.Settings.CaltropCardWeight = math.floor(caltropCardWeight.GetValue() * 100 + 0.5) / 100;
-            Mod.Settings.CaltropMinPieces = caltropMinPieces.GetValue();
-            Mod.Settings.CaltropInitialPieces = caltropInitialPieces.GetValue();
-
-            if (Mod.Settings.CaltropNumPieces < 1) then
-                alert("Number of Caltrop pieces cannot be less than 1");
-                return;
-            end
-            if (Mod.Settings.CaltropCardWeight < 0) then
-                alert("Caltrop card weight cannot be less than 0");
-                return;
-            end
-            if (Mod.Settings.CaltropMinPieces < 0) then
-                alert("Minimum Caltrop pieces cannot be less than 0");
-                return;
-            end
-            if (Mod.Settings.CaltropInitialPieces < 0) then
-                alert("Initial Caltrop pieces cannot be less than 0");
-                return;
-            end
-
-            local caltropCardID = addCard(
-                "Caltrop Card",
-                "Play this card to create Caltrops on any territory you control (at the end of the turn).",
-                "CaltropCard.png",
-                Mod.Settings.CaltropNumPieces,
-                Mod.Settings.CaltropMinPieces,
-                Mod.Settings.CaltropInitialPieces,
-                Mod.Settings.CaltropCardWeight);
-
-            Mod.Settings.CaltropCardID = caltropCardID;
-        else
-            Mod.Settings.CaltropCost = caltropCost.GetValue();
-            Mod.Settings.CaltropMaxPerPlayer = caltropMaxPerPlayer.GetValue();
-
-            if (Mod.Settings.CaltropCost < 0) then
-                alert("Cost of a Caltrop cannot be less than 0");
-                return;
-            end
-            if (Mod.Settings.CaltropMaxPerPlayer < 1) then
-                alert("Maximum Caltrops a player can own at once must be at least 1");
-                return;
-            end
-        end
+        if (not Save_Caltrop_Enabled(alert, addCard)) then return; end
+    else
+        Save_Caltrop_Disabled();
     end
 
     if(Mod.Settings.IncludeBarbedWire == false and Mod.Settings.IncludeCaltrop == false) then
         alert("You must include at least one of the two: Barbed Wire, Caltrops");
         return;
     end
+end
+
+---@param alert fun(message: string)
+---@param addCard fun(name: string, description: string, filename: string, piecesForWholeCard: integer, piecesPerTurn: integer, initialPieces: integer, cardWeight: number, duration: integer | nil, expireBehaviour: ActiveCardExpireBehaviorOptions): CardID
+---@return boolean success false if validation failed (an alert was already shown, and the whole save should be aborted)
+function Save_BarbedWire_Enabled(alert, addCard)
+    Mod.Settings.isAcquiringTypeCard = isAcquiringTypeCard.GetIsChecked();
+
+    Mod.Settings.BarbedWireIsImmuneUnitEnabled = barbedWireIsImmuneUnitEnabled.GetIsChecked();
+    Mod.Settings.BarbedWireImmuneUnitName = barbedWireIsImmuneUnitEnabled.GetIsChecked() and (barbedWireImmuneUnitName.GetText():match("^%s*(.-)%s*$")) or nil;
+    if (Mod.Settings.BarbedWireIsImmuneUnitEnabled and (Mod.Settings.BarbedWireImmuneUnitName == nil or Mod.Settings.BarbedWireImmuneUnitName:match("^%s*$"))) then
+        alert("Barbed Wire immune unit name cannot be empty");
+        return false;
+    end
+    Mod.Settings.BarbedWireImmuneUnitSharesImmunity = barbedWireIsImmuneUnitEnabled.GetIsChecked() and barbedWireImmuneUnitSharesImmunity.GetIsChecked();
+    Mod.Settings.BarbedWireImmuneUnitDestroysTrap = barbedWireIsImmuneUnitEnabled.GetIsChecked() and barbedWireImmuneUnitDestroysTrap.GetIsChecked();
+
+    Mod.Settings.BarbedWireTriggerDuration = barbedWireTriggerDuration.GetValue();
+    if (Mod.Settings.BarbedWireTriggerDuration < 1) then
+        alert("Trigger duration cannot be less than 1");
+        return false;
+    end
+
+    Mod.Settings.BarbedWireAllyTriggers = barbedWireAllyTriggers.GetIsChecked();
+    Mod.Settings.BarbedWireTrapsArmies = barbedWireTrapsArmies.GetIsChecked();
+    Mod.Settings.BarbedWireCancelsAirlifts = barbedWireCancelsAirlifts.GetIsChecked();
+    Mod.Settings.BarbedWireTrapsSpecialUnits = barbedWireTrapsSpecialUnits.GetIsChecked();
+    Mod.Settings.BarbedWireOnlyTriggersOnTrappableUnits = barbedWireOnlyTriggersOnTrappableUnits.GetIsChecked();
+    Mod.Settings.BarbedWireBombDestroys = barbedWireBombDestroys.GetIsChecked();
+    Mod.Settings.BarbedWireSingleUse = barbedWireSingleUse.GetIsChecked();
+
+    Mod.Settings.BarbedWireHasLimitedLifespan = barbedWireHasLimitedLifespan.GetIsChecked();
+    if(Mod.Settings.BarbedWireHasLimitedLifespan) then
+        Mod.Settings.BarbedWireLifespan = barbedWireLifespan.GetValue();
+
+        if (Mod.Settings.BarbedWireLifespan < 2) then
+            alert("Barbed wire lifespan cannot be less than 2");
+            return false;
+        end
+    end
+
+    if(Mod.Settings.isAcquiringTypeCard) then
+        Mod.Settings.BarbedWireNumPieces = barbedWireNumPieces.GetValue();
+        Mod.Settings.BarbedWireCardWeight = math.floor(barbedWireCardWeight.GetValue() * 100 + 0.5) / 100;
+        Mod.Settings.BarbedWireMinPieces = barbedWireMinPieces.GetValue();
+        Mod.Settings.BarbedWireInitialPieces = barbedWireInitialPieces.GetValue();
+
+        if (Mod.Settings.BarbedWireNumPieces < 1) then
+            alert("Number of barbed wire pieces cannot be less than 1");
+            return false;
+        end
+        if (Mod.Settings.BarbedWireCardWeight < 0) then
+            alert("Barbed wire card weight cannot be less than 0");
+            return false;
+        end
+        if (Mod.Settings.BarbedWireMinPieces < 0) then
+            alert("Minimum barbed wire pieces cannot be less than 0");
+            return false;
+        end
+        if (Mod.Settings.BarbedWireInitialPieces < 0) then
+            alert("Initial barbed wire pieces cannot be less than 0");
+            return false;
+        end
+
+        local barbedWireCardID = addCard(
+            "Barbed Wire Card",
+            BuildTrapCardDescription("BarbedWire", "Barbed Wire"),
+            "BarbedWireCard.png",
+            Mod.Settings.BarbedWireNumPieces,
+            Mod.Settings.BarbedWireMinPieces,
+            Mod.Settings.BarbedWireInitialPieces,
+            Mod.Settings.BarbedWireCardWeight);
+
+        Mod.Settings.BarbedWireCardID = barbedWireCardID;
+    else
+        Mod.Settings.BarbedWireCardID = nil;
+
+        Mod.Settings.BarbedWireCost = barbedWireCost.GetValue();
+        Mod.Settings.BarbedWireMaxPerPlayer = barbedWireMaxPerPlayer.GetValue();
+
+        if (Mod.Settings.BarbedWireCost < 0) then
+            alert("Cost of a Barbed Wire cannot be less than 0");
+            return false;
+        end
+        if (Mod.Settings.BarbedWireMaxPerPlayer < 1) then
+            alert("Maximum Barbed Wire a player can own at once must be at least 1");
+            return false;
+        end
+    end
+
+    return true;
+end
+
+function Save_BarbedWire_Disabled()
+    Mod.Settings.isAcquiringTypeCard = nil;
+    Mod.Settings.BarbedWireIsImmuneUnitEnabled = nil;
+    Mod.Settings.BarbedWireImmuneUnitName = nil;
+    Mod.Settings.BarbedWireImmuneUnitSharesImmunity = nil;
+    Mod.Settings.BarbedWireImmuneUnitDestroysTrap = nil;
+    Mod.Settings.BarbedWireTriggerDuration = nil;
+    Mod.Settings.BarbedWireAllyTriggers = nil;
+    Mod.Settings.BarbedWireTrapsArmies = nil;
+    Mod.Settings.BarbedWireCancelsAirlifts = nil;
+    Mod.Settings.BarbedWireTrapsSpecialUnits = nil;
+    Mod.Settings.BarbedWireOnlyTriggersOnTrappableUnits = nil;
+    Mod.Settings.BarbedWireBombDestroys = nil;
+    Mod.Settings.BarbedWireSingleUse = nil;
+    Mod.Settings.BarbedWireHasLimitedLifespan = nil;
+    Mod.Settings.BarbedWireLifespan = nil;
+    Mod.Settings.BarbedWireNumPieces = nil;
+    Mod.Settings.BarbedWireCardWeight = nil;
+    Mod.Settings.BarbedWireMinPieces = nil;
+    Mod.Settings.BarbedWireInitialPieces = nil;
+    Mod.Settings.BarbedWireCardID = nil;
+    Mod.Settings.BarbedWireCost = nil;
+    Mod.Settings.BarbedWireMaxPerPlayer = nil;
+end
+
+---@param alert fun(message: string)
+---@param addCard fun(name: string, description: string, filename: string, piecesForWholeCard: integer, piecesPerTurn: integer, initialPieces: integer, cardWeight: number, duration: integer | nil, expireBehaviour: ActiveCardExpireBehaviorOptions): CardID
+---@return boolean success false if validation failed (an alert was already shown, and the whole save should be aborted)
+function Save_Caltrop_Enabled(alert, addCard)
+    Mod.Settings.CaltropIsImmuneUnitEnabled = caltropIsImmuneUnitEnabled.GetIsChecked();
+    Mod.Settings.CaltropImmuneUnitName = caltropIsImmuneUnitEnabled.GetIsChecked() and (caltropImmuneUnitName.GetText():match("^%s*(.-)%s*$")) or nil;
+    if (Mod.Settings.CaltropIsImmuneUnitEnabled and (Mod.Settings.CaltropImmuneUnitName == nil or Mod.Settings.CaltropImmuneUnitName:match("^%s*$"))) then
+        alert("Caltrop immune unit name cannot be empty");
+        return false;
+    end
+    Mod.Settings.CaltropImmuneUnitSharesImmunity = caltropIsImmuneUnitEnabled.GetIsChecked() and caltropImmuneUnitSharesImmunity.GetIsChecked();
+    Mod.Settings.CaltropImmuneUnitDestroysTrap = caltropIsImmuneUnitEnabled.GetIsChecked() and caltropImmuneUnitDestroysTrap.GetIsChecked();
+
+    Mod.Settings.CaltropTriggerDuration = caltropTriggerDuration.GetValue();
+    if (Mod.Settings.CaltropTriggerDuration < 1) then
+        alert("Trigger duration cannot be less than 1");
+        return false;
+    end
+
+    Mod.Settings.CaltropAllyTriggers = caltropAllyTriggers.GetIsChecked();
+    Mod.Settings.CaltropTrapsArmies = caltropTrapsArmies.GetIsChecked();
+    Mod.Settings.CaltropCancelsAirlifts = caltropCancelsAirlifts.GetIsChecked();
+    Mod.Settings.CaltropTrapsSpecialUnits = caltropTrapsSpecialUnits.GetIsChecked();
+    Mod.Settings.CaltropOnlyTriggersOnTrappableUnits = caltropOnlyTriggersOnTrappableUnits.GetIsChecked();
+    Mod.Settings.CaltropBombDestroys = caltropBombDestroys.GetIsChecked();
+    Mod.Settings.CaltropSingleUse = caltropSingleUse.GetIsChecked();
+
+    Mod.Settings.CaltropHasLimitedLifespan = caltropHasLimitedLifespan.GetIsChecked();
+    if(Mod.Settings.CaltropHasLimitedLifespan) then
+        Mod.Settings.CaltropLifespan = caltropLifespan.GetValue();
+
+        if (Mod.Settings.CaltropLifespan < 2) then
+            alert("Caltrop lifespan cannot be less than 2");
+            return false;
+        end
+    end
+
+    Mod.Settings.CaltropIsAcquiringTypeCard = caltropIsAcquiringTypeCard.GetIsChecked();
+
+    if(Mod.Settings.CaltropIsAcquiringTypeCard) then
+        Mod.Settings.CaltropNumPieces = caltropNumPieces.GetValue();
+        Mod.Settings.CaltropCardWeight = math.floor(caltropCardWeight.GetValue() * 100 + 0.5) / 100;
+        Mod.Settings.CaltropMinPieces = caltropMinPieces.GetValue();
+        Mod.Settings.CaltropInitialPieces = caltropInitialPieces.GetValue();
+
+        if (Mod.Settings.CaltropNumPieces < 1) then
+            alert("Number of Caltrop pieces cannot be less than 1");
+            return false;
+        end
+        if (Mod.Settings.CaltropCardWeight < 0) then
+            alert("Caltrop card weight cannot be less than 0");
+            return false;
+        end
+        if (Mod.Settings.CaltropMinPieces < 0) then
+            alert("Minimum Caltrop pieces cannot be less than 0");
+            return false;
+        end
+        if (Mod.Settings.CaltropInitialPieces < 0) then
+            alert("Initial Caltrop pieces cannot be less than 0");
+            return false;
+        end
+
+        local caltropCardID = addCard(
+            "Caltrop Card",
+            BuildTrapCardDescription("Caltrop", "Caltrop"),
+            "CaltropCard.png",
+            Mod.Settings.CaltropNumPieces,
+            Mod.Settings.CaltropMinPieces,
+            Mod.Settings.CaltropInitialPieces,
+            Mod.Settings.CaltropCardWeight);
+
+        Mod.Settings.CaltropCardID = caltropCardID;
+    else
+        Mod.Settings.CaltropCardID = nil;
+
+        Mod.Settings.CaltropCost = caltropCost.GetValue();
+        Mod.Settings.CaltropMaxPerPlayer = caltropMaxPerPlayer.GetValue();
+
+        if (Mod.Settings.CaltropCost < 0) then
+            alert("Cost of a Caltrop cannot be less than 0");
+            return false;
+        end
+        if (Mod.Settings.CaltropMaxPerPlayer < 1) then
+            alert("Maximum Caltrops a player can own at once must be at least 1");
+            return false;
+        end
+    end
+
+    return true;
+end
+
+function Save_Caltrop_Disabled()
+    Mod.Settings.CaltropIsAcquiringTypeCard = nil;
+    Mod.Settings.CaltropIsImmuneUnitEnabled = nil;
+    Mod.Settings.CaltropImmuneUnitName = nil;
+    Mod.Settings.CaltropImmuneUnitSharesImmunity = nil;
+    Mod.Settings.CaltropImmuneUnitDestroysTrap = nil;
+    Mod.Settings.CaltropTriggerDuration = nil;
+    Mod.Settings.CaltropAllyTriggers = nil;
+    Mod.Settings.CaltropTrapsArmies = nil;
+    Mod.Settings.CaltropCancelsAirlifts = nil;
+    Mod.Settings.CaltropTrapsSpecialUnits = nil;
+    Mod.Settings.CaltropOnlyTriggersOnTrappableUnits = nil;
+    Mod.Settings.CaltropBombDestroys = nil;
+    Mod.Settings.CaltropSingleUse = nil;
+    Mod.Settings.CaltropHasLimitedLifespan = nil;
+    Mod.Settings.CaltropLifespan = nil;
+    Mod.Settings.CaltropNumPieces = nil;
+    Mod.Settings.CaltropCardWeight = nil;
+    Mod.Settings.CaltropMinPieces = nil;
+    Mod.Settings.CaltropInitialPieces = nil;
+    Mod.Settings.CaltropCardID = nil;
+    Mod.Settings.CaltropCost = nil;
+    Mod.Settings.CaltropMaxPerPlayer = nil;
 end
