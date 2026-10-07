@@ -217,11 +217,8 @@ function V2.HandleAttackTransferFromTriggeredTraps(trapTypes, game, order, resul
 	return true;
 end
 
----Manually resolves an attack/transfer order that a triggered trap has only partially blocked: the units
----in remainingNumArmies/remainingSpecialUnits move as normal (fighting if order.To is hostile), while
----everything else in the original order.ActualArmies stays behind at order.From, trapped. Afterwards, runs
----order.To's own trap logic (triggering/ImmuneUnitDestroysTrap) against what actually moved, since the
----caller (HandleAttackTransfer) skips that step itself once an order has been taken over like this.
+---Manually resolves an attack/transfer order that a triggered trap has only partially blocked.Afterwards, runs
+---order.To's own trap logic (triggering/ImmuneUnitDestroysTrap) against what actually moved
 ---@param trapTypes V2_TrapType[]
 ---@param blockedBy string # names of the trap(s) doing the blocking, for the event message
 ---@param game GameServerHook
@@ -250,13 +247,9 @@ function V2.ResolvePartialTrapBlock(trapTypes, blockedBy, game, order, result, r
 	local extraToChunks = {};
 
 	if (not result.IsAttack) then
-		-- transfer - can simply move
 		fromMod.SetArmiesTo = fromTerritory.NumArmies.NumArmies - remainingNumArmies;
 		fromMod.RemoveSpecialUnitsOpt = map(remainingSpecialUnits, function(unit) return unit.ID end);
 
-		-- only set AddArmies when there's actually armies to add - elsewhere in this file (eg.
-		-- QueueExtraSpecialUnitEvents) a special-units-only TerritoryModification always leaves AddArmies
-		-- unset rather than explicitly zeroed, so match that here for a special-units-only move
 		if (remainingNumArmies > 0) then
 			toMod.AddArmies = remainingNumArmies;
 		end
@@ -324,7 +317,7 @@ function V2.HandleAttackTransferToTraps(trapTypes, game, order, result, addNewOr
 	V2.HandleTrapTriggers(trapTypes, game, order, result, remainingStructuresTo, addNewOrder);
 end
 
----If <Prefix>ImmuneUnitDestroysTrap is on and the moving stack includes its immune unit, destroys any trap at both ends of
+---If ...ImmuneUnitDestroysTrap is on and the moving stack includes its immune unit, destroys any trap at both ends of
 ---the order (it attacks into order.To and comes from order.From).
 ---@param trapType V2_TrapType
 ---@param game GameServerHook

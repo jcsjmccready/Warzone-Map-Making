@@ -453,23 +453,13 @@ function apply_damage_to_specials_and_armies (sortedSpecialUnits, armyCount, tot
 			--if there's still damage to apply, apply it to this Special
 			if (remainingDamage > 0) then
 				if (v.proxyType=="Commander") then
+					-- NOTE: this mod has no Resurrection card and no CardData of its own - the original
+					-- (OrderNeutral) version of this code invoked that card's resurrection logic here via
+					-- getCardID/playerHasCard, neither of which exist in this mod, so it would error. Removed;
+					-- a killed Commander is just killed, same as it would be through a normal WZ attack order.
 					if (remainingDamage >=7) then
 						remainingDamage = math.max (0, remainingDamage - 7);
 						boolCurrentSpecialSurvives = false; --remove commander (don't stop processing; it might not be this player's commander, game needs to continue to cover all cases)
-						local publicGameData = Mod.PublicGameData;
-						local commanderOwner = v.OwnerID;
-						if (publicGameData.CardData == nil) then publicGameData.CardData = {}; end
-						publicGameData.CardData.ResurrectionCardID = tostring(getCardID ("Resurrection", game));
-						local CommanderOwner_ResurrectionCard = playerHasCard (commanderOwner, publicGameData.CardData.ResurrectionCardID, game); --get card instance ID of player's Resurrection card
-						print ("[RESURRECTION CHECK] Res cardID " ..tostring (publicGameData.CardData.ResurrectionCardID)..", Res card instance ID ".. tostring (CommanderOwner_ResurrectionCard));
-
-						if (CommanderOwner_ResurrectionCard~=nil) then
-							local strResurrectionInvoke = "Resurrection|Invoke|"..commanderOwner.."|"..tostring(CommanderOwner_ResurrectionCard);
-							addNewOrder(WL.GameOrderCustom.Create (commanderOwner, "Resurrection|Invoke", strResurrectionInvoke), true); --add order, use 'true' so this new order is skipped if the order that kills the Commander is skipped
-						else
-							--elim player NEXT TURN to get updated LastTurnStanding
-							addNewOrder (WL.GameOrderEvent.Create (commanderOwner, "Limited Multimove|Commander killed"), true);
-						end
 					else
 						remainingDamage = 0; --commander survives, no more attacks to occur
 						boolCurrentSpecialSurvives = true; --add commander to survivingSpecials table
