@@ -1,0 +1,1 @@
+A developer tool mod for testing Client_Visual animations. Paste the JSON output of Tools/ModAnimationConverter/lottie_to_warzone.py into the mod menu and add a testing order to see it play in-game.
