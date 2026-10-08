@@ -9,34 +9,22 @@ function Client_PresentCommercePurchaseUI(rootParent, game, close)
 
     local vert = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
 
-    local damagePercent = (Mod.Settings.BombShelterDamagePercent or 0.5) * 100;
-    local sign = (damagePercent >= 0) and "+" or "";
-    local message = "On territories with a bomb shelter, bombs instead deal " .. sign .. damagePercent .. "%";
-
-    if(Mod.Settings.BombShelterHasDuration) then
-        message = message .. ". Lasts for " .. (Mod.Settings.BombShelterDurationTurns or 0) .. " turns";
-    end
-
-    if(Mod.Settings.BombShelterDestroyedOnBomb) then
-        message = message .. ". Destroyed when bombed";
-    end
-
-    UI.CreateLabel(vert).SetText("Bomb Shelter").SetColor(BUTTON_COLOURS.Yellow).SetFlexibleWidth(1).SetAlignment(WL.TextAlignmentOptions.Center);
+    UI.CreateLabel(vert).SetText("Dead Man's Switch").SetColor(BUTTON_COLOURS.Yellow).SetFlexibleWidth(1).SetAlignment(WL.TextAlignmentOptions.Center);
 
     local horz = UI.CreateHorizontalLayoutGroup(vert).SetFlexibleWidth(1);
     local iconColumn = UI.CreateVerticalLayoutGroup(horz).SetPreferredWidth(80).SetCenter(true);
     --UI.CreateImage doesn't exist in app versions below SNAPSHOT_AND_ICON_MIN_VERSION, so the icon is skipped there
     if (WL.IsVersionOrHigher(SNAPSHOT_AND_ICON_MIN_VERSION)) then
-        UI.CreateImage(iconColumn).SetSprite("Bomb Shelter.png").SetPreferredWidth(32).SetPreferredHeight(32);
+        UI.CreateImage(iconColumn).SetSprite("Dead Man Switch.png").SetPreferredWidth(32).SetPreferredHeight(32);
     end
-    UI.CreateLabel(horz).SetText(message);
+    UI.CreateLabel(horz).SetText("Creates a DMS on the target territory. If the territory is successfully captured, it is destroyed and triggers its configured effect.");
 
     local horz = UI.CreateHorizontalLayoutGroup(vert).SetFlexibleWidth(1);
-    UI.CreateLabel(horz).SetText("Cost: " .. (Mod.Settings.BombShelterCost or 0) .. " gold")
+    UI.CreateLabel(horz).SetText("Cost: " .. (Mod.Settings.Cost or 0) .. " gold")
     .SetFlexibleWidth(0.5)
     .SetColor(BUTTON_COLOURS.Bronze);
 
-    local currentCount = CommerceCountOwnedAndQueuedBombShelters(game);
+    local currentCount = CommerceCountOwnedAndQueuedDMS(game);
 
     CommerceLimitLabel = UI.CreateLabel(horz).SetText(CommerceLimitLabelText(currentCount))
     .SetFlexibleWidth(0.5)
@@ -51,16 +39,16 @@ end
 
 ---@param currentCount integer
 function CommerceLimitLabelText(currentCount)
-    return "Limit: " .. currentCount .. "/" .. (Mod.Settings.BombShelterMaxPerPlayer or 0) .. " per player";
+    return "Limit: " .. currentCount .. "/" .. (Mod.Settings.MaxPerPlayer or 0) .. " per player";
 end
 
 ---@param game GameClientHook
-function CommerceCountOwnedAndQueuedBombShelters(game)
-    local structureID = Mod.PublicGameData.BombShelterStructureID;
-    local count = CountPlayerBombShelters(game.LatestStanding, game.Us.ID, structureID);
+function CommerceCountOwnedAndQueuedDMS(game)
+    local structureID = Mod.PublicGameData.DmsStructureID;
+    local count = CountPlayerStructures(game.LatestStanding, game.Us.ID, structureID);
 
     for _, order in pairs(game.Orders) do
-        if (order.proxyType == 'GameOrderCustom' and startsWith(order.Payload, "BombShelter_")) then
+        if (order.proxyType == 'GameOrderCustom' and startsWith(order.Payload, "CreateDMS_")) then
             count = count + 1;
         end
     end
@@ -68,14 +56,14 @@ function CommerceCountOwnedAndQueuedBombShelters(game)
     return count;
 end
 
---- Initiate territory selection for the Bomb Shelter purchase
+--- Initiate territory selection for the Dead Man's Switch purchase
 function CommerceTargetTerritoryClicked()
-    local currentCount = CommerceCountOwnedAndQueuedBombShelters(CommerceGame);
+    local currentCount = CommerceCountOwnedAndQueuedDMS(CommerceGame);
     CommerceLimitLabel.SetText(CommerceLimitLabelText(currentCount));
 
-    local maxAllowed = Mod.Settings.BombShelterMaxPerPlayer or 0;
+    local maxAllowed = Mod.Settings.MaxPerPlayer or 0;
     if (currentCount >= maxAllowed) then
-        UI.Alert("You already own or have queued " .. currentCount .. " Bomb Shelter(s). You can only have " .. maxAllowed .. ".");
+        UI.Alert("You already own or have queued " .. currentCount .. " Dead Man's Switch(es). You can only have " .. maxAllowed .. ".");
         return;
     end
 
@@ -106,14 +94,14 @@ function CommerceTerritoryClicked(terrDetails)
         return;
     end
 
-    local cost = Mod.Settings.BombShelterCost or 0;
+    local cost = Mod.Settings.Cost or 0;
     local order = WL.GameOrderCustom.Create(
         CommerceGame.Us.ID,
-        "Build a Bomb Shelter on " .. terrDetails.Name,
-        "BombShelter_" .. terrDetails.ID,
+        "Build a Dead Man's Switch on " .. terrDetails.Name,
+        "CreateDMS_" .. terrDetails.ID,
         { [WL.ResourceType.Gold] = cost },
         WL.TurnPhase.Attacks);
-    order.Icon = "BombShelter";
+    order.Icon = "DeadManSwitch";
 
     -- Re-assign rather than mutate in place: Orders is a snapshot, so table.insert on the value returned by
     -- CommerceGame.Orders alone wouldn't persist the new order back to the game.
@@ -121,7 +109,7 @@ function CommerceTerritoryClicked(terrDetails)
     table.insert(orders, order);
     CommerceGame.Orders = orders;
 
-    CommerceLimitLabel.SetText(CommerceLimitLabelText(CommerceCountOwnedAndQueuedBombShelters(CommerceGame)));
+    CommerceLimitLabel.SetText(CommerceLimitLabelText(CommerceCountOwnedAndQueuedDMS(CommerceGame)));
 
     -- Reset state
     CommerceGame.HighlightTerritories({});

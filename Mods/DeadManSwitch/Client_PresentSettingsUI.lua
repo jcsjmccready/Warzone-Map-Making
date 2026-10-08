@@ -55,10 +55,16 @@ function Client_PresentSettingsUI(rootParent)
     if(Mod.Settings.isAcquiringTypeCard) then
         local cardVGroup = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
 
-        UI.CreateLabel(cardVGroup).SetText("Dead Man's Switch Card:");
+        UI.CreateLabel(cardVGroup).SetText("Dead Man's Switches are acquired via the Dead Man's Switch Card:");
         UI.CreateLabel(cardVGroup).SetText("Number of Pieces: " .. Mod.Settings.NumPieces);
         UI.CreateLabel(cardVGroup).SetText("Card Weight: " .. Mod.Settings.CardWeight);
         UI.CreateLabel(cardVGroup).SetText("Minimum Pieces: " .. Mod.Settings.MinPieces);
         UI.CreateLabel(cardVGroup).SetText("Initial Pieces: " .. Mod.Settings.InitialPieces);
+    else
+        local commerceVGroup = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
+
+        UI.CreateLabel(commerceVGroup).SetText("Dead Man's Switches are acquired via Commerce:");
+        UI.CreateLabel(commerceVGroup).SetText("Cost: " .. (Mod.Settings.Cost or 0) .. " gold");
+        UI.CreateLabel(commerceVGroup).SetText("Maximum Dead Man's Switches per player: " .. (Mod.Settings.MaxPerPlayer or 0));
     end
 end

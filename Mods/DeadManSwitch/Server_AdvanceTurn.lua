@@ -9,23 +9,15 @@ require("Utilities");
 function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrder)
 
     if (order.proxyType == 'GameOrderPlayCardCustom' and startsWith(order.ModData, "CreateDMS_")) then
+        local targetTerritoryID = tonumber(string.sub(order.ModData, 11));
+        QueueDmsBuild(game, order.PlayerID, targetTerritoryID, order.Description, false);
+        return;
+    end
 
-        local targetTerritoryID = tonumber(string.sub(order.ModData, 11))
-		if (game.ServerGame.LatestTurnStanding.Territories[targetTerritoryID].OwnerPlayerID ~= order.PlayerID) then
-			return; --not our territory
-		end
-
-		-- store pending build orders for end of turn
-		local pendingDMS = {};
-		pendingDMS.PlayerID = order.PlayerID;
-		pendingDMS.Message = order.Description;
-		pendingDMS.TerritoryID = targetTerritoryID;
-
-		local privateGameData = Mod.PrivateGameData;
-		if (privateGameData.PendingDMS == nil) then privateGameData.PendingDMS = {}; end;
-		table.insert(privateGameData.PendingDMS, pendingDMS);
-
-		Mod.PrivateGameData = privateGameData;
+    if (order.proxyType == 'GameOrderCustom' and startsWith(order.Payload, "CreateDMS_")) then
+        local targetTerritoryID = tonumber(string.sub(order.Payload, 11));
+        QueueDmsBuild(game, order.PlayerID, targetTerritoryID, order.Message, true);
+        return;
     end
 
 	-- --Check if this is an attack against a territory with a dms.
@@ -74,6 +66,30 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
 		Trigger_Primary_Action(territoryModification, game, order, result, addNewOrder, numberOfDMS);
 		Trigger_Secondary_Actions(territoryModification, game, order, result, addNewOrder, numberOfDMS);
     end
+end
+
+---Queues a Dead Man's Switch to be built on the target territory at the end of the turn.
+---@param game GameServerHook
+---@param playerID PlayerID
+---@param targetTerritoryID TerritoryID
+---@param message string
+---@param isCommerce boolean
+function QueueDmsBuild(game, playerID, targetTerritoryID, message, isCommerce)
+	if (game.ServerGame.LatestTurnStanding.Territories[targetTerritoryID].OwnerPlayerID ~= playerID) then
+		return; --not our territory
+	end
+
+	local pendingDMS = {};
+	pendingDMS.PlayerID = playerID;
+	pendingDMS.Message = message;
+	pendingDMS.TerritoryID = targetTerritoryID;
+	pendingDMS.IsCommerce = isCommerce;
+
+	local privateGameData = Mod.PrivateGameData;
+	if (privateGameData.PendingDMS == nil) then privateGameData.PendingDMS = {}; end;
+	table.insert(privateGameData.PendingDMS, pendingDMS);
+
+	Mod.PrivateGameData = privateGameData;
 end
 
 function Add_Dms_Triggered_Event(order, territoryModification, addNewOrder)
@@ -278,7 +294,28 @@ function BuildStructures(game, addNewOrder)
 		end
 	end
 
-	pending = remainingPendingDMS;
+	-- Enforce the Commerce max-per-player cap against a running total, since two Commerce builds queued by the
+	-- same player this turn would otherwise both be checked against the same pre-turn count.
+	local builtCountByPlayer = {};
+	local allowedPendingDMS = {};
+	local cappedPendingDMS = {};
+	for _, pendingDms in pairs(remainingPendingDMS) do
+		if (pendingDms.IsCommerce) then
+			local maxAllowed = Mod.Settings.MaxPerPlayer or 0;
+			local existingCount = CountPlayerStructures(game.ServerGame.LatestTurnStanding, pendingDms.PlayerID, structureID);
+			local builtSoFar = builtCountByPlayer[pendingDms.PlayerID] or 0;
+			if (existingCount + builtSoFar >= maxAllowed) then
+				table.insert(cappedPendingDMS, pendingDms);
+			else
+				builtCountByPlayer[pendingDms.PlayerID] = builtSoFar + 1;
+				table.insert(allowedPendingDMS, pendingDms);
+			end
+		else
+			table.insert(allowedPendingDMS, pendingDms);
+		end
+	end
+
+	pending = allowedPendingDMS;
 
 	-- We will now build a DMS for each pending DMS. However, we need to take care to ensure that if there are two build orders for the same territory that we build both of them,
 	--	so we first group by the territory ID so we get all build orders for the same territory together.
@@ -300,11 +337,11 @@ function BuildStructures(game, addNewOrder)
 
 		local pendingDms = first(pendingDmsGroup);
 		if (pendingDms ~= nil) then
-			local event = WL.GameOrderEvent.Create(pendingDms.PlayerID, pendingDms.Message, {}, {territoryModification});
-
 			local td = game.Map.Territories[territoryID];
+			local event = WL.GameOrderEvent.Create(pendingDms.PlayerID, "Built a Dead Man's Switch(es) on " .. td.Name, {}, {territoryModification});
+
 			event.JumpToActionSpotOpt = WL.RectangleVM.Create(td.MiddlePointX, td.MiddlePointY, td.MiddlePointX, td.MiddlePointY);
-			event.TerritoryAnnotationsOpt = { [territoryID] = WL.TerritoryAnnotation.Create("Build DMS", 8, GetColourIntegerFromHex(BUTTON_COLOURS.DarkGreen)) };
+			event.TerritoryAnnotationsOpt = { [territoryID] = WL.TerritoryAnnotation.Create("DMS(s) built", 8, GetColourIntegerFromHex(BUTTON_COLOURS.DarkGreen)) };
 			event.Icon = "Build";
 
 			addNewOrder(event);
@@ -323,6 +360,14 @@ function BuildStructures(game, addNewOrder)
 
 			addNewOrder(event);
 		end
+	end
+
+	-- Commerce limit hit logic
+	for _, pendingDms in pairs(cappedPendingDMS) do
+		local event = WL.GameOrderEvent.Create(pendingDms.PlayerID, "Unable to build Dead Man's Switch: you already own the maximum number of Dead Man's Switches", {}, {});
+		event.TerritoryAnnotationsOpt = { [pendingDms.TerritoryID] = WL.TerritoryAnnotation.Create("Unable to build DMS", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Red)) };
+		event.Icon = "BuildFailed";
+		addNewOrder(event);
 	end
 
 	privateGameData.PendingDMS = nil;

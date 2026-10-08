@@ -12,27 +12,38 @@ function Create_UI_Controls(rootParent)
 
     ---- Acquiring type
     local acquiringTypeHeading = UI.CreateVerticalLayoutGroup(mainModUI);
-    local acquiringType = UI.CreateRadioButtonGroup(acquiringTypeHeading);
     UI.CreateLabel(acquiringTypeHeading).SetText('Acquiring type:').SetColor(SUBHEADING_COLOUR);
+    local acquiringType = UI.CreateRadioButtonGroup(acquiringTypeHeading);
 
-    -- Card acquiring type
-    local acquiringTypeCardHeading = UI.CreateVerticalLayoutGroup(acquiringTypeHeading);
-    isAcquiringTypeCard = UI.CreateRadioButton(acquiringTypeCardHeading).SetGroup(acquiringType).SetText('Card').SetIsChecked(Mod.Settings.isAcquiringTypeCard or true);
+    local acquiringSubOptionsParent = UI.CreateVerticalLayoutGroup(mainModUI);
 
-    -- Card acquiring type sub-options
-    isAcquiringTypeCard.SetOnValueChanged(function() 
+    isAcquiringTypeCard = UI.CreateRadioButton(acquiringTypeHeading)
+        .SetGroup(acquiringType)
+        .SetText('Card')
+        .SetIsChecked(Mod.Settings.isAcquiringTypeCard == nil or Mod.Settings.isAcquiringTypeCard);
 
-        if(isAcquiringTypeCard.GetIsChecked()) then
-            Create_Card_SubOptions_UI(acquiringTypeHeading);
+    isAcquiringTypeCommerce = UI.CreateRadioButton(acquiringTypeHeading)
+        .SetGroup(acquiringType)
+        .SetText('Commerce')
+        .SetIsChecked(Mod.Settings.isAcquiringTypeCard ~= nil and not Mod.Settings.isAcquiringTypeCard);
+
+    isAcquiringTypeCard.SetOnValueChanged(function()
+        if (isAcquiringTypeCard.GetIsChecked()) then
             isAcquiringTypeCard.SetInteractable(false);
-        else
-           UI.Destroy(cardOptionsHeading);
-            isAcquiringTypeCard.SetInteractable(true);
+            isAcquiringTypeCommerce.SetInteractable(true);
+            UI.Destroy(acquiringSubOptionsVGroup);
+            Create_Card_SubOptions_UI(acquiringSubOptionsParent);
         end
     end);
 
-    -- Commerce acquiring type
-    isAcquiringTypeCommerce = false;
+    isAcquiringTypeCommerce.SetOnValueChanged(function()
+        if (isAcquiringTypeCommerce.GetIsChecked()) then
+            isAcquiringTypeCommerce.SetInteractable(false);
+            isAcquiringTypeCard.SetInteractable(true);
+            UI.Destroy(acquiringSubOptionsVGroup);
+            Create_Commerce_SubOptions_UI(acquiringSubOptionsParent);
+        end
+    end);
 
     ---- Damage type
     local damageTypeHeading = UI.CreateVerticalLayoutGroup(mainModUI);
@@ -124,8 +135,11 @@ function Create_UI_Controls(rootParent)
     allyTriggers = UI.CreateCheckBox(optionalsHeading).SetText("Allies trigger DMS").SetIsChecked(Mod.Settings.AllyTriggers or false);
     
     if(isAcquiringTypeCard.GetIsChecked()) then -- one time check for loading up from settings
-        Create_Card_SubOptions_UI(acquiringTypeHeading);
         isAcquiringTypeCard.SetInteractable(false);
+        Create_Card_SubOptions_UI(acquiringSubOptionsParent);
+    else
+        isAcquiringTypeCommerce.SetInteractable(false);
+        Create_Commerce_SubOptions_UI(acquiringSubOptionsParent);
     end
     if(isDamageTypePercent.GetIsChecked()) then -- one time check for loading up from settings
         Create_PercentageDamage_SubOptions_UI(damageTypePercentHeading);
@@ -177,35 +191,57 @@ function Create_FlatDamage_SubOptions_UI(rootParent)
 end;
 
 function Create_Card_SubOptions_UI(rootParent)
-    cardOptionsHeading = UI.CreateVerticalLayoutGroup(rootParent);
+    acquiringSubOptionsVGroup = UI.CreateVerticalLayoutGroup(rootParent);
 
-    local horz = UI.CreateHorizontalLayoutGroup(cardOptionsHeading);
-    UI.CreateLabel(horz).SetText('Number of Pieces to divide the card into').SetFlexibleWidth(290);
+    UI.CreateLabel(acquiringSubOptionsVGroup).SetText('Card Settings:').SetColor(SUBHEADING_COLOUR);
+
+    local horz = UI.CreateHorizontalLayoutGroup(acquiringSubOptionsVGroup);
+    UI.CreateLabel(horz).SetText('Number of Pieces to divide the card into').SetPreferredWidth(290);
     numPieces = UI.CreateNumberInputField(horz)
         .SetSliderMinValue(1)
         .SetSliderMaxValue(15)
         .SetValue(Mod.Settings.NumPieces or 7);
 
-    local horz = UI.CreateHorizontalLayoutGroup(cardOptionsHeading);
+    local horz = UI.CreateHorizontalLayoutGroup(acquiringSubOptionsVGroup);
     UI.CreateLabel(horz).SetText('Card weight (how common the card is)').SetPreferredWidth(290);
     cardWeight = UI.CreateNumberInputField(horz)
         .SetWholeNumbers(false)
         .SetSliderMinValue(0)
         .SetSliderMaxValue(5)
         .SetValue(Mod.Settings.CardWeight or 1.0);
-    
-    local horz = UI.CreateHorizontalLayoutGroup(cardOptionsHeading);
+
+    local horz = UI.CreateHorizontalLayoutGroup(acquiringSubOptionsVGroup);
     UI.CreateLabel(horz).SetText('Minimum pieces awarded per turn').SetPreferredWidth(290);
     minPieces = UI.CreateNumberInputField(horz)
         .SetSliderMinValue(0)
         .SetSliderMaxValue(5)
         .SetValue(Mod.Settings.MinPieces or 1);
-    
-    local horz = UI.CreateHorizontalLayoutGroup(cardOptionsHeading);
+
+    local horz = UI.CreateHorizontalLayoutGroup(acquiringSubOptionsVGroup);
     UI.CreateLabel(horz).SetText('Pieces given to each player at the start').SetPreferredWidth(290);
     initialPieces = UI.CreateNumberInputField(horz)
         .SetSliderMinValue(0)
         .SetSliderMaxValue(5)
         .SetValue(Mod.Settings.InitialPieces or 1);
 
+end;
+
+function Create_Commerce_SubOptions_UI(rootParent)
+    acquiringSubOptionsVGroup = UI.CreateVerticalLayoutGroup(rootParent);
+
+    UI.CreateLabel(acquiringSubOptionsVGroup).SetText('Commerce Settings:').SetColor(SUBHEADING_COLOUR);
+
+    local horz = UI.CreateHorizontalLayoutGroup(acquiringSubOptionsVGroup);
+    UI.CreateLabel(horz).SetText("Cost of a Dead Man's Switch").SetPreferredWidth(290);
+    dmsCost = UI.CreateNumberInputField(horz)
+        .SetSliderMinValue(0)
+        .SetSliderMaxValue(50)
+        .SetValue(Mod.Settings.Cost or 5);
+
+    local horz = UI.CreateHorizontalLayoutGroup(acquiringSubOptionsVGroup);
+    UI.CreateLabel(horz).SetText("Maximum number of Dead Man's Switches a player can own at once").SetPreferredWidth(290);
+    dmsMaxPerPlayer = UI.CreateNumberInputField(horz)
+        .SetSliderMinValue(1)
+        .SetSliderMaxValue(20)
+        .SetValue(Mod.Settings.MaxPerPlayer or 3);
 end;

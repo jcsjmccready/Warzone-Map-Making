@@ -96,6 +96,21 @@ function startsWith(str, sub)
 	return string.sub(str, 1, string.len(sub)) == sub;
 end
 
+--Returns the number of structures of the given type a player currently owns across the whole map.
+---@param standing GameStanding
+---@param playerID PlayerID
+---@param structureID EnumStructureType
+function CountPlayerStructures(standing, playerID, structureID)
+	if (structureID == nil) then return 0; end;
+	local count = 0;
+	for _, territory in pairs(standing.Territories) do
+		if (territory.OwnerPlayerID == playerID and territory.Structures ~= nil) then
+			count = count + (territory.Structures[structureID] or 0);
+		end
+	end
+	return count;
+end
+
 function shuffleInPlace(tbl)
 	for i = #tbl, 2, -1 do
 		local j = math.random(i)
@@ -229,6 +244,8 @@ function GetColourIntegerFromHex(hexColour)
 end
 
 
+
+SNAPSHOT_AND_ICON_MIN_VERSION = "6.06"; --UI.CreateSnapshot/UI.CreateImage don't exist below this app version
 
 TEXT_DEFAULT_COLOUR = "#CCCCCC";
 ERROR_COLOUR = "#FF0000";

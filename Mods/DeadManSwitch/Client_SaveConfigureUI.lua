@@ -6,7 +6,6 @@ require("Utilities");
 function Client_SaveConfigureUI(alert, addCard)
 
     local damageTypeMessage = "ERROR";
-    Mod.Settings.isAcquiringTypeCommerce = isAcquiringTypeCommerce;
 
     Mod.Settings.isDamageTypeBomb = isDamageTypeBomb.GetIsChecked();
     if(Mod.Settings.isDamageTypeBomb) then
@@ -81,13 +80,25 @@ function Client_SaveConfigureUI(alert, addCard)
             return;
         end
 
-    addCard("Dead Man's Switch Card", 
-        "Play this card to create a Dead Man's Switch on any territory you control (at the end of the turn). If this territory is successfully captured, afterwards, " .. damageTypeMessage, 
+    addCard("Dead Man's Switch Card",
+        "Play this card to create a Dead Man's Switch on any territory you control (at the end of the turn). If this territory is successfully captured, afterwards, " .. damageTypeMessage,
         "DmsCard.png",
         Mod.Settings.NumPieces,
-        Mod.Settings.MinPieces, 
-        Mod.Settings.InitialPieces, 
+        Mod.Settings.MinPieces,
+        Mod.Settings.InitialPieces,
         Mod.Settings.CardWeight);
+    else
+        Mod.Settings.Cost = dmsCost.GetValue();
+        Mod.Settings.MaxPerPlayer = dmsMaxPerPlayer.GetValue();
+
+        if (Mod.Settings.Cost < 0) then
+            alert("Cost of a Dead Man's Switch cannot be less than 0");
+            return;
+        end
+        if (Mod.Settings.MaxPerPlayer < 1) then
+            alert("Maximum Dead Man's Switches a player can own at once must be at least 1");
+            return;
+        end
     end
 end
 

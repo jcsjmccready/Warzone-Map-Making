@@ -2,6 +2,10 @@
 ---@param settings GameSettings # Read-only GameSettings object
 ---@param alert fun(message: string) # When invoked, it will show a pop-up for the client with the message. It will also abort the game creation
 function Client_CreateGame(settings, alert)
+    if (Mod.Settings.isAcquiringTypeCard ~= nil and not Mod.Settings.isAcquiringTypeCard and not settings.CommerceGame) then
+        alert("Dead Man's Switch is set to be acquired via Commerce, but this game is not a Commerce game.");
+    end
+
     if (Mod.Settings.isDamageTypeBomb and (settings.Cards == nil or settings.Cards[WL.CardID.Bomb] == nil)) then
         alert("Bombs must be enabled for this mod to work.");
     end
