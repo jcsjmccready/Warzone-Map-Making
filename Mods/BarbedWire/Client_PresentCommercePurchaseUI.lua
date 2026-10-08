@@ -6,13 +6,33 @@ require('Utilities')
 function Client_PresentCommercePurchaseUI(rootParent, game, close)
     local vert = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
 
-    if (Mod.Settings.IncludeBarbedWire and Mod.Settings.isAcquiringTypeCard ~= nil and not Mod.Settings.isAcquiringTypeCard) then
-        Create_TrapCommerce_Section_UI(vert, game, "BarbedWire", "Barbed Wire", BuildTrapCommerceDescription("BarbedWire", "Barbed Wire"));
+    if (Mod.Settings.IncludeBarbedWire == nil or Mod.Settings.IncludeBarbedWire) then
+        if (Mod.Settings.isAcquiringTypeCard == nil or Mod.Settings.isAcquiringTypeCard) then
+            Create_TrapCommerce_NotEnabled_UI(vert, "Barbed Wire");
+        else
+            Create_TrapCommerce_Section_UI(vert, game, "BarbedWire", "Barbed Wire", BuildTrapCommerceDescription("BarbedWire", "Barbed Wire"));
+        end
     end
 
-    if (Mod.Settings.IncludeCaltrop and Mod.Settings.CaltropIsAcquiringTypeCard ~= nil and not Mod.Settings.CaltropIsAcquiringTypeCard) then
-        Create_TrapCommerce_Section_UI(vert, game, "Caltrop", "Caltrop", BuildTrapCommerceDescription("Caltrop", "Caltrop"));
+    if (Mod.Settings.IncludeCaltrop) then
+        if (Mod.Settings.IncludeBarbedWire == nil or Mod.Settings.IncludeBarbedWire) then
+            UI.CreateEmpty(vert).SetPreferredHeight(10);
+        end
+
+        if (Mod.Settings.CaltropIsAcquiringTypeCard == nil or Mod.Settings.CaltropIsAcquiringTypeCard) then
+            Create_TrapCommerce_NotEnabled_UI(vert, "Caltrop");
+        else
+            Create_TrapCommerce_Section_UI(vert, game, "Caltrop", "Caltrop", BuildTrapCommerceDescription("Caltrop", "Caltrop"));
+        end
     end
+end
+
+---Shown in place of a trap's Commerce section when that trap is enabled but configured for Card acquisition, even though this is a Commerce game.
+---@param rootParent RootParent
+---@param displayName string
+function Create_TrapCommerce_NotEnabled_UI(rootParent, displayName)
+    local vert = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
+    UI.CreateLabel(vert).SetText(displayName .. ": Not enabled for commerce").SetColor(BUTTON_COLOURS.DarkGray);
 end
 
 ---One trap's "Cost / Limit / Build on Territory" section of the Commerce purchase dialog.
@@ -24,8 +44,15 @@ end
 function Create_TrapCommerce_Section_UI(rootParent, game, prefix, displayName, description)
     local vert = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
 
+    UI.CreateLabel(vert).SetText(displayName).SetColor(BUTTON_COLOURS.Yellow).SetFlexibleWidth(1).SetAlignment(WL.TextAlignmentOptions.Center);
+
     local headerHorz = UI.CreateHorizontalLayoutGroup(vert).SetFlexibleWidth(1);
-    UI.CreateLabel(headerHorz).SetText(displayName).SetColor(BUTTON_COLOURS.Yellow).SetMinWidth(60);
+    local iconColumn = UI.CreateVerticalLayoutGroup(headerHorz).SetPreferredWidth(100).SetCenter(true);
+    --UI.CreateImage doesn't exist in app versions below SNAPSHOT_AND_ICON_MIN_VERSION, so the icon is skipped there
+    if (WL.IsVersionOrHigher(SNAPSHOT_AND_ICON_MIN_VERSION)) then
+        UI.CreateImage(iconColumn).SetSprite(prefix .. ".png").SetPreferredWidth(60).SetPreferredHeight(60);
+    end
+    UI.CreateEmpty(headerHorz).SetPreferredWidth(10);
     UI.CreateLabel(headerHorz).SetText(description);
 
     local payloadPrefix = "Create" .. prefix .. "Commerce_";
@@ -91,6 +118,7 @@ function Create_TrapCommerce_Section_UI(rootParent, game, prefix, displayName, d
             payloadPrefix .. terrDetails.ID,
             { [WL.ResourceType.Gold] = cost },
             WL.TurnPhase.Attacks);
+        order.Icon = prefix;
 
         -- Re-assign rather than mutate in place: Orders is a snapshot, so table.insert on the value returned by
         -- game.Orders alone wouldn't persist the new order back to the game.

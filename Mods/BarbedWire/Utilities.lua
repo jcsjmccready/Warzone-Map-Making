@@ -1,6 +1,8 @@
 
 LATEST_SETTINGS_VERSION = 2;
 
+SNAPSHOT_AND_ICON_MIN_VERSION = "6.06"; --UI.CreateSnapshot/UI.CreateImage don't exist below this app version
+
 function MigrateModSettings()
     local version = Mod.Settings.Version or 1;
 

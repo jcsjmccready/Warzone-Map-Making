@@ -21,11 +21,12 @@ function Client_PresentCommercePurchaseUI(rootParent, game, close)
     UI.CreateLabel(vert).SetText("Dead Man's Switch").SetColor(BUTTON_COLOURS.Yellow).SetFlexibleWidth(1).SetAlignment(WL.TextAlignmentOptions.Center);
 
     local horz = UI.CreateHorizontalLayoutGroup(vert).SetFlexibleWidth(1);
-    local iconColumn = UI.CreateVerticalLayoutGroup(horz).SetPreferredWidth(80).SetCenter(true);
+    local iconColumn = UI.CreateVerticalLayoutGroup(horz).SetPreferredWidth(100).SetCenter(true);
     --UI.CreateImage doesn't exist in app versions below SNAPSHOT_AND_ICON_MIN_VERSION, so the icon is skipped there
     if (WL.IsVersionOrHigher(SNAPSHOT_AND_ICON_MIN_VERSION)) then
-        UI.CreateImage(iconColumn).SetSprite("Dead Man Switch.png").SetPreferredWidth(32).SetPreferredHeight(32);
+        UI.CreateImage(iconColumn).SetSprite("Dead Man Switch.png").SetPreferredWidth(60).SetPreferredHeight(60);
     end
+    UI.CreateEmpty(horz).SetPreferredWidth(10);
     UI.CreateLabel(horz).SetText("Creates a DMS on the target territory. If the territory is successfully captured, it is destroyed and triggers its configured effect.");
 
     local horz = UI.CreateHorizontalLayoutGroup(vert).SetFlexibleWidth(1);
