@@ -4,6 +4,15 @@ require('Utilities')
 ---@param game GameClientHook
 ---@param close fun() # Zero parameter function that closes the dialog
 function Client_PresentCommercePurchaseUI(rootParent, game, close)
+    if (Mod.Settings.isAcquiringTypeCard == nil or Mod.Settings.isAcquiringTypeCard) then
+        --Dead Man's Switch is configured to be acquired via the card, not Commerce, even though this is a Commerce game
+        UI.CreateLabel(UI.CreateVerticalLayoutGroup(rootParent)
+            .SetFlexibleWidth(1))
+            .SetText("Not enabled for commerce")
+            .SetColor(BUTTON_COLOURS.DarkGray);
+        return;
+    end
+
     CommerceGame = game;
     CommerceClose = close;
 

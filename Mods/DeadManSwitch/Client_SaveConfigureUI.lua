@@ -58,6 +58,8 @@ function Client_SaveConfigureUI(alert, addCard)
 
     Mod.Settings.isAcquiringTypeCard = isAcquiringTypeCard.GetIsChecked();
     if(Mod.Settings.isAcquiringTypeCard) then
+        Clear_Commerce_Settings();
+
         Mod.Settings.NumPieces = numPieces.GetValue();
         Mod.Settings.CardWeight = cardWeight.GetValue();
         Mod.Settings.MinPieces = minPieces.GetValue();
@@ -80,14 +82,18 @@ function Client_SaveConfigureUI(alert, addCard)
             return;
         end
 
-    addCard("Dead Man's Switch Card",
+    local dmsCardID = addCard("Dead Man's Switch Card",
         "Play this card to create a Dead Man's Switch on any territory you control (at the end of the turn). If this territory is successfully captured, afterwards, " .. damageTypeMessage,
         "DmsCard.png",
         Mod.Settings.NumPieces,
         Mod.Settings.MinPieces,
         Mod.Settings.InitialPieces,
         Mod.Settings.CardWeight);
+
+    Mod.Settings.DeadManSwitchCardID = dmsCardID;
     else
+        Clear_Card_Settings();
+
         Mod.Settings.Cost = dmsCost.GetValue();
         Mod.Settings.MaxPerPlayer = dmsMaxPerPlayer.GetValue();
 
@@ -100,5 +106,18 @@ function Client_SaveConfigureUI(alert, addCard)
             return;
         end
     end
+end
+
+function Clear_Card_Settings()
+    Mod.Settings.NumPieces = nil;
+    Mod.Settings.CardWeight = nil;
+    Mod.Settings.MinPieces = nil;
+    Mod.Settings.InitialPieces = nil;
+    Mod.Settings.DeadManSwitchCardID = nil;
+end
+
+function Clear_Commerce_Settings()
+    Mod.Settings.Cost = nil;
+    Mod.Settings.MaxPerPlayer = nil;
 end
 

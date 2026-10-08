@@ -25,6 +25,8 @@ function Client_SaveConfigureUI(alert, addCard)
     end
 
     if (Mod.Settings.IsAcquiringTypeCard) then
+        Clear_Commerce_Settings();
+
         Mod.Settings.BombShelterNumPieces = bombShelterNumPieces.GetValue();
         Mod.Settings.BombShelterCardWeight = bombShelterCardWeight.GetValue();
         Mod.Settings.BombShelterMinPieces = bombShelterMinPieces.GetValue();
@@ -68,6 +70,8 @@ function Client_SaveConfigureUI(alert, addCard)
 
         Mod.Settings.BombShelterCardID = bombShelterCardID;
     else
+        Clear_Card_Settings();
+
         Mod.Settings.BombShelterCost = bombShelterCost.GetValue();
         Mod.Settings.BombShelterMaxPerPlayer = bombShelterMaxPerPlayer.GetValue();
 
@@ -80,4 +84,17 @@ function Client_SaveConfigureUI(alert, addCard)
             return;
         end
     end
+end
+
+function Clear_Card_Settings()
+    Mod.Settings.BombShelterNumPieces = nil;
+    Mod.Settings.BombShelterCardWeight = nil;
+    Mod.Settings.BombShelterMinPieces = nil;
+    Mod.Settings.BombShelterInitialPieces = nil;
+    Mod.Settings.BombShelterCardID = nil;
+end
+
+function Clear_Commerce_Settings()
+    Mod.Settings.BombShelterCost = nil;
+    Mod.Settings.BombShelterMaxPerPlayer = nil;
 end
