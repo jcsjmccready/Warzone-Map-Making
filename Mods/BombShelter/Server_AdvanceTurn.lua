@@ -1,6 +1,19 @@
 require("Utilities");
 require("IO.ModAuth");
 
+---@class BombShelterPendingBuild # One queued build, not yet resolved into an actual structure
+---@field PlayerID PlayerID # The player who queued it, re-checked for ownership at build time
+---@field TerritoryID TerritoryID
+
+---@class BombShelterActiveShelter # One already-built shelter instance being tracked for expiry, only used when BombShelterHasDuration is set
+---@field TerritoryID TerritoryID
+---@field FinalTurn integer # The turn number this shelter instance expires on
+---@field PlayerID PlayerID # The player who built it, shown the expiry event even if they no longer own the territory
+
+---@class BombShelterPrivateGameData
+---@field PendingBombShelterBuilds BombShelterPendingBuild[] | nil # Cleared at the end of every turn once BuildQueuedBombShelters resolves them
+---@field ActiveBombShelters BombShelterActiveShelter[] | nil # One entry per shelter instance, not per territory
+
 ---Server_AdvanceTurn_Start hook.
 ---@param game GameServerHook
 ---@param addNewOrder fun(order: GameOrder)
@@ -15,7 +28,7 @@ end
 ---@param skipThisOrder fun(modOrderControl: EnumModOrderControl)
 ---@param addNewOrder fun(order: GameOrder)
 function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrder)
-    -- self-authenticated transmission of the pre-bomb army snapshot from HandleBombAgainstBombShelter to ResolveBombAgainstBombShelter
+    -- authenticated orders, whether self-sent by HandleBombAgainstBombShelter or sent by another mod via IO.ModAuth.Send
     if (IO.ModAuth.ProcessOrder(
         order,
         addNewOrder,
@@ -27,27 +40,35 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
 
     if (order.proxyType == 'GameOrderPlayCardCustom' and startsWith(order.ModData, "BombShelter_")) then
         local targetTerritoryID = tonumber(string.sub(order.ModData, 13));
-        QueueBombShelterBuild(order.PlayerID, targetTerritoryID, false);
+        QueueBombShelterBuild(order.PlayerID, targetTerritoryID);
         return;
     end
 
     if (order.proxyType == 'GameOrderCustom' and startsWith(order.Payload, "BombShelter_")) then
         local targetTerritoryID = tonumber(string.sub(order.Payload, 13));
-        QueueBombShelterBuild(order.PlayerID, targetTerritoryID, true);
+        QueueBombShelterBuild(order.PlayerID, targetTerritoryID);
         return;
     end
 
     HandleBombAgainstBombShelter(game, order, addNewOrder);
 end
 
+---Called for both BombShelter's own self-sent orders and authenticated orders sent by other mods via IO.ModAuth.Send.
+---Dispatches on data.Action, add more branches here as new authenticated actions are exposed.
 ---@param senderModKey ModKey
----@param data table # {TerritoryID, ArmiesBefore}, sent via IO.ModAuth.SendSelf from HandleBombAgainstBombShelter
+---@param data table # {Action, ...}, shape depends on Action - see QueueBombShelterBuild/TriggerBombShelter/DestroyBombShelter
 ---@param order GameOrderCustom
 ---@param game GameServerHook
 ---@param addNewOrder fun(order: GameOrder)
 function HandleAuthenticatedOrder(senderModKey, data, order, game, addNewOrder)
-    -- extend this if we add more authenticated order types in the future
-    ResolveBombAgainstBombShelter(game, addNewOrder, data);
+    if (data.Action == "QueueBuild") then
+        if (data.TerritoryID == nil) then return; end;
+        QueueBombShelterBuild(order.PlayerID, data.TerritoryID);
+    elseif (data.Action == "TriggerBombShelter") then
+        TriggerBombShelter(game, addNewOrder, data, data.DestroyBombShelter, data.OverriddenPercentage);
+    elseif (data.Action == "DestroyBombShelter") then
+        DestroyBombShelter(game, addNewOrder, data);
+    end
 end
 
 ---@param game GameServerHook
@@ -60,15 +81,13 @@ end
 ---have played out.
 ---@param playerID PlayerID
 ---@param targetTerritoryID TerritoryID
----@param isCommerce boolean
-function QueueBombShelterBuild(playerID, targetTerritoryID, isCommerce)
-    local priv = Mod.PrivateGameData;
+function QueueBombShelterBuild(playerID, targetTerritoryID)
+    local priv = Mod.PrivateGameData --[[@as BombShelterPrivateGameData]];
     local pendingBuilds = priv.PendingBombShelterBuilds or {};
 
     table.insert(pendingBuilds, {
         PlayerID = playerID,
         TerritoryID = targetTerritoryID,
-        IsCommerce = isCommerce,
     });
 
     priv.PendingBombShelterBuilds = pendingBuilds;
@@ -79,7 +98,7 @@ end
 ---@param addNewOrder fun(order: GameOrder)
 function BuildQueuedBombShelters(game, addNewOrder)
     local structureID = WL.StructureType.Custom("Bomb Shelter");
-    local priv = Mod.PrivateGameData;
+    local priv = Mod.PrivateGameData --[[@as BombShelterPrivateGameData]];
     local pending = priv.PendingBombShelterBuilds;
     if (pending == nil) then return; end;
 
@@ -94,13 +113,15 @@ function BuildQueuedBombShelters(game, addNewOrder)
         end
     end
 
-    -- Enforce the Commerce max-per-player cap against a running total, since two Commerce builds queued by the
-    -- same player this turn would otherwise both be checked against the same pre-turn count.
+    -- BombShelterMaxPerPlayer only applies when the mod is configured for Commerce acquisition. Enforce it against a
+    -- running total, since two builds queued by the same player this turn would otherwise both be checked against the
+    -- same pre-turn count.
+    local isCommerceMode = Mod.Settings.IsAcquiringTypeCard ~= nil and not Mod.Settings.IsAcquiringTypeCard;
     local builtCountByPlayer = {};
     local allowedPending = {};
     local cappedPending = {};
     for _, build in pairs(remainingPending) do
-        if (build.IsCommerce) then
+        if (isCommerceMode) then
             local maxAllowed = Mod.Settings.BombShelterMaxPerPlayer or 0;
             local existingCount = CountPlayerBombShelters(game.ServerGame.LatestTurnStanding, build.PlayerID, structureID);
             local builtSoFar = builtCountByPlayer[build.PlayerID] or 0;
@@ -168,7 +189,7 @@ function BuildQueuedBombShelters(game, addNewOrder)
     end
 
     -- TrackBombShelterDuration uses priv, so we need to refetch
-    local finalPriv = Mod.PrivateGameData;
+    local finalPriv = Mod.PrivateGameData --[[@as BombShelterPrivateGameData]];
     finalPriv.PendingBombShelterBuilds = nil;
     Mod.PrivateGameData = finalPriv;
 end
@@ -177,7 +198,7 @@ end
 ---@param territoryID TerritoryID
 ---@param playerID PlayerID
 function TrackBombShelterDuration(game, territoryID, playerID)
-    local priv = Mod.PrivateGameData;
+    local priv = Mod.PrivateGameData --[[@as BombShelterPrivateGameData]];
     local activeBombShelters = priv.ActiveBombShelters or {};
 
     table.insert(activeBombShelters, {
@@ -192,7 +213,7 @@ end
 
 ---@param territoryID TerritoryID
 function UntrackBombShelterDuration(territoryID)
-    local priv = Mod.PrivateGameData;
+    local priv = Mod.PrivateGameData --[[@as BombShelterPrivateGameData]];
     local activeBombShelters = priv.ActiveBombShelters;
     if (activeBombShelters == nil) then return; end;
 
@@ -215,7 +236,7 @@ end
 ---@param game GameServerHook
 ---@param addNewOrder fun(order: GameOrder)
 function RemoveExpiredBombShelters(game, addNewOrder)
-    local priv = Mod.PrivateGameData;
+    local priv = Mod.PrivateGameData --[[@as BombShelterPrivateGameData]];
     local activeBombShelters = priv.ActiveBombShelters;
     if (activeBombShelters == nil or #activeBombShelters == 0) then return; end;
     local structureID = WL.StructureType.Custom("Bomb Shelter");
@@ -280,21 +301,29 @@ function HandleBombAgainstBombShelter(game, order, addNewOrder)
     if ((territory.Structures[structureID] or 0) <= 0) then return; end;
 
     local armiesBefore = territory.NumArmies.NumArmies;
-    IO.ModAuth.SendSelf(order.PlayerID, { TerritoryID = order.TargetTerritoryID, ArmiesBefore = armiesBefore }, addNewOrder);
+    IO.ModAuth.SendSelf(order.PlayerID, { Action = "TriggerBombShelter", TerritoryID = order.TargetTerritoryID, ArmiesBefore = armiesBefore }, addNewOrder);
 end
 
--- Data sent by HandleBombAgainstBombShelter via IO.ModAuth.SendSelf, delivered here once the bomb order has resolved
 ---@param game GameServerHook
 ---@param addNewOrder fun(order: GameOrder)
 ---@param data table # {TerritoryID, ArmiesBefore}
-function ResolveBombAgainstBombShelter(game, addNewOrder, data)
+---@param destroyBombShelter boolean | nil # Overrides Mod.Settings.BombShelterDestroyedOnBomb when provided
+---@param overriddenPercentage number | nil # Overrides Mod.Settings.BombShelterDamagePercent when provided
+function TriggerBombShelter(game, addNewOrder, data, destroyBombShelter, overriddenPercentage)
     local territoryID = data.TerritoryID;
     local armiesBefore = data.ArmiesBefore;
     if (territoryID == nil or armiesBefore == nil) then return; end;
 
+    if (destroyBombShelter == nil) then destroyBombShelter = Mod.Settings.BombShelterDestroyedOnBomb; end
+    local damagePercent = overriddenPercentage or Mod.Settings.BombShelterDamagePercent or 0.5;
+
     local standing = game.ServerGame.LatestTurnStanding;
     local territory = standing.Territories[territoryID];
     if (territory == nil) then return; end;
+
+    -- this is reachable from other mods, so re-check here
+    local structureID = WL.StructureType.Custom("Bomb Shelter");
+    if (territory.Structures == nil or (territory.Structures[structureID] or 0) <= 0) then return; end;
 
     local armiesAfter = territory.NumArmies.NumArmies; -- realistically this is just half the before but future proof configurable bombs
     local armiesLost = armiesBefore - armiesAfter;
@@ -303,7 +332,6 @@ function ResolveBombAgainstBombShelter(game, addNewOrder, data)
     local message = nil;
 
     if (armiesBefore > 0) then
-        local damagePercent = Mod.Settings.BombShelterDamagePercent or 0.5;
         local targetArmiesLost = math.min(armiesBefore, math.floor(armiesBefore * damagePercent + 0.5));
         local armiesDiff = armiesLost - targetArmiesLost;
 
@@ -324,8 +352,7 @@ function ResolveBombAgainstBombShelter(game, addNewOrder, data)
         end
     end
 
-    local structureID = WL.StructureType.Custom("Bomb Shelter");
-    if (Mod.Settings.BombShelterDestroyedOnBomb and territory.Structures ~= nil and (territory.Structures[structureID] or 0) > 0) then
+    if (destroyBombShelter and (territory.Structures[structureID] or 0) > 0) then
         local structures = {};
         for key, value in pairs(territory.Structures) do
             structures[key] = value;
@@ -349,4 +376,34 @@ function ResolveBombAgainstBombShelter(game, addNewOrder, data)
         event.Icon = "Triggered";
         addNewOrder(event);
     end
+end
+
+---Destroys one Bomb Shelter on a territory, independent of any bomb damage. Exposed so other mods can trigger their own
+---means of destroying a shelter (e.g. a different kind of explosive) via IO.ModAuth.Send.
+---@param game GameServerHook
+---@param addNewOrder fun(order: GameOrder)
+---@param data table # {TerritoryID}
+function DestroyBombShelter(game, addNewOrder, data)
+    local territoryID = data.TerritoryID;
+    if (territoryID == nil) then return; end;
+
+    local territory = game.ServerGame.LatestTurnStanding.Territories[territoryID];
+    if (territory == nil or territory.Structures == nil) then return; end;
+
+    local structureID = WL.StructureType.Custom("Bomb Shelter");
+    if ((territory.Structures[structureID] or 0) <= 0) then return; end;
+
+    local structures = {};
+    for key, value in pairs(territory.Structures) do
+        structures[key] = value;
+    end
+    structures[structureID] = structures[structureID] - 1;
+
+    local territoryModification = WL.TerritoryModification.Create(territoryID);
+    territoryModification.SetStructuresOpt = structures;
+    UntrackBombShelterDuration(territoryID);
+
+    local event = WL.GameOrderEvent.Create(WL.PlayerID.Neutral, "The Bomb Shelter was destroyed.", {}, { territoryModification });
+    event.Icon = "Destroyed";
+    addNewOrder(event);
 end
