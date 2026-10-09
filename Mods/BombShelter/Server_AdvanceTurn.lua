@@ -1,6 +1,12 @@
 require("Utilities");
+require("IO.ModAuth");
 
-RESOLVE_BOMB_PREFIX = "BombShelter|ResolveBomb|";
+---Server_AdvanceTurn_Start hook.
+---@param game GameServerHook
+---@param addNewOrder fun(order: GameOrder)
+function Server_AdvanceTurn_Start(game, addNewOrder)
+    IO.ModAuth.Reset(); -- guarantees auth tokens are reset
+end
 
 ---Server_AdvanceTurn_Order hook. Handles three unrelated things that all route through this same hook:
 ---@param game GameServerHook
@@ -9,6 +15,16 @@ RESOLVE_BOMB_PREFIX = "BombShelter|ResolveBomb|";
 ---@param skipThisOrder fun(modOrderControl: EnumModOrderControl)
 ---@param addNewOrder fun(order: GameOrder)
 function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrder)
+    -- self-authenticated transmission of the pre-bomb army snapshot from HandleBombAgainstBombShelter to ResolveBombAgainstBombShelter
+    if (IO.ModAuth.ProcessOrder(
+        order,
+        addNewOrder,
+        skipThisOrder,
+        function(senderModKey, data, authenticatedOrder) HandleAuthenticatedOrder(senderModKey, data, authenticatedOrder, game, addNewOrder); end
+    )) then
+        return;
+    end
+
     if (order.proxyType == 'GameOrderPlayCardCustom' and startsWith(order.ModData, "BombShelter_")) then
         local targetTerritoryID = tonumber(string.sub(order.ModData, 13));
         QueueBombShelterBuild(order.PlayerID, targetTerritoryID, false);
@@ -21,12 +37,17 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
         return;
     end
 
-    if (order.proxyType == 'GameOrderCustom' and startsWith(order.Payload, RESOLVE_BOMB_PREFIX)) then
-        ResolveBombAgainstBombShelter(game, addNewOrder, order);
-        return;
-    end
-
     HandleBombAgainstBombShelter(game, order, addNewOrder);
+end
+
+---@param senderModKey ModKey
+---@param data table # {TerritoryID, ArmiesBefore}, sent via IO.ModAuth.SendSelf from HandleBombAgainstBombShelter
+---@param order GameOrderCustom
+---@param game GameServerHook
+---@param addNewOrder fun(order: GameOrder)
+function HandleAuthenticatedOrder(senderModKey, data, order, game, addNewOrder)
+    -- extend this if we add more authenticated order types in the future
+    ResolveBombAgainstBombShelter(game, addNewOrder, data);
 end
 
 ---@param game GameServerHook
@@ -259,19 +280,17 @@ function HandleBombAgainstBombShelter(game, order, addNewOrder)
     if ((territory.Structures[structureID] or 0) <= 0) then return; end;
 
     local armiesBefore = territory.NumArmies.NumArmies;
-    local payload = RESOLVE_BOMB_PREFIX .. order.TargetTerritoryID .. "|" .. armiesBefore;
-    addNewOrder(WL.GameOrderCustom.Create(order.PlayerID, "Bomb Shelter modifying Bomb damage", payload, nil));
+    IO.ModAuth.SendSelf(order.PlayerID, { TerritoryID = order.TargetTerritoryID, ArmiesBefore = armiesBefore }, addNewOrder);
 end
 
--- Use tracking payload created in HandleBombAgainstBombShelter to modify dmg
+-- Data sent by HandleBombAgainstBombShelter via IO.ModAuth.SendSelf, delivered here once the bomb order has resolved
 ---@param game GameServerHook
 ---@param addNewOrder fun(order: GameOrder)
----@param order GameOrder
-function ResolveBombAgainstBombShelter(game, addNewOrder, order)
-    local territoryID, armiesBeforeStr = string.match(order.Payload, "^" .. RESOLVE_BOMB_PREFIX .. "(%d+)|(%d+)$");
-    if (territoryID == nil) then return; end;
-    territoryID = tonumber(territoryID);
-    local armiesBefore = tonumber(armiesBeforeStr);
+---@param data table # {TerritoryID, ArmiesBefore}
+function ResolveBombAgainstBombShelter(game, addNewOrder, data)
+    local territoryID = data.TerritoryID;
+    local armiesBefore = data.ArmiesBefore;
+    if (territoryID == nil or armiesBefore == nil) then return; end;
 
     local standing = game.ServerGame.LatestTurnStanding;
     local territory = standing.Territories[territoryID];
