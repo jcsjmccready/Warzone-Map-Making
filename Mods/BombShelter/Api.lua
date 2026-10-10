@@ -1,5 +1,5 @@
 require("IO.ModAuth");
-require("IO.Api");
+require("IO.ApiBase");
 require("Application");
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -19,7 +19,7 @@ BombShelterActions = {
     DestroyBombShelter = "DestroyBombShelter",
 };
 
-BombShelterApi = IO.Api.New();
+BombShelterApi = IO.ApiBase.New();
 
 ---Builds a Bomb Shelter on a territory. By default, it's queued and only resolved at the end of the turn, alongside the mod's own card/commerce builds, and
 ---is subject to the same rules as a normal build (the sending player must still own TerritoryID when the turn ends,

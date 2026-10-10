@@ -3,11 +3,11 @@ require("IO.ModAuth");
 ----------------------------------------------------------------------------------------------------------------------
 -- Generic, mod-agnostic machinery for exposing a ModAuth API. This file should never need project-specific changes -
 -- copy it as-is into any mod's IO/ folder that wants to expose authenticated actions to other mods, then build that
--- mod's own Api.lua on top of it: create one instance with IO.Api.New(), then for each action, define a handler
+-- mod's own Api.lua on top of it: create one instance with IO.ApiBase.New(), then for each action, define a handler
 -- function and Register() it. See Mods/BombShelter/Api.lua for a worked example.
 ----------------------------------------------------------------------------------------------------------------------
 
-IO.Api = {};
+IO.ApiBase = {};
 
 ---@class ModAuthFieldSpec # One field's presence/type requirement, checked against an endpoint's data table
 ---@field Name string # The field's key in the data table
@@ -18,14 +18,14 @@ IO.Api = {};
 ---@field ModKey ModKey # This mod's own IO.ModAuth.LOCAL_MOD_KEY, shown in rejection/unrecognized-action messages
 ---@field Endpoints table<string, fun(data: table, order: GameOrderCustom, game: GameServerHook, addNewOrder: fun(order: GameOrder))>
 ---@field Register fun(action: string, handler: fun(data: table, order: GameOrderCustom, game: GameServerHook, addNewOrder: fun(order: GameOrder))) # Registers a handler for one action
----@field ValidateFields fun(action: string, data: table, order: GameOrderCustom, addNewOrder: fun(order: GameOrder), fieldSpecs: ModAuthFieldSpec[]): boolean # See IO.Api.New
----@field HandleOrder fun(order: GameOrder, game: GameServerHook, addNewOrder: fun(order: GameOrder), skipThisOrder: fun(modOrderControl: EnumModOrderControl)): boolean # See IO.Api.New
+---@field ValidateFields fun(action: string, data: table, order: GameOrderCustom, addNewOrder: fun(order: GameOrder), fieldSpecs: ModAuthFieldSpec[]): boolean # See IO.ApiBase.New
+---@field HandleOrder fun(order: GameOrder, game: GameServerHook, addNewOrder: fun(order: GameOrder), skipThisOrder: fun(modOrderControl: EnumModOrderControl)): boolean # See IO.ApiBase.New
 
 ---Creates a new API instance for this mod, keyed by its own IO.ModAuth.LOCAL_MOD_KEY. Call Register() once per action
 ---the mod exposes (right after defining its handler), then route every order from Server_AdvanceTurn_Order through the
 ---result's HandleOrder first.
 ---@return ModAuthApi
-function IO.Api.New()
+function IO.ApiBase.New()
     local modKey = IO.ModAuth.LOCAL_MOD_KEY;
 
     ---@type ModAuthApi
