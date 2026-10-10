@@ -74,6 +74,8 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
             UI.CreateImage(iconColumn).SetSprite("Dead Man Switch.png").SetPreferredWidth(60).SetPreferredHeight(60);
             UI.CreateLabel(iconColumn).SetText("(Dead Man's Switch)").SetAlignment(WL.TextAlignmentOptions.Center); --also mirrors the territory name label so both columns are the same height
         end
+
+        TargetTerritoryClicked(); --start straight in territory select mode instead of waiting for the player to press the button
     end);
 end
 

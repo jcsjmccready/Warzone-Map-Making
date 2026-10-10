@@ -55,8 +55,9 @@ function Create_UI_Controls(rootParent)
     -- bomb damage
     local damageTypeBombHeading = UI.CreateVerticalLayoutGroup(damageTypeHeading);
     isDamageTypeBomb = UI.CreateRadioButton(damageTypeBombHeading).SetGroup(triggerDamageType).SetText('Play Bomb Card').SetIsChecked(Mod.Settings.isDamageTypeBomb or true);
+    UI.CreateLabel(damageTypeBombHeading).SetText('Does not work if DMS owner is neutral*').SetColor(BUTTON_COLOURS.DarkGray);
 
-    isDamageTypeBomb.SetOnValueChanged(function() 
+    isDamageTypeBomb.SetOnValueChanged(function()
 
         if(isDamageTypeBomb.GetIsChecked()) then
             isDamageTypeBomb.SetInteractable(false);
@@ -122,13 +123,30 @@ function Create_UI_Controls(rootParent)
         end
     end);
 
+    -- gift card
+    local damageTypeGiftHeading = UI.CreateVerticalLayoutGroup(damageTypeHeading);
+    isDamageTypeGift = UI.CreateRadioButton(damageTypeGiftHeading).SetGroup(triggerDamageType).SetText('Play Gift Card').SetIsChecked(Mod.Settings.isDamageTypeGift or false);
+
+    isDamageTypeGift.SetOnValueChanged(function()
+
+        if(isDamageTypeGift.GetIsChecked()) then
+            Create_Gift_SubOptions_UI(damageTypeGiftHeading);
+            isDamageTypeGift.SetInteractable(false);
+        else
+           UI.Destroy(giftHeading);
+           isDamageTypeGift.SetInteractable(true);
+        end
+    end);
+
     ---- Additional trigger actions (can stack with each other and with the trigger action above)
     local additionalActionsHeading = UI.CreateVerticalLayoutGroup(mainModUI);
     UI.CreateLabel(additionalActionsHeading).SetText('Additional trigger actions:').SetColor(SUBHEADING_COLOUR);
 
     isDamageTypeSanction = UI.CreateCheckBox(additionalActionsHeading).SetText('Play Sanction Card').SetIsChecked(Mod.Settings.isDamageTypeSanction or false);
     isDamageTypeDiplomacy = UI.CreateCheckBox(additionalActionsHeading).SetText('Play Diplomacy Card').SetIsChecked(Mod.Settings.isDamageTypeDiplomacy or false);
+    UI.CreateLabel(additionalActionsHeading).SetText('Does not work if DMS owner is neutral*').SetColor(BUTTON_COLOURS.DarkGray);
     isDamageTypeSpy = UI.CreateCheckBox(additionalActionsHeading).SetText('Play Spy Card').SetIsChecked(Mod.Settings.isDamageTypeSpy or false);
+    UI.CreateLabel(additionalActionsHeading).SetText('Does not work if DMS owner is neutral*').SetColor(BUTTON_COLOURS.DarkGray);
 
     local optionalsHeading = UI.CreateVerticalLayoutGroup(mainModUI);
     UI.CreateLabel(optionalsHeading).SetText('Optionals:').SetColor(SUBHEADING_COLOUR);
@@ -157,6 +175,10 @@ function Create_UI_Controls(rootParent)
     end
     if(isDamageTypeEmergencyBlockade.GetIsChecked()) then -- one time check for loading up from settings
         isDamageTypeEmergencyBlockade.SetInteractable(false);
+    end
+    if(isDamageTypeGift.GetIsChecked()) then -- one time check for loading up from settings
+        Create_Gift_SubOptions_UI(damageTypeGiftHeading);
+        isDamageTypeGift.SetInteractable(false);
     end
 end;
 
@@ -188,6 +210,25 @@ function Create_FlatDamage_SubOptions_UI(rootParent)
         .SetSliderMinValue(1)
         .SetSliderMaxValue(30)
         .SetValue(Mod.Settings.FlatDamage or 15);
+end;
+
+function Create_Gift_SubOptions_UI(rootParent)
+    giftHeading = UI.CreateHorizontalLayoutGroup(rootParent); --the whole indented row, destroyed as one when the radio is unchecked
+    UI.CreateEmpty(giftHeading).SetPreferredWidth(15);
+    local giftSubOptionsVGroup = UI.CreateVerticalLayoutGroup(giftHeading);
+
+    local giftRecipientType = UI.CreateRadioButtonGroup(giftSubOptionsVGroup);
+
+    giftRecipientRandom = UI.CreateRadioButton(giftSubOptionsVGroup)
+        .SetGroup(giftRecipientType)
+        .SetText('Gift to Random Player')
+        .SetIsChecked(Mod.Settings.GiftRecipientType == nil or Mod.Settings.GiftRecipientType == "RandomPlayer");
+
+    giftRecipientDefender = UI.CreateRadioButton(giftSubOptionsVGroup)
+        .SetGroup(giftRecipientType)
+        .SetText('Gift to Defender')
+        .SetIsChecked(Mod.Settings.GiftRecipientType == "Defender");
+    UI.CreateLabel(giftSubOptionsVGroup).SetText('Does not work if DMS owner is neutral*').SetColor(BUTTON_COLOURS.DarkGray);
 end;
 
 function Create_Card_SubOptions_UI(rootParent)

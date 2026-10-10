@@ -1,4 +1,37 @@
 require("Utilities");
+require("Actions.ManualDamage");
+require("Actions.VanillaCards");
+
+----------------------------------------------------------------------------------------------------------------------
+-- The DTOs below are Dead Man's Switch's public ModAuth API shapes (see Api.lua), kept here instead so Api.lua can
+-- require Application.lua without Application.lua needing to require Api.lua back - a real circular require crashes
+-- the mod on load.
+----------------------------------------------------------------------------------------------------------------------
+
+---@enum DeadManSwitchAction
+DeadManSwitchActions = {
+    AddDeadManSwitch = "AddDeadManSwitch",
+    TriggerDeadManSwitch = "TriggerDeadManSwitch",
+    DestroyDeadManSwitch = "DestroyDeadManSwitch",
+};
+
+---Builds a Dead Man's Switch on a territory. End of turn by default
+---@class DeadManSwitchAddDeadManSwitchDto
+---@field Action "AddDeadManSwitch"
+---@field TerritoryID TerritoryID # Required. The territory to build on.
+---@field IsImmediate boolean | nil # Optional. Defaults to false (queued for end of turn, the standard behaviour).
+
+---@class DeadManSwitchTriggerDeadManSwitchDto
+---@field Action "TriggerDeadManSwitch"
+---@field TerritoryID TerritoryID # Required. The territory being captured/triggered.
+---@field AttackerPlayerID PlayerID # Required. The player who captured the territory and is on the receiving end of the retaliation effects.
+---@field ArmiesOnArrival integer # Required. Armies left on the territory immediately after the capture, before any Dead Man's Switch damage. Used by the flat/percent damage types.
+---@field NumSwitches integer | nil # Optional. Defaults to however many Dead Man's Switch instances are on the territory.
+
+---Removes one Dead Man's Switch instance on a territory outright
+---@class DeadManSwitchDestroyDeadManSwitchDto
+---@field Action "DestroyDeadManSwitch"
+---@field TerritoryID TerritoryID # Required. The territory to destroy a switch on.
 
 DeadManSwitchApplication = {};
 
@@ -173,154 +206,73 @@ function DeadManSwitchApplication.AddDeadManSwitchImmediately(game, addNewOrder,
     BuildDeadManSwitchNow(game, addNewOrder, territoryID, playerID, "Built a Dead Man's Switch via another mod", 1);
 end
 
----@param playerID PlayerID
----@param territoryID TerritoryID
----@param territoryModification TerritoryModification
-local function AddDmsTriggeredEvent(playerID, territoryID, territoryModification, addNewOrder)
-    local event = WL.GameOrderEvent.Create(playerID, "Triggered a Dead Man's Switch", {}, { territoryModification });
-    event.TerritoryAnnotationsOpt = { [territoryID] = WL.TerritoryAnnotation.Create("Triggered DMS", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany)) };
-    event.Icon = "Triggered";
-    addNewOrder(event, true);
-end
-
----@param playerID PlayerID
----@param territoryModification TerritoryModification
----@param addNewOrder fun(order: GameOrder, skipIfOriginalSkipped?: boolean)
----@param cardName string
-local function AddDmsCancelledCardActionEvent(playerID, territoryModification, addNewOrder, cardName)
-    -- this should be impossible to reach but safety net, in case the required card isn't enabled in the game settings
-    addNewOrder(WL.GameOrderEvent.Create(playerID, cardName .. " card not available - DMS action cancelled", {}, { territoryModification }), true);
-end
-
----Applies whichever single damage-type effect is configured. attackerPlayerID receives/plays every card this triggers.
+---Triggers the single primary action selected in the mod settings
+---@param territoryModification TerritoryModification # The DMS territory modification (destroying the DMS)
 ---@param game GameServerHook
+---@param context DeadManSwitchTriggerContext
 ---@param addNewOrder fun(order: GameOrder, skipIfOriginalSkipped?: boolean)
----@param territoryID TerritoryID
----@param attackerPlayerID PlayerID
----@param territoryModification TerritoryModification
----@param armiesOnArrival integer # Armies left on the territory immediately after the capture, before any Dead Man's Switch damage
----@param numberOfDMS integer
-local function TriggerPrimaryAction(game, addNewOrder, territoryID, attackerPlayerID, territoryModification, armiesOnArrival, numberOfDMS)
-    if (Mod.Settings.isDamageTypeBomb) then
-        -- unable to programatically play cards without them being enabled
-        if game.Settings.Cards ~= nil and game.Settings.Cards[WL.CardID.Bomb] ~= nil then
-            AddDmsTriggeredEvent(attackerPlayerID, territoryID, territoryModification, addNewOrder);
-
-            for _ = 1, numberOfDMS do
-                local instance = WL.NoParameterCardInstance.Create(WL.CardID.Bomb);
-                addNewOrder(WL.GameOrderReceiveCard.Create(attackerPlayerID, { instance }));
-                addNewOrder(WL.GameOrderPlayCardBomb.Create(instance.ID, attackerPlayerID, territoryID));
-            end
-        else
-            AddDmsCancelledCardActionEvent(attackerPlayerID, territoryModification, addNewOrder, "Bomb");
-        end
-    elseif (Mod.Settings.isDamageTypeFlat) then
-        local damageAmount = Mod.Settings.FlatDamage * numberOfDMS;
-        territoryModification.SetArmiesTo = math.max(0, armiesOnArrival - damageAmount);
-
-        AddDmsTriggeredEvent(attackerPlayerID, territoryID, territoryModification, addNewOrder);
-
-    elseif (Mod.Settings.isDamageTypeBlockade) then
-        -- unable to programatically play cards without them being enabled
-        if game.Settings.Cards ~= nil and game.Settings.Cards[WL.CardID.Blockade] ~= nil then
-            AddDmsTriggeredEvent(attackerPlayerID, territoryID, territoryModification, addNewOrder);
-
-            -- blockade cards are normally played at the end of the turn, so store them for end of turn instead of playing them immediately
-            local priv = Mod.PrivateGameData --[[@as DeadManSwitchPrivateGameData]];
-            local pendingBlockade = priv.PendingBlockade or {};
-
-            for _ = 1, numberOfDMS do
-                table.insert(pendingBlockade, { PlayerID = attackerPlayerID, TerritoryID = territoryID });
-            end
-
-            priv.PendingBlockade = pendingBlockade;
-            Mod.PrivateGameData = priv;
-        else
-            AddDmsCancelledCardActionEvent(attackerPlayerID, territoryModification, addNewOrder, "Blockade");
-        end
-    elseif (Mod.Settings.isDamageTypeEmergencyBlockade) then
-        -- unable to programatically play cards without them being enabled
-        if game.Settings.Cards ~= nil and game.Settings.Cards[WL.CardID.EmergencyBlockade] ~= nil then
-            AddDmsTriggeredEvent(attackerPlayerID, territoryID, territoryModification, addNewOrder);
-
-            for _ = 1, numberOfDMS do
-                local instance = WL.NoParameterCardInstance.Create(WL.CardID.EmergencyBlockade);
-                addNewOrder(WL.GameOrderReceiveCard.Create(attackerPlayerID, { instance }));
-                addNewOrder(WL.GameOrderPlayCardAbandon.Create(instance.ID, attackerPlayerID, territoryID));
-            end
-        else
-            AddDmsCancelledCardActionEvent(attackerPlayerID, territoryModification, addNewOrder, "Emergency Blockade");
-        end
-    elseif (Mod.Settings.isDamageTypePercent) then
-        local remainingArmies = armiesOnArrival;
-
-        for _ = 1, numberOfDMS do
-            remainingArmies = math.max(0, math.floor(remainingArmies * (1 - Mod.Settings.PercentageDamage) + 0.5));
-        end
-
-        local minimumRemainingArmies = math.max(0, armiesOnArrival - (Mod.Settings.PercentageMinDamage * numberOfDMS));
-        territoryModification.SetArmiesTo = math.max(0, math.min(remainingArmies, minimumRemainingArmies));
-
-        AddDmsTriggeredEvent(attackerPlayerID, territoryID, territoryModification, addNewOrder);
+---@param numberOfDMS integer # How many DMS were on the captured territory
+local function TriggerPrimaryAction(territoryModification, game, context, addNewOrder, numberOfDMS)
+    if (Mod.Settings.isDamageTypeBomb) then Actions.VanillaCards.Bomb.Trigger(territoryModification, game, context, addNewOrder, numberOfDMS);
+    elseif (Mod.Settings.isDamageTypeFlat) then Actions.ManualDamage.Flat.Trigger(territoryModification, game, context, addNewOrder, numberOfDMS);
+    elseif (Mod.Settings.isDamageTypeBlockade) then Actions.VanillaCards.Blockade.Trigger(territoryModification, game, context, addNewOrder, numberOfDMS);
+    elseif (Mod.Settings.isDamageTypeEmergencyBlockade) then Actions.VanillaCards.EmergencyBlockade.Trigger(territoryModification, game, context, addNewOrder, numberOfDMS);
+    elseif (Mod.Settings.isDamageTypePercent) then Actions.ManualDamage.Percent.Trigger(territoryModification, game, context, addNewOrder, numberOfDMS);
+    elseif (Mod.Settings.isDamageTypeGift) then Actions.VanillaCards.Gift.Trigger(territoryModification, game, context, addNewOrder, numberOfDMS);
     else
-        -- no primary damage type configured - still have to apply territoryModification, or the switch itself never gets removed
-        AddDmsTriggeredEvent(attackerPlayerID, territoryID, territoryModification, addNewOrder);
+        -- no primary damage type configured somehow - still have to apply territoryModification, or the DMS never gets removed
+        AddTriggeredEvent(context, territoryModification, addNewOrder);
     end
 end
 
----Applies every independent toggle effect, which can stack with each other and with the primary damage type above.
----attackerPlayerID is both the sender and target of these cards (they're played against themselves, mirroring the
----original Dead Man's Switch behaviour where the attacking and newly-defending player are the same person).
+---Triggers every secondary action enabled in the mod settings, these do not conflict with each other so can each be triggered.
+---@param territoryModification TerritoryModification # The DMS territory modification (destroying the DMS)
 ---@param game GameServerHook
+---@param context DeadManSwitchTriggerContext
 ---@param addNewOrder fun(order: GameOrder, skipIfOriginalSkipped?: boolean)
----@param territoryID TerritoryID
----@param attackerPlayerID PlayerID
----@param territoryModification TerritoryModification
----@param numberOfDMS integer
-local function TriggerSecondaryActions(game, addNewOrder, territoryID, attackerPlayerID, territoryModification, numberOfDMS)
-    if (Mod.Settings.isDamageTypeSanction) then
-        -- unable to programatically play cards without them being enabled
-        if game.Settings.Cards ~= nil and game.Settings.Cards[WL.CardID.Sanctions] ~= nil then
-            for _ = 1, numberOfDMS do
-                local instance = WL.NoParameterCardInstance.Create(WL.CardID.Sanctions);
-                addNewOrder(WL.GameOrderReceiveCard.Create(attackerPlayerID, { instance }));
-                addNewOrder(WL.GameOrderPlayCardSanctions.Create(instance.ID, attackerPlayerID, attackerPlayerID));
-            end
-        else
-            AddDmsCancelledCardActionEvent(attackerPlayerID, territoryModification, addNewOrder, "Sanction");
-        end
+---@param numberOfDMS integer # How many DMS were on the captured territory
+local function TriggerSecondaryActions(territoryModification, game, context, addNewOrder, numberOfDMS)
+    if (Mod.Settings.isDamageTypeSanction) then Actions.VanillaCards.Sanction.Trigger(territoryModification, game, context, addNewOrder, numberOfDMS); end
+    if (Mod.Settings.isDamageTypeDiplomacy) then Actions.VanillaCards.Diplomacy.Trigger(territoryModification, game, context, addNewOrder, numberOfDMS); end
+    if (Mod.Settings.isDamageTypeSpy) then Actions.VanillaCards.Spy.Trigger(territoryModification, game, context, addNewOrder, numberOfDMS); end
+end
+
+---Triggers the Dead Man's Switch(es) on a territory if a successful attack captured one that has them.
+---@param game GameServerHook
+---@param order GameOrderAttackTransfer
+---@param result GameOrderAttackTransferResult
+---@param addNewOrder fun(order: GameOrder)
+function DeadManSwitchApplication.HandleSuccessfulAttack(game, order, result, addNewOrder)
+    local structureID = WL.StructureType.Custom("Dead Man's Switch");
+    local existingStructures = game.ServerGame.LatestTurnStanding.Territories[order.To].Structures;
+    if (existingStructures == nil) then return; end;
+
+    local numberOfDMS = existingStructures[structureID] or 0;
+    if (numberOfDMS == 0) then return; end; --no DMS here, abort
+
+    if (result.ActualArmies.IsEmpty) then return; end; --an attack of 0, abort, so skipped orders don't destroy the DMS
+
+    -- abort if on same team and ally triggers is disabled
+    local territoryOwnerPlayerID = game.ServerGame.LatestTurnStanding.Territories[order.To].OwnerPlayerID;
+    local attackerTeam = game.ServerGame.Game.Players[order.PlayerID].Team;
+    local ownerTeam = WL.PlayerID.Neutral;
+    if (game.ServerGame.Game.Players[territoryOwnerPlayerID] ~= nil) then
+        ownerTeam = game.ServerGame.Game.Players[territoryOwnerPlayerID].Team;
     end
 
-    if (Mod.Settings.isDamageTypeDiplomacy) then
-        -- unable to programatically play cards without them being enabled
-        if game.Settings.Cards ~= nil and game.Settings.Cards[WL.CardID.Diplomacy] ~= nil then
-            -- diplomacy cards are normally played at the end of the turn, so store them for end of turn instead of playing them immediately
-            local priv = Mod.PrivateGameData --[[@as DeadManSwitchPrivateGameData]];
-            local pendingDiplomacy = priv.PendingDiplomacy or {};
+    if (attackerTeam ~= nil and ownerTeam ~= nil and attackerTeam ~= -1 and ownerTeam ~= -1 and attackerTeam == ownerTeam and Mod.Settings.AllyTriggers == false) then
+        return;
+    end;
 
-            for _ = 1, numberOfDMS do
-                table.insert(pendingDiplomacy, { PlayerID = attackerPlayerID, PlayerOne = attackerPlayerID, PlayerTwo = attackerPlayerID });
-            end
-
-            priv.PendingDiplomacy = pendingDiplomacy;
-            Mod.PrivateGameData = priv;
-        else
-            AddDmsCancelledCardActionEvent(attackerPlayerID, territoryModification, addNewOrder, "Diplomacy");
-        end
-    end
-
-    if (Mod.Settings.isDamageTypeSpy) then
-        -- unable to programatically play cards without them being enabled
-        if game.Settings.Cards ~= nil and game.Settings.Cards[WL.CardID.Spy] ~= nil then
-            for _ = 1, numberOfDMS do
-                local instance = WL.NoParameterCardInstance.Create(WL.CardID.Spy);
-                addNewOrder(WL.GameOrderReceiveCard.Create(attackerPlayerID, { instance }));
-                addNewOrder(WL.GameOrderPlayCardSpy.Create(instance.ID, attackerPlayerID, attackerPlayerID));
-            end
-        else
-            AddDmsCancelledCardActionEvent(attackerPlayerID, territoryModification, addNewOrder, "Spy");
-        end
-    end
+    ---@type DeadManSwitchTriggerDeadManSwitchDto
+    local data = {
+        Action = DeadManSwitchActions.TriggerDeadManSwitch,
+        TerritoryID = order.To,
+        AttackerPlayerID = order.PlayerID,
+        ArmiesOnArrival = result.ActualArmies.NumArmies - result.AttackingArmiesKilled.NumArmies,
+        NumSwitches = numberOfDMS,
+    };
+    DeadManSwitchApplication.TriggerDeadManSwitch(game, addNewOrder, data);
 end
 
 ---Triggers the Dead Man's Switch(es) on a territory: clears them and applies whatever retaliation effect(s) are configured.
@@ -352,8 +304,16 @@ function DeadManSwitchApplication.TriggerDeadManSwitch(game, addNewOrder, data)
     local territoryModification = WL.TerritoryModification.Create(territoryID);
     territoryModification.SetStructuresOpt = structures;
 
-    TriggerPrimaryAction(game, addNewOrder, territoryID, attackerPlayerID, territoryModification, data.ArmiesOnArrival, numberOfDMS);
-    TriggerSecondaryActions(game, addNewOrder, territoryID, attackerPlayerID, territoryModification, numberOfDMS);
+    ---@type DeadManSwitchTriggerContext
+    local context = {
+        TerritoryID = territoryID,
+        AttackerPlayerID = attackerPlayerID,
+        DefendingPlayerID = territory.OwnerPlayerID,
+        ArmiesOnArrival = data.ArmiesOnArrival,
+    };
+
+    TriggerPrimaryAction(territoryModification, game, context, addNewOrder, numberOfDMS);
+    TriggerSecondaryActions(territoryModification, game, context, addNewOrder, numberOfDMS);
 end
 
 ---Destroys one Dead Man's Switch on a territory, independent of any capture.
@@ -386,32 +346,10 @@ end
 
 ---@param addNewOrder fun(order: GameOrder)
 function DeadManSwitchApplication.PlayPendingBlockades(addNewOrder)
-    local priv = Mod.PrivateGameData --[[@as DeadManSwitchPrivateGameData]];
-    local pending = priv.PendingBlockade;
-    if (pending == nil) then return; end;
-
-    for _, pendingBlockade in pairs(pending) do
-        local instance = WL.NoParameterCardInstance.Create(WL.CardID.Blockade);
-        addNewOrder(WL.GameOrderReceiveCard.Create(pendingBlockade.PlayerID, { instance }));
-        addNewOrder(WL.GameOrderPlayCardBlockade.Create(instance.ID, pendingBlockade.PlayerID, pendingBlockade.TerritoryID));
-    end
-
-    priv.PendingBlockade = nil;
-    Mod.PrivateGameData = priv;
+    Actions.VanillaCards.Blockade.PlayPending(addNewOrder);
 end
 
 ---@param addNewOrder fun(order: GameOrder)
 function DeadManSwitchApplication.PlayPendingDiplomacy(addNewOrder)
-    local priv = Mod.PrivateGameData --[[@as DeadManSwitchPrivateGameData]];
-    local pending = priv.PendingDiplomacy;
-    if (pending == nil) then return; end;
-
-    for _, pendingDiplomacy in pairs(pending) do
-        local instance = WL.NoParameterCardInstance.Create(WL.CardID.Diplomacy);
-        addNewOrder(WL.GameOrderReceiveCard.Create(pendingDiplomacy.PlayerID, { instance }));
-        addNewOrder(WL.GameOrderPlayCardDiplomacy.Create(instance.ID, pendingDiplomacy.PlayerID, pendingDiplomacy.PlayerOne, pendingDiplomacy.PlayerTwo));
-    end
-
-    priv.PendingDiplomacy = nil;
-    Mod.PrivateGameData = priv;
+    Actions.VanillaCards.Diplomacy.PlayPending(addNewOrder);
 end

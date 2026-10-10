@@ -35,6 +35,16 @@ function Client_SaveConfigureUI(alert, addCard)
         damageTypeMessage = "an emergency blockade card is automatically played on it.";
     end
 
+    Mod.Settings.isDamageTypeGift = isDamageTypeGift.GetIsChecked();
+    if(Mod.Settings.isDamageTypeGift) then
+        Mod.Settings.GiftRecipientType = giftRecipientDefender.GetIsChecked() and "Defender" or "RandomPlayer";
+        if(Mod.Settings.GiftRecipientType == "Defender") then
+            damageTypeMessage = "a gift card is automatically played, gifting it back to its previous owner.";
+        else
+            damageTypeMessage = "a gift card is automatically played, gifting it to a random other player.";
+        end
+    end
+
     Mod.Settings.isDamageTypeSanction = isDamageTypeSanction.GetIsChecked();
     Mod.Settings.isDamageTypeDiplomacy = isDamageTypeDiplomacy.GetIsChecked();
     Mod.Settings.isDamageTypeSpy = isDamageTypeSpy.GetIsChecked();

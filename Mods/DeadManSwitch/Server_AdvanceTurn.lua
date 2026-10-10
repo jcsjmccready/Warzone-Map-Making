@@ -36,36 +36,9 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
 
     -- a successful attack against a territory protected by a Dead Man's Switch
     if (order.proxyType == 'GameOrderAttackTransfer' and result.IsAttack and result.IsSuccessful) then
-        local structureID = WL.StructureType.Custom("Dead Man's Switch");
-        local existingStructures = game.ServerGame.LatestTurnStanding.Territories[order.To].Structures;
-        if (existingStructures == nil) then return; end;
-
-        local numberOfDMS = existingStructures[structureID] or 0;
-        if (numberOfDMS == 0) then return; end; --no DMS here, abort
-
-        if (result.ActualArmies.IsEmpty) then return; end; --an attack of 0, abort, so skipped orders don't destroy the DMS
-
-        -- abort if on same team and ally triggers is disabled
-        local territoryOwnerPlayerID = game.ServerGame.LatestTurnStanding.Territories[order.To].OwnerPlayerID;
-        local attackerTeam = game.ServerGame.Game.Players[order.PlayerID].Team;
-        local ownerTeam = WL.PlayerID.Neutral;
-        if (game.ServerGame.Game.Players[territoryOwnerPlayerID] ~= nil) then
-            ownerTeam = game.ServerGame.Game.Players[territoryOwnerPlayerID].Team;
-        end
-
-        if (attackerTeam ~= nil and ownerTeam ~= nil and attackerTeam ~= -1 and ownerTeam ~= -1 and attackerTeam == ownerTeam and Mod.Settings.AllyTriggers == false) then
-            return;
-        end;
-
-        ---@type DeadManSwitchTriggerDeadManSwitchDto
-        local data = {
-            Action = DeadManSwitchActions.TriggerDeadManSwitch,
-            TerritoryID = order.To,
-            AttackerPlayerID = order.PlayerID,
-            ArmiesOnArrival = result.ActualArmies.NumArmies - result.AttackingArmiesKilled.NumArmies,
-            NumSwitches = numberOfDMS,
-        };
-        DeadManSwitchApplication.TriggerDeadManSwitch(game, addNewOrder, data);
+        ---@cast order GameOrderAttackTransfer
+        ---@cast result GameOrderAttackTransferResult
+        DeadManSwitchApplication.HandleSuccessfulAttack(game, order, result, addNewOrder);
         return;
     end
 end
