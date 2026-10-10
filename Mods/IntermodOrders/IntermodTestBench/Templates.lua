@@ -17,17 +17,17 @@ ROW_TEMPLATES = {
             { Key = "Action", Value = "TriggerBombShelter" },
             { Key = "TerritoryID", Value = "1" },
             { Key = "ArmiesBefore", Value = "10" },
-            -- optional, remove either row to fall back to BombShelter's own Mod.Settings:
             { Key = "DestroyBombShelter", Value = "false", Optional = true },
             { Key = "OverriddenPercentage", Value = "0.5", Optional = true },
         },
     },
     {
-        Name = "Queue Bomb Shelter Build",
+        Name = "Add Bomb Shelter",
         TargetModKey = "BombShelter_Mgreedy",
         Rows = {
-            { Key = "Action", Value = "QueueBuild" },
+            { Key = "Action", Value = "AddBombShelter" },
             { Key = "TerritoryID", Value = "1" },
+            { Key = "IsImmediate", Value = "false", Optional = true },
         },
     },
     {

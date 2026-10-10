@@ -14,32 +14,38 @@ BOMB_SHELTER_API_VERSION = 1;
 
 ---@enum BombShelterAction
 BombShelterActions = {
-    QueueBuild = "QueueBuild",
+    AddBombShelter = "AddBombShelter",
     TriggerBombShelter = "TriggerBombShelter",
     DestroyBombShelter = "DestroyBombShelter",
 };
 
 BombShelterApi = IO.Api.New();
 
----Queues a Bomb Shelter build on a territory, resolved at the end of the turn alongside the mod's own card/commerce
----builds. Subject to the same rules as a normal build: the sending player must still own TerritoryID when the turn
----ends, and (if the mod is configured for Commerce acquisition) the BombShelterMaxPerPlayer cap applies.
----@class BombShelterQueueBuildDto
----@field Action "QueueBuild"
+---Builds a Bomb Shelter on a territory. By default, it's queued and only resolved at the end of the turn, alongside the mod's own card/commerce builds, and
+---is subject to the same rules as a normal build (the sending player must still own TerritoryID when the turn ends,
+---and the BombShelterMaxPerPlayer cap applies if the mod is configured for Commerce acquisition)
+---@class BombShelterAddBombShelterDto
+---@field Action "AddBombShelter"
 ---@field TerritoryID TerritoryID # Required. The territory to build on.
+---@field IsImmediate boolean | nil # Optional. Defaults to false (queued for end of turn, the standard behaviour).
 
----@param data BombShelterQueueBuildDto
+---@param data BombShelterAddBombShelterDto
 ---@param order GameOrderCustom
 ---@param game GameServerHook
 ---@param addNewOrder fun(order: GameOrder)
-local function HandleQueueBuild(data, order, game, addNewOrder)
-    if (not BombShelterApi.ValidateFields(BombShelterActions.QueueBuild, data, order, addNewOrder, {
+local function HandleAddBombShelter(data, order, game, addNewOrder)
+    if (not BombShelterApi.ValidateFields(BombShelterActions.AddBombShelter, data, order, addNewOrder, {
         { Name = "TerritoryID", Type = "number", Required = true },
+        { Name = "IsImmediate", Type = "boolean", Required = false },
     })) then return; end;
 
-    BombShelterApplication.QueueBombShelterBuild(order.PlayerID, data.TerritoryID);
+    if (data.IsImmediate) then
+        BombShelterApplication.AddBombShelterImmediately(game, addNewOrder, order.PlayerID, data.TerritoryID);
+    else
+        BombShelterApplication.QueueBombShelterBuild(order.PlayerID, data.TerritoryID);
+    end
 end
-BombShelterApi.Register(BombShelterActions.QueueBuild, HandleQueueBuild);
+BombShelterApi.Register(BombShelterActions.AddBombShelter, HandleAddBombShelter);
 
 ---Simulates a bomb (or bomb-like effect) hitting a shelter-protected territory, applying the same damage-clamping and
 ---optional shelter-destruction behaviour as a real Bomb Card. Does nothing if the territory has no Bomb Shelter.

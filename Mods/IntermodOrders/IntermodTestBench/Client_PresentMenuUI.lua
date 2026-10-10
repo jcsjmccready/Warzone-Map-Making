@@ -47,7 +47,6 @@ function Client_PresentMenuUI(rootParent, setMaxSize, setScrollable, game, close
     local pickTerritoryHorz = UI.CreateHorizontalLayoutGroup(vert);
     pickTerritoryBtn = UI.CreateButton(pickTerritoryHorz)
         .SetText("Find territory ID...")
-        .SetColor(BUTTON_COLOURS.RoyalBlue)
         .SetOnClick(function()
             UI.InterceptNextTerritoryClick(TerritoryPicked);
             territoryIDLabel.SetText("Click a territory on the map...").SetColor(TEXT_DEFAULT_COLOUR);
@@ -55,12 +54,42 @@ function Client_PresentMenuUI(rootParent, setMaxSize, setScrollable, game, close
         end);
     territoryIDLabel = UI.CreateLabel(pickTerritoryHorz).SetText("");
 
+    UI.CreateEmpty(vert).SetPreferredHeight(10);
+
     local targetHorz = UI.CreateHorizontalLayoutGroup(vert).SetFlexibleWidth(1);
     UI.CreateLabel(targetHorz).SetText("Target mod key").SetPreferredWidth(150);
     local targetModKeyField = UI.CreateTextInputField(targetHorz)
         .SetPreferredWidth(0)
         .SetMinWidth(0)
         .SetFlexibleWidth(1);
+
+    local selectedPlayerID; -- forward declared, defaulted to game.Us.ID below
+    local playerIDLabel; -- forward declared, PlayerPicked below needs to close over it before it's created
+
+    ---Sets which player the next simulated order will be sent as
+    ---@param playerID PlayerID
+    ---@param playerName string
+    local function PlayerPicked(playerID, playerName)
+        selectedPlayerID = playerID;
+        playerIDLabel.SetText(playerName .. " (ID " .. playerID .. ")").SetColor(TEXT_DEFAULT_COLOUR);
+    end
+
+    local playerHorz = UI.CreateHorizontalLayoutGroup(vert).SetFlexibleWidth(1);
+    UI.CreateButton(playerHorz)
+        .SetText("Order Player Id")
+        .SetColor(BUTTON_COLOURS.RoyalBlue)
+        .SetPreferredWidth(150)
+        .SetOnClick(function()
+            local options = {};
+            for playerID, player in pairs(game.Game.PlayingPlayers) do
+                local playerName = player.DisplayName(nil, false);
+                table.insert(options, { text = playerName, selected = function() PlayerPicked(playerID, playerName); end });
+            end
+            UI.PromptFromList("Choose the player to act as", options);
+        end);
+    playerIDLabel = UI.CreateLabel(playerHorz).SetText("").SetFlexibleWidth(1);
+
+    PlayerPicked(game.Us.ID, game.Game.PlayingPlayers[game.Us.ID].DisplayName(nil, false));
 
     UI.CreateLabel(vert).SetText("Simulated data (key/value pairs sent as the authenticated order's data):").SetColor(BUTTON_COLOURS.DarkGray);
 
@@ -104,7 +133,7 @@ function Client_PresentMenuUI(rootParent, setMaxSize, setScrollable, game, close
 
         UI.CreateLabel(rowHorz)
             .SetText(isOptional and "*" or "")
-            .SetColor(BUTTON_COLOURS.DarkGray)
+            .SetColor(BUTTON_COLOURS.Yellow)
             .SetPreferredWidth(20)
             .SetFlexibleWidth(0);
 
@@ -179,7 +208,7 @@ function Client_PresentMenuUI(rootParent, setMaxSize, setScrollable, game, close
             end
 
             local payload = { TargetModKey = targetModKey, Data = data };
-            AddMenuOrder(game, SEND_ORDER_PREFIX .. IO.Writer.Write(payload), "Ask " .. THIS_MOD_KEY .. " to send a simulated authenticated order to " .. targetModKey);
+            AddMenuOrder(game, selectedPlayerID, SEND_ORDER_PREFIX .. IO.Writer.Write(payload), "Ask " .. THIS_MOD_KEY .. " to send a simulated authenticated order to " .. targetModKey);
             statusLabel.SetText("Order added, " .. targetModKey .. " gets it when the turn advances.").SetColor(TEXT_DEFAULT_COLOUR);
         end);
 end
@@ -199,11 +228,12 @@ end
 
 ---Adds an order that asks this mod's server code to send a test order
 ---@param game GameClientHook
+---@param playerID PlayerID # The player to submit the order as (not necessarily game.Us.ID - see "Acting as player")
 ---@param payload string # The server-side payload to act on
 ---@param message string # The message shown for the order in the order list
-function AddMenuOrder(game, payload, message)
+function AddMenuOrder(game, playerID, payload, message)
     local order = WL.GameOrderCustom.Create(
-        game.Us.ID,
+        playerID,
         message,
         payload,
         nil,

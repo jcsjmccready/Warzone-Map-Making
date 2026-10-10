@@ -15,6 +15,53 @@ BombShelterApplication = {};
 ---@field PendingBombShelterBuilds BombShelterPendingBuild[] | nil # Cleared at the end of every turn once BuildQueuedBombShelters resolves them
 ---@field ActiveBombShelters BombShelterActiveShelter[] | nil # One entry per shelter instance, not per territory
 
+---@param standing GameStanding
+---@param playerID PlayerID
+---@param structureID EnumStructureType
+---@param alreadyCounted integer | nil # defaults to 0
+---@return boolean
+local function IsOverCommerceCap(standing, playerID, structureID, alreadyCounted)
+    local isCommerceMode = Mod.Settings.IsAcquiringTypeCard ~= nil and not Mod.Settings.IsAcquiringTypeCard;
+    if (not isCommerceMode) then return false; end;
+
+    local maxAllowed = Mod.Settings.BombShelterMaxPerPlayer or 0;
+    local existingCount = CountPlayerBombShelters(standing, playerID, structureID);
+    return existingCount + (alreadyCounted or 0) >= maxAllowed;
+end
+
+---@param game GameServerHook
+---@param addNewOrder fun(order: GameOrder)
+---@param territoryID TerritoryID
+---@param playerID PlayerID
+---@param territory TerritoryStanding
+---@param numToBuild integer
+local function BuildBombShelterNow(game, addNewOrder, territoryID, playerID, territory, numToBuild)
+    local structureID = WL.StructureType.Custom("Bomb Shelter");
+
+    local structures = {};
+    for key, value in pairs(territory.Structures or {}) do
+        structures[key] = value;
+    end
+    structures[structureID] = (structures[structureID] or 0) + numToBuild;
+
+    local territoryModification = WL.TerritoryModification.Create(territoryID);
+    territoryModification.SetStructuresOpt = structures;
+
+    local plural = numToBuild > 1 and "(s)" or "";
+    local td = game.Map.Territories[territoryID];
+    local event = WL.GameOrderEvent.Create(playerID, "Built Bomb Shelter" .. plural .. " on " .. td.Name, {}, { territoryModification });
+    event.JumpToActionSpotOpt = WL.RectangleVM.Create(td.MiddlePointX, td.MiddlePointY, td.MiddlePointX, td.MiddlePointY);
+    event.TerritoryAnnotationsOpt = { [territoryID] = WL.TerritoryAnnotation.Create("Bomb Shelter" .. plural .. " built", 8, GetColourIntegerFromHex(BUTTON_COLOURS.DarkGreen)) };
+    event.Icon = "Build";
+    addNewOrder(event);
+
+    if (Mod.Settings.BombShelterHasDuration) then
+        for _ = 1, numToBuild do
+            BombShelterApplication.TrackBombShelterDuration(game, territoryID, playerID);
+        end
+    end
+end
+
 ---@param playerID PlayerID
 ---@param targetTerritoryID TerritoryID
 function BombShelterApplication.QueueBombShelterBuild(playerID, targetTerritoryID)
@@ -52,22 +99,15 @@ function BombShelterApplication.BuildQueuedBombShelters(game, addNewOrder)
     -- BombShelterMaxPerPlayer only applies when the mod is configured for Commerce acquisition. Enforce it against a
     -- running total, since two builds queued by the same player this turn would otherwise both be checked against the
     -- same pre-turn count.
-    local isCommerceMode = Mod.Settings.IsAcquiringTypeCard ~= nil and not Mod.Settings.IsAcquiringTypeCard;
     local builtCountByPlayer = {};
     local allowedPending = {};
     local cappedPending = {};
     for _, build in pairs(remainingPending) do
-        if (isCommerceMode) then
-            local maxAllowed = Mod.Settings.BombShelterMaxPerPlayer or 0;
-            local existingCount = CountPlayerBombShelters(game.ServerGame.LatestTurnStanding, build.PlayerID, structureID);
-            local builtSoFar = builtCountByPlayer[build.PlayerID] or 0;
-            if (existingCount + builtSoFar >= maxAllowed) then
-                table.insert(cappedPending, build);
-            else
-                builtCountByPlayer[build.PlayerID] = builtSoFar + 1;
-                table.insert(allowedPending, build);
-            end
+        local builtSoFar = builtCountByPlayer[build.PlayerID] or 0;
+        if (IsOverCommerceCap(game.ServerGame.LatestTurnStanding, build.PlayerID, structureID, builtSoFar)) then
+            table.insert(cappedPending, build);
         else
+            builtCountByPlayer[build.PlayerID] = builtSoFar + 1;
             table.insert(allowedPending, build);
         end
     end
@@ -77,29 +117,9 @@ function BombShelterApplication.BuildQueuedBombShelters(game, addNewOrder)
         local numToBuild = #buildGroup;
         local territory = game.ServerGame.LatestTurnStanding.Territories[territoryID];
 
-        local structures = {};
-        for key, value in pairs(territory.Structures or {}) do
-            structures[key] = value;
-        end
-        structures[structureID] = (structures[structureID] or 0) + numToBuild;
-
-        local territoryModification = WL.TerritoryModification.Create(territoryID);
-        territoryModification.SetStructuresOpt = structures;
-
         local build = first(buildGroup);
         if (build ~= nil) then
-            local td = game.Map.Territories[territoryID];
-            local event = WL.GameOrderEvent.Create(build.PlayerID, "Built Bomb Shelter(s) on " .. td.Name, {}, { territoryModification });
-            event.JumpToActionSpotOpt = WL.RectangleVM.Create(td.MiddlePointX, td.MiddlePointY, td.MiddlePointX, td.MiddlePointY);
-            event.TerritoryAnnotationsOpt = { [territoryID] = WL.TerritoryAnnotation.Create("Bomb Shelter(s) built", 8, GetColourIntegerFromHex(BUTTON_COLOURS.DarkGreen)) };
-            event.Icon = "Build";
-            addNewOrder(event);
-
-            if (Mod.Settings.BombShelterHasDuration) then
-                for _ = 1, numToBuild do
-                    BombShelterApplication.TrackBombShelterDuration(game, territoryID, build.PlayerID);
-                end
-            end
+            BuildBombShelterNow(game, addNewOrder, territoryID, build.PlayerID, territory, numToBuild);
         end
     end
 
@@ -128,6 +148,30 @@ function BombShelterApplication.BuildQueuedBombShelters(game, addNewOrder)
     local finalPriv = Mod.PrivateGameData --[[@as BombShelterPrivateGameData]];
     finalPriv.PendingBombShelterBuilds = nil;
     Mod.PrivateGameData = finalPriv;
+end
+
+---@param game GameServerHook
+---@param addNewOrder fun(order: GameOrder)
+---@param playerID PlayerID
+---@param territoryID TerritoryID
+function BombShelterApplication.AddBombShelterImmediately(game, addNewOrder, playerID, territoryID)
+    local territory = game.ServerGame.LatestTurnStanding.Territories[territoryID];
+    if (territory == nil or territory.OwnerPlayerID ~= playerID) then
+        local event = WL.GameOrderEvent.Create(playerID, "Unable to build Bomb Shelter: you don't control that territory", {}, {});
+        event.Icon = "BuildFailed";
+        addNewOrder(event);
+        return;
+    end
+
+    local structureID = WL.StructureType.Custom("Bomb Shelter");
+    if (IsOverCommerceCap(game.ServerGame.LatestTurnStanding, playerID, structureID)) then
+        local event = WL.GameOrderEvent.Create(playerID, "Unable to build Bomb Shelter: you already own the maximum number of Bomb Shelters", {}, {});
+        event.Icon = "BuildFailed";
+        addNewOrder(event);
+        return;
+    end
+
+    BuildBombShelterNow(game, addNewOrder, territoryID, playerID, territory, 1);
 end
 
 ---@param game GameServerHook
