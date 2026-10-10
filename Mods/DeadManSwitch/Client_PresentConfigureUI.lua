@@ -148,6 +148,17 @@ function Create_UI_Controls(rootParent)
     isDamageTypeSpy = UI.CreateCheckBox(additionalActionsHeading).SetText('Play Spy Card').SetIsChecked(Mod.Settings.isDamageTypeSpy or false);
     UI.CreateLabel(additionalActionsHeading).SetText('Does not work if DMS owner is neutral*').SetColor(BUTTON_COLOURS.DarkGray);
 
+    isDamageTypeGrantIncome = UI.CreateCheckBox(additionalActionsHeading).SetText('Grant Income to Defender').SetIsChecked(Mod.Settings.isDamageTypeGrantIncome or false);
+    UI.CreateLabel(additionalActionsHeading).SetText('Does not work if DMS owner is neutral*').SetColor(BUTTON_COLOURS.DarkGray);
+
+    isDamageTypeGrantIncome.SetOnValueChanged(function()
+        if(isDamageTypeGrantIncome.GetIsChecked()) then
+            Create_GrantIncome_SubOptions_UI(additionalActionsHeading);
+        else
+           UI.Destroy(grantIncomeHeading);
+        end
+    end);
+
     local optionalsHeading = UI.CreateVerticalLayoutGroup(mainModUI);
     UI.CreateLabel(optionalsHeading).SetText('Optionals:').SetColor(SUBHEADING_COLOUR);
     allyTriggers = UI.CreateCheckBox(optionalsHeading).SetText("Allies trigger DMS").SetIsChecked(Mod.Settings.AllyTriggers or false);
@@ -179,6 +190,9 @@ function Create_UI_Controls(rootParent)
     if(isDamageTypeGift.GetIsChecked()) then -- one time check for loading up from settings
         Create_Gift_SubOptions_UI(damageTypeGiftHeading);
         isDamageTypeGift.SetInteractable(false);
+    end
+    if(isDamageTypeGrantIncome.GetIsChecked()) then -- one time check for loading up from settings
+        Create_GrantIncome_SubOptions_UI(additionalActionsHeading);
     end
 end;
 
@@ -229,6 +243,39 @@ function Create_Gift_SubOptions_UI(rootParent)
         .SetText('Gift to Defender')
         .SetIsChecked(Mod.Settings.GiftRecipientType == "Defender");
     UI.CreateLabel(giftSubOptionsVGroup).SetText('Does not work if DMS owner is neutral*').SetColor(BUTTON_COLOURS.DarkGray);
+end;
+
+function Create_GrantIncome_SubOptions_UI(rootParent)
+    grantIncomeHeading = UI.CreateHorizontalLayoutGroup(rootParent); --the whole indented row, destroyed as one when the checkbox is unchecked
+    UI.CreateEmpty(grantIncomeHeading).SetPreferredWidth(15);
+    local grantIncomeSubOptionsVGroup = UI.CreateVerticalLayoutGroup(grantIncomeHeading);
+
+    local horz = UI.CreateHorizontalLayoutGroup(grantIncomeSubOptionsVGroup);
+    UI.CreateLabel(horz).SetText('Flat Income').SetPreferredWidth(290);
+    grantIncomeFlat = UI.CreateNumberInputField(horz)
+        .SetSliderMinValue(0)
+        .SetSliderMaxValue(20)
+        .SetValue(Mod.Settings.GrantIncomeFlat or 0);
+
+    local horz = UI.CreateHorizontalLayoutGroup(grantIncomeSubOptionsVGroup);
+    UI.CreateLabel(horz).SetText('% Income').SetPreferredWidth(290);
+    grantIncomePercent = UI.CreateNumberInputField(horz)
+        .SetWholeNumbers(false)
+        .SetSliderMinValue(0)
+        .SetSliderMaxValue(1)
+        .SetValue(Mod.Settings.GrantIncomePercent or 0.25);
+    UI.CreateLabel(grantIncomeSubOptionsVGroup).SetText('% of the defender\'s own current income*').SetColor(BUTTON_COLOURS.DarkGray);
+
+    local horz = UI.CreateHorizontalLayoutGroup(grantIncomeSubOptionsVGroup);
+    UI.CreateLabel(horz).SetText('Minimum % Amount').SetPreferredWidth(290);
+    grantIncomeMinimumPercent = UI.CreateNumberInputField(horz)
+        .SetSliderMinValue(0)
+        .SetSliderMaxValue(20)
+        .SetValue(Mod.Settings.GrantIncomeMinimumPercent or 1);
+
+    local horz = UI.CreateHorizontalLayoutGroup(grantIncomeSubOptionsVGroup);
+    UI.CreateLabel(horz).SetText('Steal Income from Attacker').SetPreferredWidth(290);
+    grantIncomeSteal = UI.CreateCheckBox(horz).SetIsChecked(Mod.Settings.GrantIncomeSteal or false).SetText('');
 end;
 
 function Create_Card_SubOptions_UI(rootParent)

@@ -49,6 +49,27 @@ function Client_SaveConfigureUI(alert, addCard)
     Mod.Settings.isDamageTypeDiplomacy = isDamageTypeDiplomacy.GetIsChecked();
     Mod.Settings.isDamageTypeSpy = isDamageTypeSpy.GetIsChecked();
 
+    Mod.Settings.isDamageTypeGrantIncome = isDamageTypeGrantIncome.GetIsChecked();
+    if(Mod.Settings.isDamageTypeGrantIncome) then
+        Mod.Settings.GrantIncomeFlat = grantIncomeFlat.GetValue();
+        Mod.Settings.GrantIncomePercent = grantIncomePercent.GetValue();
+        Mod.Settings.GrantIncomeMinimumPercent = grantIncomeMinimumPercent.GetValue();
+        Mod.Settings.GrantIncomeSteal = grantIncomeSteal.GetIsChecked();
+
+        if (Mod.Settings.GrantIncomeFlat < 0) then
+            alert("Flat Income cannot be less than 0");
+            return;
+        end
+        if (Mod.Settings.GrantIncomePercent < 0) then
+            alert("% Income cannot be less than 0");
+            return;
+        end
+        if (Mod.Settings.GrantIncomeMinimumPercent < 0) then
+            alert("Minimum % Amount cannot be less than 0");
+            return;
+        end
+    end
+
     local additionalActions = {};
     if(Mod.Settings.isDamageTypeSanction) then
         table.insert(additionalActions, "a sanction card is automatically played on its owner");
@@ -58,6 +79,13 @@ function Client_SaveConfigureUI(alert, addCard)
     end
     if(Mod.Settings.isDamageTypeSpy) then
         table.insert(additionalActions, "a spy card is automatically played on the attacker");
+    end
+    if(Mod.Settings.isDamageTypeGrantIncome) then
+        local incomeMessage = "its previous owner is granted " .. Mod.Settings.GrantIncomeFlat .. " + " .. math.floor(Mod.Settings.GrantIncomePercent * 100) .. "% of their own income (minimum " .. Mod.Settings.GrantIncomeMinimumPercent .. ")";
+        if(Mod.Settings.GrantIncomeSteal) then
+            incomeMessage = incomeMessage .. ", stolen from the attacker";
+        end
+        table.insert(additionalActions, incomeMessage);
     end
 
     if(#additionalActions > 0) then

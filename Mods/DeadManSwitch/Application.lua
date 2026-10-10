@@ -1,6 +1,7 @@
 require("Utilities");
 require("Actions.ManualDamage");
 require("Actions.VanillaCards");
+require("Actions.Income");
 
 ----------------------------------------------------------------------------------------------------------------------
 -- The DTOs below are Dead Man's Switch's public ModAuth API shapes (see Api.lua), kept here instead so Api.lua can
@@ -235,6 +236,7 @@ local function TriggerSecondaryActions(territoryModification, game, context, add
     if (Mod.Settings.isDamageTypeSanction) then Actions.VanillaCards.Sanction.Trigger(territoryModification, game, context, addNewOrder, numberOfDMS); end
     if (Mod.Settings.isDamageTypeDiplomacy) then Actions.VanillaCards.Diplomacy.Trigger(territoryModification, game, context, addNewOrder, numberOfDMS); end
     if (Mod.Settings.isDamageTypeSpy) then Actions.VanillaCards.Spy.Trigger(territoryModification, game, context, addNewOrder, numberOfDMS); end
+    if (Mod.Settings.isDamageTypeGrantIncome) then Actions.Income.GrantToDefender.Trigger(territoryModification, game, context, addNewOrder, numberOfDMS); end
 end
 
 ---Triggers the Dead Man's Switch(es) on a territory if a successful attack captured one that has them.

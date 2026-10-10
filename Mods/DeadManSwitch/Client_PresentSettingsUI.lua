@@ -25,6 +25,14 @@ function Client_PresentSettingsUI(rootParent)
         damageTypeMessage = "an emergency blockade card is automatically played on it.";
     end
 
+    if(Mod.Settings.isDamageTypeGift) then
+        if(Mod.Settings.GiftRecipientType == "Defender") then
+            damageTypeMessage = "a gift card is automatically played, gifting it back to its previous owner.";
+        else
+            damageTypeMessage = "a gift card is automatically played, gifting it to a random other player.";
+        end
+    end
+
     local additionalActions = {};
     if(Mod.Settings.isDamageTypeSanction) then
         table.insert(additionalActions, "a sanction card is automatically played on its owner");
@@ -34,6 +42,13 @@ function Client_PresentSettingsUI(rootParent)
     end
     if(Mod.Settings.isDamageTypeSpy) then
         table.insert(additionalActions, "a spy card is automatically played on the attacker");
+    end
+    if(Mod.Settings.isDamageTypeGrantIncome) then
+        local incomeMessage = "its previous owner is granted " .. (Mod.Settings.GrantIncomeFlat or 0) .. " + " .. math.floor((Mod.Settings.GrantIncomePercent or 0) * 100) .. "% of their own income (minimum " .. (Mod.Settings.GrantIncomeMinimumPercent or 0) .. ")";
+        if(Mod.Settings.GrantIncomeSteal) then
+            incomeMessage = incomeMessage .. ", stolen from the attacker";
+        end
+        table.insert(additionalActions, incomeMessage);
     end
 
     if(#additionalActions > 0) then
