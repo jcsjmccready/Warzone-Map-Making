@@ -1,45 +1,7 @@
 require("Utilities");
 require("ModConstants");
 require("IO.Writer");
-
----@class RowTemplateRow
----@field Key string
----@field Value string
-
----@class RowTemplate
----@field Name string # Shown in the "Load template..." picker
----@field TargetModKey string | nil # Pre-fills the target mod key field, if set
----@field Rows RowTemplateRow[] # Replaces whatever rows are currently in the table
-
----Templated orders for the picker, add more here as new scenarios are worth simulating.
----@type RowTemplate[]
-local ROW_TEMPLATES = {
-    {
-        Name = "Trigger Bomb Shelter",
-        TargetModKey = "BombShelter_Mgreedy",
-        Rows = {
-            { Key = "Action", Value = "TriggerBombShelter" },
-            { Key = "TerritoryID", Value = "1" },
-            { Key = "ArmiesBefore", Value = "10" },
-        },
-    },
-    {
-        Name = "Queue Bomb Shelter Build",
-        TargetModKey = "BombShelter_Mgreedy",
-        Rows = {
-            { Key = "Action", Value = "QueueBuild" },
-            { Key = "TerritoryID", Value = "1" },
-        },
-    },
-    {
-        Name = "Destroy Bomb Shelter",
-        TargetModKey = "BombShelter_Mgreedy",
-        Rows = {
-            { Key = "Action", Value = "DestroyBombShelter" },
-            { Key = "TerritoryID", Value = "1" },
-        },
-    },
-};
+require("Templates"); -- ROW_TEMPLATES lives there, kept separate so it's easy to find and update
 
 ---Client_PresentMenuUI hook
 ---@param rootParent RootParent

@@ -4,7 +4,7 @@ require("IO.Writer");
 
 IO.ModAuth = {};
 ---@type ModKey
-local LOCAL_MOD_KEY = "IntermodTestBench"; -- READ ME: Update this for your mod
+IO.ModAuth.LOCAL_MOD_KEY = "IntermodTestBench"; -- READ ME: Update this for your mod
 local SKIP_HANDLED_AUTH_ORDERS = false; -- left visible, this is a test bench: seeing the handshake orders in the order list is the point
 local ENABLE_LOGGING = true; -- set to true to print what ModAuth is doing to the log
 
@@ -56,7 +56,7 @@ local ID_PATTERN = "^%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%
 ---@param message string
 local function Log(message)
     if (not ENABLE_LOGGING) then return; end
-    print("[ModAuth " .. LOCAL_MOD_KEY .. "]: " .. tostring(message));
+    print("[ModAuth " .. IO.ModAuth.LOCAL_MOD_KEY .. "]: " .. tostring(message));
 end
 
 -- annotations doesn't expose uuid, so wrap it
@@ -175,7 +175,7 @@ local function BuildCallPayload(targetModKey, callID)
     return {
         Stage = Stage.Call,
         TargetKey = targetModKey,
-        SenderKey = LOCAL_MOD_KEY,
+        SenderKey = IO.ModAuth.LOCAL_MOD_KEY,
         CallID = callID };
 end
 
@@ -187,7 +187,7 @@ local function BuildResponsePayload(targetModKey, callID, token)
     return {
         Stage = Stage.Response,
         TargetKey = targetModKey,
-        SenderKey = LOCAL_MOD_KEY,
+        SenderKey = IO.ModAuth.LOCAL_MOD_KEY,
         CallID = callID,
         Token = token };
 end
@@ -200,7 +200,7 @@ local function BuildOrderPayload(targetModKey, token, data)
     return {
         Stage = Stage.Order,
         TargetKey = targetModKey,
-        SenderKey = LOCAL_MOD_KEY,
+        SenderKey = IO.ModAuth.LOCAL_MOD_KEY,
         Token = token,
         Data = data };
 end
@@ -240,7 +240,7 @@ function IO.ModAuth.Send(targetModKey, playerID, data, addNewOrder)
     Log(targetModKey .. " requested to send an authenticated order with data " .. IO.Writer.Write(data));
 
     -- check mod identifying keys are valid
-    if (not IsValidKey(LOCAL_MOD_KEY) or not IsValidKey(targetModKey) or LOCAL_MOD_KEY == targetModKey) then return false; end
+    if (not IsValidKey(IO.ModAuth.LOCAL_MOD_KEY) or not IsValidKey(targetModKey) or IO.ModAuth.LOCAL_MOD_KEY == targetModKey) then return false; end
 
     -- checks if the order will fit in a single order, larger ones aren't supported currently. TODO: handle splitting into multiple orders and reassembling on the other side
     if (not FitsInOneOrder(BuildOrderPayload(targetModKey, NewID(), data))) then return false; end
@@ -279,12 +279,12 @@ end
 ---@param addNewOrder fun(order: GameOrder, skipIfOriginalSkipped?: boolean)
 ---@return boolean sent # false if nothing was sent because the mod key is invalid or the data is too large
 function IO.ModAuth.SendSelf(playerID, data, addNewOrder)
-    if (not IsValidKey(LOCAL_MOD_KEY)) then return false; end
+    if (not IsValidKey(IO.ModAuth.LOCAL_MOD_KEY)) then return false; end
 
-    local payload = BuildOrderPayload(LOCAL_MOD_KEY, IO.ModAuth.GetSelfToken(), data);
+    local payload = BuildOrderPayload(IO.ModAuth.LOCAL_MOD_KEY, IO.ModAuth.GetSelfToken(), data);
     if (not FitsInOneOrder(payload)) then return false; end
 
-    Log("Sending self-authenticated order to " .. LOCAL_MOD_KEY .. " with payload " .. IO.Writer.Write(payload));
+    Log("Sending self-authenticated order to " .. IO.ModAuth.LOCAL_MOD_KEY .. " with payload " .. IO.Writer.Write(payload));
     AddNewAuthOrder(playerID, ORDER_MESSAGE, payload, addNewOrder);
     return true;
 end
@@ -336,7 +336,7 @@ end
 ---@param order GameOrderCustom
 ---@param onAuthenticated? fun(senderModKey: ModKey, data: table, order: GameOrderCustom)
 local function HandleOrder(payload, order, onAuthenticated)
-    if (payload.SenderKey == LOCAL_MOD_KEY) then
+    if (payload.SenderKey == IO.ModAuth.LOCAL_MOD_KEY) then
         if (not IO.ModAuth.IsSelfToken(payload.Token)) then -- can't trust a token claiming to be this mod's own if it isn't
             Log("Rejected order with self-claim. Invalid token " .. tostring(payload.Token));
             return;
@@ -362,7 +362,7 @@ function IO.ModAuth.ProcessOrder(order, addNewOrder, skipThisOrder, onAuthentica
     ---@cast order GameOrderCustom
 
     local payload = IO.ModAuth.Parse(order);
-    if (payload == nil or payload.TargetKey ~= LOCAL_MOD_KEY) then return false; end
+    if (payload == nil or payload.TargetKey ~= IO.ModAuth.LOCAL_MOD_KEY) then return false; end
 
     if (payload.Stage == Stage.Call) then
         HandleCall(payload, order, addNewOrder);
