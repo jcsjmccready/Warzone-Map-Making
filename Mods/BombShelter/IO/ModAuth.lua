@@ -4,8 +4,8 @@ require("IO.Writer");
 
 IO.ModAuth = {};
 ---@type ModKey
-IO.ModAuth.LOCAL_MOD_KEY = "IntermodTesterA"; -- READ ME: Update this for your mod
-local SKIP_HANDLED_AUTH_ORDERS = true; -- set to false while testing so the auth orders stay in the order list
+IO.ModAuth.LOCAL_MOD_KEY = "BombShelter_Mgreedy";
+local SKIP_HANDLED_AUTH_ORDERS = false; -- set to false while testing so the auth orders stay in the order list
 local ENABLE_LOGGING = true; -- set to true to print what ModAuth is doing to the log
 
 ---@alias ModKey string # The key a mod identifies itself as when it authenticates with other mods
@@ -137,7 +137,7 @@ end
 local function Decode(encodedPayload)
     -- prefix and corruption check
     if (string.sub(encodedPayload, 1, #PAYLOAD_PREFIX) ~= PAYLOAD_PREFIX) then return nil; end
-    if (#encodedPayload > MAX_PAYLOAD_SIZE) then 
+    if (#encodedPayload > MAX_PAYLOAD_SIZE) then
         Log("Decoded payload too long: " .. #encodedPayload .. " > " .. MAX_PAYLOAD_SIZE);
         return nil;
     end

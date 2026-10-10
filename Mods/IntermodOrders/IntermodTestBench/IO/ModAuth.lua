@@ -4,8 +4,8 @@ require("IO.Writer");
 
 IO.ModAuth = {};
 ---@type ModKey
-IO.ModAuth.LOCAL_MOD_KEY = "IntermodTesterA"; -- READ ME: Update this for your mod
-local SKIP_HANDLED_AUTH_ORDERS = true; -- set to false while testing so the auth orders stay in the order list
+IO.ModAuth.LOCAL_MOD_KEY = "IntermodTestBench"; -- READ ME: Update this for your mod
+local SKIP_HANDLED_AUTH_ORDERS = false; -- left visible, this is a test bench: seeing the handshake orders in the order list is the point
 local ENABLE_LOGGING = true; -- set to true to print what ModAuth is doing to the log
 
 ---@alias ModKey string # The key a mod identifies itself as when it authenticates with other mods
