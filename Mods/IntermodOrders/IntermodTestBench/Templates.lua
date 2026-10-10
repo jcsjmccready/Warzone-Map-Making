@@ -1,6 +1,7 @@
 ---@class RowTemplateRow
 ---@field Key string
 ---@field Value string
+---@field Optional boolean | nil # Marked visually in the menu as optional for the action, rather than required
 
 ---@class RowTemplate
 ---@field Name string # Shown in the "Load template..." picker
@@ -16,6 +17,9 @@ ROW_TEMPLATES = {
             { Key = "Action", Value = "TriggerBombShelter" },
             { Key = "TerritoryID", Value = "1" },
             { Key = "ArmiesBefore", Value = "10" },
+            -- optional, remove either row to fall back to BombShelter's own Mod.Settings:
+            { Key = "DestroyBombShelter", Value = "false", Optional = true },
+            { Key = "OverriddenPercentage", Value = "0.5", Optional = true },
         },
     },
     {

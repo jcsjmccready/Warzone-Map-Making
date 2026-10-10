@@ -23,6 +23,38 @@ function Client_PresentMenuUI(rootParent, setMaxSize, setScrollable, game, close
         return;
     end
 
+    local territoryIDLabel; -- forward declared, TerritoryPicked below needs to close over it before it's created
+    local pickTerritoryBtn; -- forward declared, TerritoryPicked below needs to close over it before it's created
+
+    ---Shows the ID of whatever territory the player clicks on next, or clears the label if the click was cancelled
+    ---@param terrDetails TerritoryDetails | nil
+    local function TerritoryPicked(terrDetails)
+        if (UI.IsDestroyed(pickTerritoryBtn)) then
+            -- this dialog was closed before the click arrived, nothing left to update
+            return WL.CancelClickIntercept;
+        end
+
+        pickTerritoryBtn.SetInteractable(true);
+
+        if (terrDetails == nil) then
+            territoryIDLabel.SetText("");
+            return;
+        end
+
+        territoryIDLabel.SetText(terrDetails.Name .. " = TerritoryID " .. terrDetails.ID).SetColor(TEXT_DEFAULT_COLOUR);
+    end
+
+    local pickTerritoryHorz = UI.CreateHorizontalLayoutGroup(vert);
+    pickTerritoryBtn = UI.CreateButton(pickTerritoryHorz)
+        .SetText("Find territory ID...")
+        .SetColor(BUTTON_COLOURS.RoyalBlue)
+        .SetOnClick(function()
+            UI.InterceptNextTerritoryClick(TerritoryPicked);
+            territoryIDLabel.SetText("Click a territory on the map...").SetColor(TEXT_DEFAULT_COLOUR);
+            pickTerritoryBtn.SetInteractable(false);
+        end);
+    territoryIDLabel = UI.CreateLabel(pickTerritoryHorz).SetText("");
+
     local targetHorz = UI.CreateHorizontalLayoutGroup(vert).SetFlexibleWidth(1);
     UI.CreateLabel(targetHorz).SetText("Target mod key").SetPreferredWidth(150);
     local targetModKeyField = UI.CreateTextInputField(targetHorz)
@@ -47,27 +79,34 @@ function Client_PresentMenuUI(rootParent, setMaxSize, setScrollable, game, close
         UI.Destroy(row.Container);
     end
 
-    ---Adds a new, empty key/value row to the table
+    ---Adds a new key/value row to the table
     ---@param defaultKey string | nil
     ---@param defaultValue string | nil
-    local function AddRow(defaultKey, defaultValue)
+    ---@param isOptional boolean | nil # Shows a grayed "*" marker and an "Optional" placeholder hint on the row - TextInputField has no SetColor, so the marker is the only way to show this visually
+    local function AddRow(defaultKey, defaultValue, isOptional)
         local rowHorz = UI.CreateHorizontalLayoutGroup(rowsContainer).SetFlexibleWidth(1);
 
-        -- Fixed pixel widths for the key and delete columns so every row lines up regardless of how long its text is;
-        -- the value field just fills whatever space is left, which is the same for every row.
+        -- Fixed pixel widths for the key, optional-marker and delete columns so every row lines up regardless of how
+        -- long its text is; the value field just fills whatever space is left, which is the same for every row.
         local keyField = UI.CreateTextInputField(rowHorz)
             .SetPlaceholderText("Key")
             .SetText(defaultKey or "")
-            .SetPreferredWidth(165)
+            .SetPreferredWidth(165) -- fixed; a key longer than this will still make the box overflow, that's a known limitation
             .SetMinWidth(0)
             .SetFlexibleWidth(0);
 
         local valueField = UI.CreateTextInputField(rowHorz)
-            .SetPlaceholderText("Value")
+            .SetPlaceholderText(isOptional and "Optional" or "Value")
             .SetText(defaultValue or "")
             .SetPreferredWidth(0)
             .SetMinWidth(0)
             .SetFlexibleWidth(1);
+
+        UI.CreateLabel(rowHorz)
+            .SetText(isOptional and "*" or "")
+            .SetColor(BUTTON_COLOURS.DarkGray)
+            .SetPreferredWidth(20)
+            .SetFlexibleWidth(0);
 
         local row = { Container = rowHorz, KeyField = keyField, ValueField = valueField };
 
@@ -98,7 +137,7 @@ function Client_PresentMenuUI(rootParent, setMaxSize, setScrollable, game, close
             targetModKeyField.SetText(template.TargetModKey);
         end
         for _, templateRow in ipairs(template.Rows) do
-            AddRow(templateRow.Key, templateRow.Value);
+            AddRow(templateRow.Key, templateRow.Value, templateRow.Optional);
         end
     end
 
