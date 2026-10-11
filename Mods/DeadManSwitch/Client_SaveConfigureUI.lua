@@ -6,7 +6,6 @@ require("Utilities");
 function Client_SaveConfigureUI(alert, addCard)
 
     local damageTypeMessage = "ERROR";
-    Mod.Settings.isAcquiringTypeCommerce = isAcquiringTypeCommerce;
 
     Mod.Settings.isDamageTypeBomb = isDamageTypeBomb.GetIsChecked();
     if(Mod.Settings.isDamageTypeBomb) then
@@ -36,9 +35,40 @@ function Client_SaveConfigureUI(alert, addCard)
         damageTypeMessage = "an emergency blockade card is automatically played on it.";
     end
 
+    Mod.Settings.isDamageTypeGift = isDamageTypeGift.GetIsChecked();
+    if(Mod.Settings.isDamageTypeGift) then
+        Mod.Settings.GiftRecipientType = giftRecipientDefender.GetIsChecked() and "Defender" or "RandomPlayer";
+        if(Mod.Settings.GiftRecipientType == "Defender") then
+            damageTypeMessage = "a gift card is automatically played, gifting it back to its previous owner.";
+        else
+            damageTypeMessage = "a gift card is automatically played, gifting it to a random other player.";
+        end
+    end
+
     Mod.Settings.isDamageTypeSanction = isDamageTypeSanction.GetIsChecked();
     Mod.Settings.isDamageTypeDiplomacy = isDamageTypeDiplomacy.GetIsChecked();
     Mod.Settings.isDamageTypeSpy = isDamageTypeSpy.GetIsChecked();
+
+    Mod.Settings.isDamageTypeGrantIncome = isDamageTypeGrantIncome.GetIsChecked();
+    if(Mod.Settings.isDamageTypeGrantIncome) then
+        Mod.Settings.GrantIncomeFlat = grantIncomeFlat.GetValue();
+        Mod.Settings.GrantIncomePercent = grantIncomePercent.GetValue();
+        Mod.Settings.GrantIncomeMinimumPercent = grantIncomeMinimumPercent.GetValue();
+        Mod.Settings.GrantIncomeSteal = grantIncomeSteal.GetIsChecked();
+
+        if (Mod.Settings.GrantIncomeFlat < 0) then
+            alert("Flat Income cannot be less than 0");
+            return;
+        end
+        if (Mod.Settings.GrantIncomePercent < 0) then
+            alert("% Income cannot be less than 0");
+            return;
+        end
+        if (Mod.Settings.GrantIncomeMinimumPercent < 0) then
+            alert("Minimum % Amount cannot be less than 0");
+            return;
+        end
+    end
 
     local additionalActions = {};
     if(Mod.Settings.isDamageTypeSanction) then
@@ -50,6 +80,13 @@ function Client_SaveConfigureUI(alert, addCard)
     if(Mod.Settings.isDamageTypeSpy) then
         table.insert(additionalActions, "a spy card is automatically played on the attacker");
     end
+    if(Mod.Settings.isDamageTypeGrantIncome) then
+        local incomeMessage = "its previous owner is granted " .. Mod.Settings.GrantIncomeFlat .. " + " .. math.floor(Mod.Settings.GrantIncomePercent * 100) .. "% of their own income (minimum " .. Mod.Settings.GrantIncomeMinimumPercent .. ")";
+        if(Mod.Settings.GrantIncomeSteal) then
+            incomeMessage = incomeMessage .. ", stolen from the attacker";
+        end
+        table.insert(additionalActions, incomeMessage);
+    end
 
     if(#additionalActions > 0) then
         damageTypeMessage = damageTypeMessage .. " Additionally, " .. JoinWithAnd(additionalActions) .. ".";
@@ -59,6 +96,8 @@ function Client_SaveConfigureUI(alert, addCard)
 
     Mod.Settings.isAcquiringTypeCard = isAcquiringTypeCard.GetIsChecked();
     if(Mod.Settings.isAcquiringTypeCard) then
+        Clear_Commerce_Settings();
+
         Mod.Settings.NumPieces = numPieces.GetValue();
         Mod.Settings.CardWeight = cardWeight.GetValue();
         Mod.Settings.MinPieces = minPieces.GetValue();
@@ -81,13 +120,42 @@ function Client_SaveConfigureUI(alert, addCard)
             return;
         end
 
-    addCard("Dead Man's Switch Card", 
-        "Play this card to create a Dead Man's Switch on any territory you control (at the end of the turn). If this territory is successfully captured, afterwards, " .. damageTypeMessage, 
+    local dmsCardID = addCard("Dead Man's Switch Card",
+        "Play this card to create a Dead Man's Switch on any territory you control (at the end of the turn). If this territory is successfully captured, afterwards, " .. damageTypeMessage,
         "DmsCard.png",
         Mod.Settings.NumPieces,
-        Mod.Settings.MinPieces, 
-        Mod.Settings.InitialPieces, 
+        Mod.Settings.MinPieces,
+        Mod.Settings.InitialPieces,
         Mod.Settings.CardWeight);
+
+    Mod.Settings.DeadManSwitchCardID = dmsCardID;
+    else
+        Clear_Card_Settings();
+
+        Mod.Settings.Cost = dmsCost.GetValue();
+        Mod.Settings.MaxPerPlayer = dmsMaxPerPlayer.GetValue();
+
+        if (Mod.Settings.Cost < 0) then
+            alert("Cost of a Dead Man's Switch cannot be less than 0");
+            return;
+        end
+        if (Mod.Settings.MaxPerPlayer < 1) then
+            alert("Maximum Dead Man's Switches a player can own at once must be at least 1");
+            return;
+        end
     end
+end
+
+function Clear_Card_Settings()
+    Mod.Settings.NumPieces = nil;
+    Mod.Settings.CardWeight = nil;
+    Mod.Settings.MinPieces = nil;
+    Mod.Settings.InitialPieces = nil;
+    Mod.Settings.DeadManSwitchCardID = nil;
+end
+
+function Clear_Commerce_Settings()
+    Mod.Settings.Cost = nil;
+    Mod.Settings.MaxPerPlayer = nil;
 end
 

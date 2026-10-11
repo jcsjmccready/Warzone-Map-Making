@@ -59,9 +59,11 @@ function Create_CaltropEnabled_UI(rootParent)
 
     ---- Acquiring type
     local acquiringTypeHeading = UI.CreateVerticalLayoutGroup(caltropEnabledVHeading);
+
     UI.CreateLabel(acquiringTypeHeading)
         .SetText('Acquiring type:')
         .SetColor(BUTTON_COLOURS.LightBlue);
+
     local acquiringType = UI.CreateRadioButtonGroup(acquiringTypeHeading);
 
     local caltropAcquiringSubOptionsParent = UI.CreateVerticalLayoutGroup(caltropEnabledVHeading);
@@ -160,6 +162,18 @@ function Create_CaltropCommerce_SubOptions_UI(rootParent)
         .SetValue(Mod.Settings.CaltropMaxPerPlayer or 3);
 end
 
+function Caltrop_UpdateTrapDependentOptions()
+    local neitherTrapped = not caltropTrapsArmies.GetIsChecked() and not caltropTrapsSpecialUnits.GetIsChecked();
+    caltropOnlyTriggersOnTrappableUnits.SetInteractable(not neitherTrapped);
+    caltropIsImmuneUnitEnabled.SetInteractable(not neitherTrapped);
+    if (neitherTrapped) then
+        caltropOnlyTriggersOnTrappableUnits.SetIsChecked(false);
+        if (caltropIsImmuneUnitEnabled.GetIsChecked()) then
+            caltropIsImmuneUnitEnabled.SetIsChecked(false); -- triggers its own OnValueChanged, below
+        end
+    end
+end
+
 function Create_Caltrop_Behaviour_UI(rootParent)
     caltropVHeading = UI.CreateVerticalLayoutGroup(rootParent);
 
@@ -182,6 +196,8 @@ function Create_Caltrop_Behaviour_UI(rootParent)
     caltropTrapsArmies = UI.CreateCheckBox(optionalsHeading)
         .SetText("Traps armies")
         .SetIsChecked(Mod.Settings.CaltropTrapsArmies or false);
+    caltropTrapsArmies.SetOnValueChanged(function() Caltrop_UpdateTrapDependentOptions(); end);
+
     caltropTrapsSpecialUnits = UI.CreateCheckBox(optionalsHeading)
         .SetText("Traps Special Units")
         .SetIsChecked(Mod.Settings.CaltropTrapsSpecialUnits == nil or Mod.Settings.CaltropTrapsSpecialUnits);
@@ -196,10 +212,13 @@ function Create_Caltrop_Behaviour_UI(rootParent)
             end
             caltropImmuneUnitNone.SetInteractable(not caltropImmuneUnitNone.GetIsChecked() and caltropTrapsSpecialUnits.GetIsChecked());
         end
+        Caltrop_UpdateTrapDependentOptions();
     end);
+
     caltropOnlyTriggersOnTrappableUnits = UI.CreateCheckBox(optionalsHeading)
         .SetText("Only trigger if trappable units attacked")
         .SetIsChecked(Mod.Settings.CaltropOnlyTriggersOnTrappableUnits == nil or Mod.Settings.CaltropOnlyTriggersOnTrappableUnits);
+
     UI.CreateLabel(optionalsHeading).SetText("");
 
     caltropIsImmuneUnitEnabled = UI.CreateCheckBox(optionalsHeading)
@@ -207,26 +226,35 @@ function Create_Caltrop_Behaviour_UI(rootParent)
         .SetIsChecked(Mod.Settings.CaltropIsImmuneUnitEnabled or false);
     local caltropImmuneUnitContainer = UI.CreateVerticalLayoutGroup(optionalsHeading);
 
+    Caltrop_UpdateTrapDependentOptions();
+
     UI.CreateLabel(optionalsHeading).SetText("");
 
     UI.CreateLabel(optionalsHeading).SetText('Lifespan Behaviour').SetColor(BUTTON_COLOURS.LightBlue);
+
     caltropBombDestroys = UI.CreateCheckBox(optionalsHeading)
         .SetText("Bomb destroys")
         .SetIsChecked(Mod.Settings.CaltropBombDestroys or false);
+
     caltropSingleUse = UI.CreateCheckBox(optionalsHeading)
         .SetText("Caltrops are single use (destroyed instead of resetting) ")
         .SetIsChecked(Mod.Settings.CaltropSingleUse or false);
+
     caltropHasLimitedLifespan = UI.CreateCheckBox(optionalsHeading)
         .SetText("Caltrops have a limited lifespan?")
         .SetIsChecked(Mod.Settings.CaltropHasLimitedLifespan or false);
     local caltropLifespanContainer = UI.CreateVerticalLayoutGroup(optionalsHeading);
+
     UI.CreateLabel(optionalsHeading).SetText('Misc.').SetColor(BUTTON_COLOURS.LightBlue);
+
     caltropAllyTriggers = UI.CreateCheckBox(optionalsHeading)
         .SetText("Allies trigger Caltrops")
         .SetIsChecked(Mod.Settings.CaltropAllyTriggers or false);
+
     caltropCancelsAirlifts = UI.CreateCheckBox(optionalsHeading)
         .SetText("Cancels Airlifts")
         .SetIsChecked(Mod.Settings.CaltropCancelsAirlifts or false);
+
     UI.CreateLabel(optionalsHeading).SetText("Applies to both primed and triggered Caltrops*").SetColor(BUTTON_COLOURS.DarkGray);
 
     -- Lifespan sub-options
@@ -283,10 +311,7 @@ function Create_Caltrop_ImmuneUnit_SubOptions_UI(rootParent)
         .SetText(Mod.Settings.CaltropImmuneUnitName or 'Tank')
         .SetPreferredWidth(200);
 
-    -- one radio group: ignore / destroy / none. None needs no setting of its own - it is just neither of the
-    -- other two saved, and is also the default. None only makes sense when the trap traps special units
-    -- (only then is the immune unit ever a candidate for trapping in the first place) - forced off None
-    -- (onto Ignore) below whenever Traps Special Units is off.
+    -- ignore / destroy / none radio group - None has no setting of its own, forced to Ignore below when Traps Special Units is off
     local mode = 'none';
     if (Mod.Settings.CaltropImmuneUnitDestroysTrap) then
         mode = 'destroy';
@@ -298,6 +323,7 @@ function Create_Caltrop_ImmuneUnit_SubOptions_UI(rootParent)
     end
 
     UI.CreateLabel(caltropImmuneUnitSupportHeading).SetText('Additional Behaviour');
+
     caltropImmuneUnitBehaviourGroup = UI.CreateRadioButtonGroup(caltropImmuneUnitSupportHeading);
 
     caltropImmuneUnitSharesImmunity = UI.CreateRadioButton(caltropImmuneUnitSupportHeading).SetGroup(caltropImmuneUnitBehaviourGroup)
@@ -321,8 +347,7 @@ function Create_Caltrop_ImmuneUnit_SubOptions_UI(rootParent)
         radio.SetInteractable(not radio.GetIsChecked());
     end
 
-    -- None is additionally disabled (unselectable) whenever Traps Special Units is off - with it off, the
-    -- immune unit is never trapped either way, so None (and its 'no-op' distinction from Ignore) is meaningless
+    -- None is meaningless (and disabled) when Traps Special Units is off, since nothing is trapped either way
     caltropImmuneUnitNone.SetOnValueChanged(function()
         caltropImmuneUnitNone.SetInteractable(not caltropImmuneUnitNone.GetIsChecked() and caltropTrapsSpecialUnits.GetIsChecked());
     end);
@@ -334,9 +359,11 @@ function Create_BarbedWireEnabled_UI(rootParent)
 
     ---- Acquiring type
     local acquiringTypeHeading = UI.CreateVerticalLayoutGroup(barbedWireEnabledVHeading);
+
     UI.CreateLabel(acquiringTypeHeading)
         .SetText('Acquiring type:')
         .SetColor(SUBHEADING_COLOUR);
+
     local acquiringType = UI.CreateRadioButtonGroup(acquiringTypeHeading);
 
     local acquiringSubOptionsParent = UI.CreateVerticalLayoutGroup(barbedWireEnabledVHeading);
@@ -435,6 +462,20 @@ function Create_BarbedWireCommerce_SubOptions_UI(rootParent)
         .SetValue(Mod.Settings.BarbedWireMaxPerPlayer or 3);
 end
 
+---"Only trigger if trappable units attacked" and the immune unit are both meaningless once nothing is
+---ever trapped at all - disables (and unchecks) them while that's the case.
+function BarbedWire_UpdateTrapDependentOptions()
+    local neitherTrapped = not barbedWireTrapsArmies.GetIsChecked() and not barbedWireTrapsSpecialUnits.GetIsChecked();
+    barbedWireOnlyTriggersOnTrappableUnits.SetInteractable(not neitherTrapped);
+    barbedWireIsImmuneUnitEnabled.SetInteractable(not neitherTrapped);
+    if (neitherTrapped) then
+        barbedWireOnlyTriggersOnTrappableUnits.SetIsChecked(false);
+        if (barbedWireIsImmuneUnitEnabled.GetIsChecked()) then
+            barbedWireIsImmuneUnitEnabled.SetIsChecked(false); -- triggers its own OnValueChanged, below
+        end
+    end
+end
+
 function Create_BarbedWire_Behaviour_UI(rootParent)
     barbedWireVHeading = UI.CreateVerticalLayoutGroup(rootParent);
 
@@ -457,6 +498,8 @@ function Create_BarbedWire_Behaviour_UI(rootParent)
     barbedWireTrapsArmies = UI.CreateCheckBox(optionalsHeading)
         .SetText("Traps armies")
         .SetIsChecked(Mod.Settings.BarbedWireTrapsArmies == nil or Mod.Settings.BarbedWireTrapsArmies);
+    barbedWireTrapsArmies.SetOnValueChanged(function() BarbedWire_UpdateTrapDependentOptions(); end);
+
     barbedWireTrapsSpecialUnits = UI.CreateCheckBox(optionalsHeading)
         .SetText("Traps Special Units")
         .SetIsChecked(Mod.Settings.BarbedWireTrapsSpecialUnits or false);
@@ -471,10 +514,13 @@ function Create_BarbedWire_Behaviour_UI(rootParent)
             end
             barbedWireImmuneUnitNone.SetInteractable(not barbedWireImmuneUnitNone.GetIsChecked() and barbedWireTrapsSpecialUnits.GetIsChecked());
         end
+        BarbedWire_UpdateTrapDependentOptions();
     end);
+
     barbedWireOnlyTriggersOnTrappableUnits = UI.CreateCheckBox(optionalsHeading)
         .SetText("Only trigger if trappable units attacked")
         .SetIsChecked(Mod.Settings.BarbedWireOnlyTriggersOnTrappableUnits == nil or Mod.Settings.BarbedWireOnlyTriggersOnTrappableUnits);
+
     UI.CreateLabel(optionalsHeading).SetText("");
 
     barbedWireIsImmuneUnitEnabled = UI.CreateCheckBox(optionalsHeading)
@@ -482,26 +528,35 @@ function Create_BarbedWire_Behaviour_UI(rootParent)
         .SetIsChecked(Mod.Settings.BarbedWireIsImmuneUnitEnabled or false);
     local barbedWireImmuneUnitContainer = UI.CreateVerticalLayoutGroup(optionalsHeading);
 
+    BarbedWire_UpdateTrapDependentOptions();
+
     UI.CreateLabel(optionalsHeading).SetText("");
 
     UI.CreateLabel(optionalsHeading).SetText('Lifespan Behaviour').SetColor(SUBHEADING_COLOUR);
+
     barbedWireBombDestroys = UI.CreateCheckBox(optionalsHeading)
         .SetText("Bomb destroys")
         .SetIsChecked(Mod.Settings.BarbedWireBombDestroys or false);
+
     barbedWireSingleUse = UI.CreateCheckBox(optionalsHeading)
         .SetText("Wire is single use (destroyed instead of resetting) ")
         .SetIsChecked(Mod.Settings.BarbedWireSingleUse or false);
+
     barbedWireHasLimitedLifespan = UI.CreateCheckBox(optionalsHeading)
         .SetText("Wire has a limited lifespan?")
         .SetIsChecked(Mod.Settings.BarbedWireHasLimitedLifespan or false);
     local barbedWireLifespanContainer = UI.CreateVerticalLayoutGroup(optionalsHeading);
+
     UI.CreateLabel(optionalsHeading).SetText('Misc.').SetColor(SUBHEADING_COLOUR);
+
     barbedWireAllyTriggers = UI.CreateCheckBox(optionalsHeading)
         .SetText("Allies trigger barbed wire")
         .SetIsChecked(Mod.Settings.BarbedWireAllyTriggers or false);
+
     barbedWireCancelsAirlifts = UI.CreateCheckBox(optionalsHeading)
         .SetText("Cancels Airlifts")
         .SetIsChecked(Mod.Settings.BarbedWireCancelsAirlifts or false);
+
     UI.CreateLabel(optionalsHeading).SetText("Applies to both primed and triggered barbed wire*").SetColor(BUTTON_COLOURS.DarkGray);
 
     -- Lifespan sub-options
@@ -558,10 +613,7 @@ function Create_BarbedWire_ImmuneUnit_SubOptions_UI(rootParent)
         .SetText(Mod.Settings.BarbedWireImmuneUnitName or 'Tank')
         .SetPreferredWidth(200);
 
-    -- one radio group: ignore / destroy / none. None needs no setting of its own - it is just neither of the
-    -- other two saved, and is also the default. None only makes sense when the trap traps special units
-    -- (only then is the immune unit ever a candidate for trapping in the first place) - forced off None
-    -- (onto Ignore) below whenever Traps Special Units is off.
+    -- ignore / destroy / none radio group - None has no setting of its own, forced to Ignore below when Traps Special Units is off
     local mode = 'none';
     if (Mod.Settings.BarbedWireImmuneUnitDestroysTrap) then
         mode = 'destroy';
@@ -573,6 +625,7 @@ function Create_BarbedWire_ImmuneUnit_SubOptions_UI(rootParent)
     end
 
     UI.CreateLabel(barbedWireImmuneUnitSupportHeading).SetText('Additional Behaviour');
+
     barbedWireImmuneUnitBehaviourGroup = UI.CreateRadioButtonGroup(barbedWireImmuneUnitSupportHeading);
 
     barbedWireImmuneUnitSharesImmunity = UI.CreateRadioButton(barbedWireImmuneUnitSupportHeading).SetGroup(barbedWireImmuneUnitBehaviourGroup)
@@ -596,8 +649,7 @@ function Create_BarbedWire_ImmuneUnit_SubOptions_UI(rootParent)
         radio.SetInteractable(not radio.GetIsChecked());
     end
 
-    -- None is additionally disabled (unselectable) whenever Traps Special Units is off - with it off, the
-    -- immune unit is never trapped either way, so None (and its 'no-op' distinction from Ignore) is meaningless
+    -- None is meaningless (and disabled) when Traps Special Units is off, since nothing is trapped either way
     barbedWireImmuneUnitNone.SetOnValueChanged(function()
         barbedWireImmuneUnitNone.SetInteractable(not barbedWireImmuneUnitNone.GetIsChecked() and barbedWireTrapsSpecialUnits.GetIsChecked());
     end);

@@ -7,7 +7,8 @@ function Client_PresentSettingsUI(rootParent)
     UI.CreateLabel(descriptionVGroup).SetText("This mod adds Bomb Shelter structures. Armies in a territory with a Bomb Shelter take modified damage from Bomb Cards.");
 
     local modVGroup = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
-    UI.CreateLabel(modVGroup).SetText("Mod Behaviour:").SetColor(SUBHEADING_COLOUR);
+    UI.CreateEmpty(modVGroup).SetPreferredHeight(10);
+    UI.CreateLabel(modVGroup).SetText("Mod Behaviour:");
 
     if (Mod.Settings.IsAcquiringTypeCard) then
         UI.CreateLabel(modVGroup).SetText("Bomb Shelters are acquired via the Bomb Shelter Card");
@@ -26,8 +27,8 @@ function Client_PresentSettingsUI(rootParent)
     end
 
     if (Mod.Settings.IsAcquiringTypeCard) then
-        UI.CreateLabel(modVGroup).SetText("");
-        UI.CreateLabel(modVGroup).SetText("Card Settings:").SetColor(SUBHEADING_COLOUR);
+        UI.CreateEmpty(modVGroup).SetPreferredHeight(10);
+        UI.CreateLabel(modVGroup).SetText("Card Settings:");
         UI.CreateLabel(modVGroup).SetText("Number of Pieces: " .. (Mod.Settings.BombShelterNumPieces or 0));
         UI.CreateLabel(modVGroup).SetText("Card Weight: " .. (Mod.Settings.BombShelterCardWeight or 0));
         UI.CreateLabel(modVGroup).SetText("Minimum Pieces: " .. (Mod.Settings.BombShelterMinPieces or 0));

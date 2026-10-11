@@ -4,12 +4,22 @@ require('Utilities')
 ---@param game GameClientHook
 ---@param close fun() # Zero parameter function that closes the dialog
 function Client_PresentCommercePurchaseUI(rootParent, game, close)
+    if (Mod.Settings.IsAcquiringTypeCard == nil or Mod.Settings.IsAcquiringTypeCard) then
+        --Bomb Shelter is configured to be acquired via the card, not Commerce, even though this is a Commerce game
+        UI.CreateLabel(UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1))
+            .SetText("Not enabled for commerce")
+            .SetColor(BUTTON_COLOURS.DarkGray);
+        return;
+    end
+
     CommerceGame = game;
     CommerceClose = close;
 
     local vert = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
 
-    local message = "Protects armies from " .. (Mod.Settings.BombShelterDamagePercent or 0)*100 .. "% of damage from bombs";
+    local damagePercent = (Mod.Settings.BombShelterDamagePercent or 0.5) * 100;
+    local sign = (damagePercent >= 0) and "+" or "";
+    local message = "On territories with a bomb shelter, bombs instead deal " .. sign .. damagePercent .. "%";
 
     if(Mod.Settings.BombShelterHasDuration) then
         message = message .. ". Lasts for " .. (Mod.Settings.BombShelterDurationTurns or 0) .. " turns";
@@ -19,8 +29,15 @@ function Client_PresentCommercePurchaseUI(rootParent, game, close)
         message = message .. ". Destroyed when bombed";
     end
 
+    UI.CreateLabel(vert).SetText("Bomb Shelter").SetColor(BUTTON_COLOURS.Yellow).SetFlexibleWidth(1).SetAlignment(WL.TextAlignmentOptions.Center);
+
     local horz = UI.CreateHorizontalLayoutGroup(vert).SetFlexibleWidth(1);
-    UI.CreateLabel(horz).SetText("Bomb Shelter").SetColor(BUTTON_COLOURS.Yellow).SetMinWidth(40);
+    local iconColumn = UI.CreateVerticalLayoutGroup(horz).SetPreferredWidth(100).SetCenter(true);
+    --UI.CreateImage doesn't exist in app versions below SNAPSHOT_AND_ICON_MIN_VERSION, so the icon is skipped there
+    if (WL.IsVersionOrHigher(SNAPSHOT_AND_ICON_MIN_VERSION)) then
+        UI.CreateImage(iconColumn).SetSprite("Bomb Shelter.png").SetPreferredWidth(60).SetPreferredHeight(60);
+    end
+    UI.CreateEmpty(horz).SetPreferredWidth(10);
     UI.CreateLabel(horz).SetText(message);
 
     local horz = UI.CreateHorizontalLayoutGroup(vert).SetFlexibleWidth(1);
@@ -105,6 +122,7 @@ function CommerceTerritoryClicked(terrDetails)
         "BombShelter_" .. terrDetails.ID,
         { [WL.ResourceType.Gold] = cost },
         WL.TurnPhase.Attacks);
+    order.Icon = "BombShelter";
 
     -- Re-assign rather than mutate in place: Orders is a snapshot, so table.insert on the value returned by
     -- CommerceGame.Orders alone wouldn't persist the new order back to the game.

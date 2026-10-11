@@ -107,6 +107,8 @@ function GetColourIntegerFromHex(hexColour)
     return tonumber(normalized, 16);
 end
 
+SNAPSHOT_AND_ICON_MIN_VERSION = "6.06"; --UI.CreateSnapshot/UI.CreateImage don't exist below this app version
+
 TEXT_DEFAULT_COLOUR = "#CCCCCC";
 BUTTON_COLOURS = GetButtonColors();
 ERROR_COLOUR = BUTTON_COLOURS.Red;

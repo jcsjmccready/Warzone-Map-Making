@@ -27,20 +27,34 @@ function PresentSettingsV2.ShowTrap(rootParent, prefix, displayName, isAcquiring
 
     UI.CreateLabel(vGroup).SetText(displayName .. ":").SetColor(prefix == "BarbedWire" and SUBHEADING_COLOUR or BUTTON_COLOURS.LightBlue);
 
-    line("If a territory containing a " .. displayName .. " is successfully captured, orders out of that territory are blocked on the following turn.");
-    line("Trigger Duration: " .. (Mod.Settings[prefix .. "TriggerDuration"] or 1));
+    local effectDescription = BuildTrapEffectDescription(prefix, displayName):gsub("^%s+", "");
+    if (effectDescription ~= "") then
+        line(effectDescription);
+    end
 
-    if (Mod.Settings[prefix .. "TrapsArmies"]) then
-        line("Traps armies");
-    end
-    if (Mod.Settings[prefix .. "TrapsSpecialUnits"]) then
-        line("Traps special units");
-    end
     if (Mod.Settings[prefix .. "CancelsAirlifts"]) then
         line("Cancels airlifts out of a territory with a primed or triggered " .. displayName);
     end
     if (Mod.Settings[prefix .. "OnlyTriggersOnTrappableUnits"]) then
-        line("Only triggers if trappable units attacked");
+        local trapsArmies = Mod.Settings[prefix .. "TrapsArmies"];
+        local trapsSpecialUnits = Mod.Settings[prefix .. "TrapsSpecialUnits"];
+
+        local unitsDescription;
+        if (trapsArmies and trapsSpecialUnits) then
+            unitsDescription = "armies or special units";
+        elseif (trapsArmies) then
+            unitsDescription = "armies";
+        elseif (trapsSpecialUnits) then
+            unitsDescription = "special units";
+        end
+
+        if (unitsDescription ~= nil) then
+            local exclusionClause = "";
+            if (trapsSpecialUnits and Mod.Settings[prefix .. "IsImmuneUnitEnabled"] and Mod.Settings[prefix .. "ImmuneUnitSharesImmunity"]) then
+                exclusionClause = ", excluding " .. (Mod.Settings[prefix .. "ImmuneUnitName"] or "Tank");
+            end
+            line("Only triggers if " .. unitsDescription .. " attacked" .. exclusionClause);
+        end
     end
     if (Mod.Settings[prefix .. "BombDestroys"]) then
         line("A bomb destroys the " .. displayName);

@@ -1,0 +1,2 @@
+A dummy mod for simulating ModAuth orders from an arbitrary, untrusted mod. Its menu lets you type in any target mod key plus made-up TerritoryID/ArmiesBefore data and send it as an authenticated ModAuth order, so you can test how a mod you're developing (e.g. BombShelter) reacts to authenticated orders from a mod it wasn't specifically built to talk to.
+Unlike IntermodTesterA/IntermodTesterB, this isn't a fixed pair demonstrating the happy path between two cooperating mods - it's a one-sided test bench for probing any installed mod's ModAuth handling.

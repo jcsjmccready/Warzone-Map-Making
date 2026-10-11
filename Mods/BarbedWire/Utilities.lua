@@ -1,6 +1,8 @@
 
 LATEST_SETTINGS_VERSION = 2;
 
+SNAPSHOT_AND_ICON_MIN_VERSION = "6.06"; --UI.CreateSnapshot/UI.CreateImage don't exist below this app version
+
 function MigrateModSettings()
     local version = Mod.Settings.Version or 1;
 
@@ -19,6 +21,58 @@ function MigrateModSettings()
             Mod.Settings.BarbedWireHasLimitedLifespan = false;
         end
     end
+end
+
+---@param prefix string # the trap's settings prefix, i.e. its V2_TrapType.Key ("BarbedWire" | "Caltrop")
+---@param displayName string
+---@return string # starts with a space if non-empty, so it can be appended directly after an intro sentence
+function BuildTrapEffectDescription(prefix, displayName)
+    local trapsArmies = Mod.Settings[prefix .. "TrapsArmies"];
+    local trapsSpecialUnits = Mod.Settings[prefix .. "TrapsSpecialUnits"];
+
+    local blockedUnitsDescription;
+    if (trapsArmies and trapsSpecialUnits) then
+        blockedUnitsDescription = "armies and special units";
+    elseif (trapsArmies) then
+        blockedUnitsDescription = "armies";
+    elseif (trapsSpecialUnits) then
+        blockedUnitsDescription = "special units";
+    end
+
+    local immuneUnitClause = "";
+    if (Mod.Settings[prefix .. "IsImmuneUnitEnabled"]) then
+        immuneUnitClause = " " .. (Mod.Settings[prefix .. "ImmuneUnitName"] or "Tank") .. "'s have special behaviour.";
+    end
+
+    -- neither armies nor special units are trapped, so nothing is actually blocked - don't claim otherwise
+    if (blockedUnitsDescription == nil) then
+        return immuneUnitClause;
+    end
+
+    local triggerDuration = Mod.Settings[prefix .. "TriggerDuration"] or 1;
+    local turnWord = triggerDuration == 1 and "turn" or "turns";
+
+    return " If a territory containing a " .. displayName .. " is successfully captured, on the following " ..
+        triggerDuration .. " " .. turnWord .. ", attack/transfer orders out of that territory will skip " ..
+        blockedUnitsDescription .. "." .. immuneUnitClause;
+end
+
+---Builds a trap's card description. See BuildTrapEffectDescription for the dynamic part.
+---@param prefix string # the trap's settings prefix, i.e. its V2_TrapType.Key ("BarbedWire" | "Caltrop")
+---@param displayName string
+---@return string
+function BuildTrapCardDescription(prefix, displayName)
+    local intro = "Play this card to create a " .. displayName .. " on any territory you control (at the end of the turn).";
+    return intro .. BuildTrapEffectDescription(prefix, displayName);
+end
+
+---Builds a trap's Commerce purchase description. See BuildTrapEffectDescription for the dynamic part.
+---@param prefix string # the trap's settings prefix, i.e. its V2_TrapType.Key ("BarbedWire" | "Caltrop")
+---@param displayName string
+---@return string
+function BuildTrapCommerceDescription(prefix, displayName)
+    local intro = "Build a " .. displayName .. " on any territory you control (at the end of the turn).";
+    return intro .. BuildTrapEffectDescription(prefix, displayName);
 end
 
 function GetSettingsVersionForDisplay()
@@ -453,23 +507,13 @@ function apply_damage_to_specials_and_armies (sortedSpecialUnits, armyCount, tot
 			--if there's still damage to apply, apply it to this Special
 			if (remainingDamage > 0) then
 				if (v.proxyType=="Commander") then
+					-- NOTE: this mod has no Resurrection card and no CardData of its own - the original
+					-- (OrderNeutral) version of this code invoked that card's resurrection logic here via
+					-- getCardID/playerHasCard, neither of which exist in this mod, so it would error. Removed;
+					-- a killed Commander is just killed, same as it would be through a normal WZ attack order.
 					if (remainingDamage >=7) then
 						remainingDamage = math.max (0, remainingDamage - 7);
 						boolCurrentSpecialSurvives = false; --remove commander (don't stop processing; it might not be this player's commander, game needs to continue to cover all cases)
-						local publicGameData = Mod.PublicGameData;
-						local commanderOwner = v.OwnerID;
-						if (publicGameData.CardData == nil) then publicGameData.CardData = {}; end
-						publicGameData.CardData.ResurrectionCardID = tostring(getCardID ("Resurrection", game));
-						local CommanderOwner_ResurrectionCard = playerHasCard (commanderOwner, publicGameData.CardData.ResurrectionCardID, game); --get card instance ID of player's Resurrection card
-						print ("[RESURRECTION CHECK] Res cardID " ..tostring (publicGameData.CardData.ResurrectionCardID)..", Res card instance ID ".. tostring (CommanderOwner_ResurrectionCard));
-
-						if (CommanderOwner_ResurrectionCard~=nil) then
-							local strResurrectionInvoke = "Resurrection|Invoke|"..commanderOwner.."|"..tostring(CommanderOwner_ResurrectionCard);
-							addNewOrder(WL.GameOrderCustom.Create (commanderOwner, "Resurrection|Invoke", strResurrectionInvoke), true); --add order, use 'true' so this new order is skipped if the order that kills the Commander is skipped
-						else
-							--elim player NEXT TURN to get updated LastTurnStanding
-							addNewOrder (WL.GameOrderEvent.Create (commanderOwner, "Limited Multimove|Commander killed"), true);
-						end
 					else
 						remainingDamage = 0; --commander survives, no more attacks to occur
 						boolCurrentSpecialSurvives = true; --add commander to survivingSpecials table
