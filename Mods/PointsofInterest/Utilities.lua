@@ -4,7 +4,7 @@ CURRENT_SETTINGS_VERSION = 1;
 --(StructureImages/<Name>.png)
 NATO_NAMES = {
     "Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golf", "Hotel", "India", "Juliet", "Kilo", "Lima", "Mike",
-    "November", "Oscar", "Papa", "Quebec", "Romeo", "Sierra", "Tango", "Uniform", "Victor", "Whiskey", "Xray", "Yankee", "Zulu",
+    "November", "Oscar", "Papa", "Quebec", "Romeo", "Sierra", "Tango", "Uniform", "Victor", "Whiskey", "X-ray", "Yankee", "Zulu",
 };
 
 --Visibility options shown in the configure UI, in display order. Key is what is stored in Mod.Settings
@@ -14,6 +14,13 @@ VISIBILITY_OPTIONS = {
     { Key = "HeavyFog", Text = "Heavy Fog" },
 };
 DEFAULT_VISIBILITY = "Default";
+
+--The POI Config dropdown's options: every visibility option, plus Disabled. Picking Disabled is how a POI is
+--switched off - there's no separate enable/disable control
+POI_STATE_OPTIONS = { { Key = "Disabled", Text = "Disabled" } };
+for _, option in ipairs(VISIBILITY_OPTIONS) do
+    table.insert(POI_STATE_OPTIONS, option);
+end
 
 --FogMod priority. Below 9000 so a FogMod can never hide a player's own territories
 FOG_MOD_PRIORITY = 8000;
@@ -29,6 +36,21 @@ function GetVisibilityText(key)
         end
     end
     return key;
+end
+
+--Colour for a POI Config dropdown button, by its selected POI_STATE_OPTIONS key, so enabled/disabled and the
+--visibility level are readable at a glance without having to read the button text
+---@param key string # one of POI_STATE_OPTIONS' keys ("Disabled", "NoFog", "Default", "HeavyFog")
+---@return string
+function GetPoIStateColor(key)
+    if (key == "Disabled") then
+        return BUTTON_COLOURS.TyrianPurple;
+    elseif (key == "NoFog") then
+        return BUTTON_COLOURS.DarkGreen;
+    elseif (key == "HeavyFog") then
+        return BUTTON_COLOURS.Goldenrod;
+    end
+    return BUTTON_COLOURS.RoyalBlue; -- Default
 end
 
 --Converts a stored visibility key into the standing fog level a FogMod should apply. Returns nil for Default, which
@@ -55,6 +77,20 @@ function IsNatoName(name)
     return false;
 end
 
+--Maps a single letter (case-insensitive) to its NATO alphabet name, e.g. "b" or "B" -> "Bravo". NATO_NAMES is in
+--A-Z order, so the letter's position in the alphabet is also its index into NATO_NAMES.
+---@param letter string
+---@return string | nil # nil if letter isn't exactly one A-Z letter
+function GetNatoNameForLetter(letter)
+    if (type(letter) ~= "string" or #letter ~= 1) then return nil; end
+
+    local upper = string.upper(letter);
+    local index = string.byte(upper) - string.byte("A") + 1;
+    if (index < 1 or index > #NATO_NAMES) then return nil; end
+
+    return NATO_NAMES[index];
+end
+
 --Returns the configured visibility key for a structure, defaulting if unset
 ---@param name string
 ---@return string
@@ -63,29 +99,87 @@ function GetConfiguredVisibility(name)
     return (visibility ~= nil and visibility[name]) or DEFAULT_VISIBILITY;
 end
 
---Creates a dropdown-style control (Warzone has no native dropdown): a button showing the current choice which
---opens a list prompt when clicked.
----@param parent UIObject
+--Returns whether a POI is enabled. Unset (nil) is treated as disabled, so a letter has to be opted into explicitly
+---@param name string
+---@return boolean
+function IsPoIEnabled(name)
+    local enabled = Mod.Settings.PoIEnabled;
+    return enabled ~= nil and enabled[name] == true;
+end
+
 ---@param options { Key: string, Text: string }[]
+---@param key string
+---@return boolean
+function OptionsContainKey(options, key)
+    for _, option in ipairs(options) do
+        if (option.Key == key) then
+            return true;
+        end
+    end
+    return false;
+end
+
+---@param str string
+---@return string
+function TrimString(str)
+    return (string.gsub(str, "^%s*(.-)%s*$", "%1"));
+end
+
+--Finds the TerritoryID of the territory whose name matches territoryName, case-insensitively. Used to resolve the
+--free-text territory names stored in Mod.Settings.PoIPlacements against the actual map at game start
+---@param game GameServerHook
+---@param territoryName string
+---@return TerritoryID | nil
+function FindTerritoryIDByName(game, territoryName)
+    local normalized = string.lower(TrimString(territoryName or ""));
+    if (normalized == "") then return nil; end
+
+    for territoryID, territoryDetails in pairs(game.Map.Territories) do
+        if (string.lower(territoryDetails.Name) == normalized) then
+            return territoryID;
+        end
+    end
+    return nil;
+end
+
+--Creates a dropdown-style control (Warzone has no native dropdown): a button showing the current choice which
+--opens a list prompt when clicked. options can be a static list, or a function returning one - use a function when
+--the available options can change after the dropdown is created (e.g. a list that depends on other live UI state),
+--so the list shown on each click is never stale.
+---@param parent UIObject
+---@param options { Key: string, Text: string }[] | fun(): { Key: string, Text: string }[]
 ---@param initialKey string
 ---@param onChanged fun(key: string) | nil
----@return { GetKey: fun(): string, Button: Button }
+---@return { GetKey: fun(): string, SetKey: fun(key: string), Button: Button }
 function CreateDropDown(parent, options, initialKey, onChanged)
     local selectedKey = initialKey;
-    local button = UI.CreateButton(parent).SetText(GetOptionText(options, selectedKey));
+
+    ---@return { Key: string, Text: string }[]
+    local function ResolveOptions()
+        if (type(options) == "function") then return options(); end
+        return options;
+    end
+
+    local button = UI.CreateButton(parent).SetText(GetOptionText(ResolveOptions(), selectedKey));
+
+    ---Updates the selected key and button text. Only fires onChanged for a real user selection (triggerOnChanged),
+    ---not for a programmatic SetKey call (e.g. two rows swapping their values to "move" in a list)
+    ---@param key string
+    ---@param triggerOnChanged boolean
+    local function ApplySelection(key, triggerOnChanged)
+        selectedKey = key;
+        button.SetText(GetOptionText(ResolveOptions(), key));
+        if (triggerOnChanged and onChanged ~= nil) then
+            onChanged(key);
+        end
+    end
 
     button.SetOnClick(function()
         local list = {};
-        for _, option in ipairs(options) do
+        for _, option in ipairs(ResolveOptions()) do
             table.insert(list, {
                 text = option.Text,
-                selected = function()
-                    selectedKey = option.Key;
-                    button.SetText(option.Text);
-                    if (onChanged ~= nil) then
-                        onChanged(option.Key);
-                    end
-                end,
+                selected = function() ApplySelection(option.Key, true); end,
             });
         end
         UI.PromptFromList("Select an option", list);
@@ -93,6 +187,7 @@ function CreateDropDown(parent, options, initialKey, onChanged)
 
     return {
         GetKey = function() return selectedKey; end,
+        SetKey = function(key) ApplySelection(key, false); end,
         Button = button,
     };
 end
@@ -110,7 +205,8 @@ end
 ---@param payload string
 ---@return string | nil, TerritoryID | nil
 function ParseBuildPayload(payload)
-    local name, territoryID = string.match(payload or "", "^" .. PAYLOAD_PREFIX .. "(%a+)_(%d+)$");
+    -- [%a%-]+ rather than %a+: X-ray is the one NATO name with a non-letter character in it
+    local name, territoryID = string.match(payload or "", "^" .. PAYLOAD_PREFIX .. "([%a%-]+)_(%d+)$");
     if (name == nil) then
         return nil, nil;
     end

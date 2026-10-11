@@ -6,15 +6,26 @@ require("Utilities");
 function Client_SaveConfigureUI(alert, addCard)
     Mod.Settings.Version = CURRENT_SETTINGS_VERSION;
 
-    Mod.Settings.PoICost = poiCost.GetValue();
-    if (Mod.Settings.PoICost < 0) then
-        alert("Cost of a Point of Interest cannot be less than 0");
-        return;
-    end
-
+    local enabled = {};
     local visibility = {};
     for _, name in ipairs(NATO_NAMES) do
-        visibility[name] = visibilityDropDowns[name].GetKey();
+        local key = PoIConfigureState.StateDropDowns[name].GetKey();
+        enabled[name] = key ~= "Disabled";
+        visibility[name] = (key ~= "Disabled") and key or DEFAULT_VISIBILITY;
     end
+
+    ---@type PointsOfInterestPlacementSetting[]
+    local placements = {};
+    for _, row in ipairs(PoIConfigureState.PlacementRows) do
+        local territoryName = TrimString(row.TerritoryField.GetText() or "");
+        if (territoryName == "") then
+            alert("Every Territory POI Placement row needs a territory name");
+            return;
+        end
+        table.insert(placements, { Name = row.Dropdown.GetKey(), TerritoryName = territoryName });
+    end
+
+    Mod.Settings.PoIEnabled = enabled;
     Mod.Settings.PoIVisibility = visibility;
+    Mod.Settings.PoIPlacements = placements;
 end

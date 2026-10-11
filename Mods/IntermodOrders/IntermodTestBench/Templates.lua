@@ -66,4 +66,22 @@ ROW_TEMPLATES = {
             { Key = "TerritoryID", Value = "1" },
         },
     },
+    {
+        Name = "Add Point of Interest",
+        TargetModKey = "PointsOfInterest_Mgreedy",
+        Rows = {
+            { Key = "Action", Value = "AddPointOfInterest" },
+            { Key = "Letter", Value = "A" },
+            { Key = "TerritoryID", Value = "1" },
+        },
+    },
+    {
+        Name = "Remove Point of Interest",
+        TargetModKey = "PointsOfInterest_Mgreedy",
+        Rows = {
+            { Key = "Action", Value = "RemovePointOfInterest" },
+            { Key = "TerritoryID", Value = "1" },
+            { Key = "Letter", Value = "A", Optional = true },
+        },
+    },
 };
