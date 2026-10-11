@@ -38,4 +38,32 @@ ROW_TEMPLATES = {
             { Key = "TerritoryID", Value = "1" },
         },
     },
+    {
+        Name = "Trigger Dead Man's Switch",
+        TargetModKey = "DeadManSwitch_Mgreedy",
+        Rows = {
+            { Key = "Action", Value = "TriggerDeadManSwitch" },
+            { Key = "TerritoryID", Value = "1" },
+            { Key = "AttackerPlayerID", Value = "1" },
+            { Key = "ArmiesOnArrival", Value = "5" },
+            { Key = "NumSwitches", Value = "1", Optional = true },
+        },
+    },
+    {
+        Name = "Add Dead Man's Switch",
+        TargetModKey = "DeadManSwitch_Mgreedy",
+        Rows = {
+            { Key = "Action", Value = "AddDeadManSwitch" },
+            { Key = "TerritoryID", Value = "1" },
+            { Key = "IsImmediate", Value = "false", Optional = true },
+        },
+    },
+    {
+        Name = "Destroy Dead Man's Switch",
+        TargetModKey = "DeadManSwitch_Mgreedy",
+        Rows = {
+            { Key = "Action", Value = "DestroyDeadManSwitch" },
+            { Key = "TerritoryID", Value = "1" },
+        },
+    },
 };

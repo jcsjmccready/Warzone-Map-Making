@@ -22,6 +22,10 @@ function Client_CreateGame(settings, alert)
         alert("Emergency Blockade cards must be enabled for this mod to work.");
     end
 
+    if (Mod.Settings.isDamageTypeGift and (settings.Cards == nil or settings.Cards[WL.CardID.Gift] == nil)) then
+        alert("Gift cards must be enabled for this mod to work.");
+    end
+
     if (Mod.Settings.isDamageTypeDiplomacy and (settings.Cards == nil or settings.Cards[WL.CardID.Diplomacy] == nil)) then
         alert("Diplomacy cards must be enabled for this mod to work.");
     end
