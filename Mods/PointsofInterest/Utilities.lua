@@ -1,3 +1,6 @@
+require("IO.Writer");
+require("IO.Reader");
+
 CURRENT_SETTINGS_VERSION = 1;
 
 --NATO phonetic alphabet, A-Z. Each name is both the custom structure's name and its image filename
@@ -10,8 +13,9 @@ NATO_NAMES = {
 --Visibility options shown in the configure UI, in display order. Key is what is stored in Mod.Settings
 VISIBILITY_OPTIONS = {
     { Key = "NoFog", Text = "No Fog" },
+    { Key = "LightFog", Text = "Light Fog" },
+    { Key = "Fog", Text = "Fog" },
     { Key = "Default", Text = "Default" },
-    { Key = "HeavyFog", Text = "Heavy Fog" },
 };
 DEFAULT_VISIBILITY = "Default";
 
@@ -40,27 +44,33 @@ end
 
 --Colour for a POI Config dropdown button, by its selected POI_STATE_OPTIONS key, so enabled/disabled and the
 --visibility level are readable at a glance without having to read the button text
----@param key string # one of POI_STATE_OPTIONS' keys ("Disabled", "NoFog", "Default", "HeavyFog")
+---@param key string # one of POI_STATE_OPTIONS' keys ("Disabled", "NoFog", "LightFog", "Fog", "Default")
 ---@return string
 function GetPoIStateColor(key)
     if (key == "Disabled") then
-        return BUTTON_COLOURS.TyrianPurple;
+        return BUTTON_COLOURS.Charcoal;
     elseif (key == "NoFog") then
         return BUTTON_COLOURS.DarkGreen;
-    elseif (key == "HeavyFog") then
-        return BUTTON_COLOURS.Goldenrod;
+    elseif (key == "LightFog") then
+        return BUTTON_COLOURS.Peach;
+    elseif (key == "Fog") then
+        return BUTTON_COLOURS.Cinnamon;
     end
     return BUTTON_COLOURS.RoyalBlue; -- Default
 end
 
 --Converts a stored visibility key into the standing fog level a FogMod should apply. Returns nil for Default, which
---makes no changes so the lobby's own fog settings decide what is shown
+--makes no changes so the lobby's own fog settings decide what is shown. LightFog shows only the territory's owner
+--(StandingFogLevel.OwnerOnly) - the territory's structures (including this POI) are visible whenever the owner is,
+--regardless of fog level, so this is effectively "owner + structures visible, armies hidden"
 ---@param key string
 ---@return EnumStandingFogLevel | nil
 function GetStandingFogLevel(key)
     if (key == "NoFog") then
         return WL.StandingFogLevel.Visible;
-    elseif (key == "HeavyFog") then
+    elseif (key == "LightFog") then
+        return WL.StandingFogLevel.OwnerOnly;
+    elseif (key == "Fog") then
         return WL.StandingFogLevel.Fogged;
     end
     return nil;
@@ -89,6 +99,13 @@ function GetNatoNameForLetter(letter)
     if (index < 1 or index > #NATO_NAMES) then return nil; end
 
     return NATO_NAMES[index];
+end
+
+--The inverse of GetNatoNameForLetter, e.g. "Bravo" -> "B"
+---@param name string # Must be a valid NATO alphabet name, the caller is expected to have validated this
+---@return string
+function GetLetterForNatoName(name)
+    return string.sub(name, 1, 1);
 end
 
 --Returns the configured visibility key for a structure, defaulting if unset
@@ -211,6 +228,53 @@ function ParseBuildPayload(payload)
         return nil, nil;
     end
     return name, tonumber(territoryID);
+end
+
+--Pasteable text format for Territory POI Placement data, used to move a set of placements between a test game's
+--mod menu (export) and a lobby's configure UI (import) - see Client_PresentMenuUI and Client_PresentConfigureUI.
+--Reuses IO.Writer/IO.Reader (the same encoder ModAuth payloads use) rather than inventing a bespoke format. Stores
+--the single-letter form (see GetLetterForNatoName) rather than the full NATO name, since it's trivial to convert
+--back (GetNatoNameForLetter) and every byte counts in something meant to be pasted by hand.
+
+---Serializes a list of placements into a pasteable string, grouped by letter (letter -> territory names) rather
+---than one Letter+TerritoryName entry per placement - placement order doesn't matter (map rendering reorders
+---same-territory structures alphabetically regardless, see the Territory POI Placement note), so grouping avoids
+---repeating the same letter once per territory
+---@param placements PointsOfInterestPlacementSetting[]
+---@return string
+function SerializePlacementData(placements)
+    local grouped = {};
+    for _, placement in ipairs(placements) do
+        local letter = GetLetterForNatoName(placement.Name);
+        local territoryNames = grouped[letter] or {};
+        table.insert(territoryNames, placement.TerritoryName);
+        grouped[letter] = territoryNames;
+    end
+    return IO.Writer.Write(grouped);
+end
+
+---Parses a string produced by SerializePlacementData back into a list of placements. Returns nil if the string
+---isn't validly-formatted placement data - check IO.Reader.GetError() for why when it does
+---@param text string
+---@return PointsOfInterestPlacementSetting[] | nil
+function DeserializePlacementData(text)
+    local parsed = IO.Reader.Read(text, "table");
+    -- must be letter -> territory names (an object), not an array. An empty table round-trips as "{}" either way
+    -- (Writer treats an empty table as an object), and IsArray considers {} an array too, so that case is let through
+    if (type(parsed) ~= "table" or (not IO.Util.TableIsEmpty(parsed) and IO.Util.IsArray(parsed))) then return nil; end
+
+    local placements = {};
+    for letter, territoryNames in pairs(parsed) do
+        local name = type(letter) == "string" and GetNatoNameForLetter(letter);
+        if (not name or type(territoryNames) ~= "table" or not IO.Util.IsArray(territoryNames)) then
+            return nil;
+        end
+        for _, territoryName in ipairs(territoryNames) do
+            if (type(territoryName) ~= "string") then return nil; end
+            table.insert(placements, { Name = name, TerritoryName = territoryName });
+        end
+    end
+    return placements;
 end
 
 function GetButtonColors()

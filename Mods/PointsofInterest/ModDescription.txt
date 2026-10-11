@@ -1,2 +1,2 @@
 This mod places Points of Interest on chosen territories at the start of the game. There is one structure for each letter of the NATO alphabet (Alpha to Zulu); enable the letters you want to use and assign each one to a territory by name in the mod's configure menu.
-Points of Interest belong to the whole lobby rather than to a player, and cannot be removed once built. Each letter can be configured to give No Fog, Light Fog or Heavy Fog visibility of the territory it is on.
+Points of Interest belong to the whole lobby rather than to a player, and cannot be removed once built. Each letter can be configured to give No Fog, Light Fog or Fog visibility of the territory it is on.

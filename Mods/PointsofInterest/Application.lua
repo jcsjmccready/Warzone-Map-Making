@@ -26,6 +26,21 @@ PointsOfInterestActions = {
 
 PointsOfInterestApplication = {};
 
+---Publishes every NATO letter's custom StructureType ID to PublicGameData. Must be called from a server hook
+---(Server_StartGame) - WL.StructureType.Custom can't be called from client code at all, so this is the only way
+---client code (e.g. Client_PresentMenuUI's "Config from Map" map scan) can get hold of these IDs.
+---@param game GameServerHook
+function PointsOfInterestApplication.PublishStructureIDs(game)
+    local structureIDs = {};
+    for _, name in ipairs(NATO_NAMES) do
+        structureIDs[name] = WL.StructureType.Custom(name);
+    end
+
+    local pub = Mod.PublicGameData or {} --[[@as PointsOfInterestPublicGameData]];
+    pub.StructureIDs = structureIDs;
+    Mod.PublicGameData = pub;
+end
+
 ---@class PointOfInterestInstance # One already-built Point of Interest, tracked so it can later be identified for removal
 ---@field StructureName string # One of the NATO alphabet names
 ---@field Visibility string # The visibility key (see VISIBILITY_OPTIONS) that was configured for this structure name at build time
@@ -39,6 +54,7 @@ PointsOfInterestApplication = {};
 
 ---@class PointsOfInterestPublicGameData # Mirrors the bits of PrivateGameData that client hooks need to read
 ---@field PlacementWarnings string[] | nil # Set once by PlaceInitialPointsOfInterest - territory names from Mod.Settings.PoIPlacements that couldn't be found on the map. Read by Client_GameRefresh to alert the player
+---@field StructureIDs table<string, EnumStructureType> | nil # NATO name -> WL.StructureType.Custom(name), precomputed in Server_StartGame. WL.StructureType.Custom can only be called from a server hook ("modContext.Token.ModExecuting is null" otherwise) - client code (e.g. Client_PresentMenuUI's map scan) has to read the ID from here instead of calling it directly
 
 ---@class PointsOfInterestPlayerGameData # Per-player mod data. Set server-side via Server_GameCustomMessage
 ---@field SeenPlacementWarnings boolean | nil # Set once Client_GameRefresh has alerted this player about PlacementWarnings, so it only ever alerts them once
@@ -58,7 +74,7 @@ function PointsOfInterestApplication.AddPointOfInterest(game, addNewOrder, playe
 
     local event = WL.GameOrderEvent.Create(playerID, "Built " .. name .. " on " .. territoryDetails.Name, {}, { territoryModification });
     event.JumpToActionSpotOpt = WL.RectangleVM.Create(territoryDetails.MiddlePointX, territoryDetails.MiddlePointY, territoryDetails.MiddlePointX, territoryDetails.MiddlePointY);
-    event.TerritoryAnnotationsOpt = { [territoryID] = WL.TerritoryAnnotation.Create(name, 8, GetColourIntegerFromHex(BUTTON_COLOURS.DarkGreen)) };
+    event.TerritoryAnnotationsOpt = { [territoryID] = WL.TerritoryAnnotation.Create(name, 8, GetColourIntegerFromHex(GetPoIStateColor(visibility))) };
     event.Icon = "Build";
 
     -- Visible to every player, since Points of Interest belong to the lobby rather than to a player
@@ -210,7 +226,7 @@ function PointsOfInterestApplication.ApplyInitialPointOfInterestVisibility(game,
                 local fogMod = WL.FogMod.Create(poi.StructureName .. " Point of Interest", fogLevel, FOG_MOD_PRIORITY, { poi.TerritoryID }, nil);
                 table.insert(fogMods, fogMod);
                 poi.FogModID = fogMod.ID;
-                territoryAnnotations[poi.TerritoryID] = WL.TerritoryAnnotation.Create(poi.StructureName, 8, GetColourIntegerFromHex(BUTTON_COLOURS.DarkGreen));
+                territoryAnnotations[poi.TerritoryID] = WL.TerritoryAnnotation.Create(poi.StructureName, 8, GetColourIntegerFromHex(GetPoIStateColor(poi.Visibility)));
             end
         end
     end
