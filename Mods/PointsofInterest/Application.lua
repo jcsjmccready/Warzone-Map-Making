@@ -200,21 +200,25 @@ function PointsOfInterestApplication.ApplyInitialPointOfInterestVisibility(game,
     local pointsOfInterest = priv.PointsOfInterest or {};
     local fogMods = {};
     local territoryAnnotations = {};
+    local anyPlaced = false;
     for _, poi in ipairs(pointsOfInterest) do
         if (poi.FogModID == nil) then
+            anyPlaced = true;
             local fogLevel = GetStandingFogLevel(poi.Visibility);
             if (fogLevel ~= nil) then
                 local fogMod = WL.FogMod.Create(poi.StructureName .. " Point of Interest", fogLevel, FOG_MOD_PRIORITY, { poi.TerritoryID }, nil);
                 table.insert(fogMods, fogMod);
                 poi.FogModID = fogMod.ID;
-                territoryAnnotations[poi.TerritoryID] = WL.TerritoryAnnotation.Create(poi.StructureName, 8, GetColourIntegerFromHex(GetPoIStateColor(poi.Visibility)));
             end
+            territoryAnnotations[poi.TerritoryID] = WL.TerritoryAnnotation.Create(poi.StructureName, 8, GetColourIntegerFromHex(GetPoIStateColor(poi.Visibility)));
         end
     end
 
-    if (#fogMods > 0) then
+    if (anyPlaced) then
         local event = WL.GameOrderEvent.Create(WL.PlayerID.Neutral, "POIs placed", {}, {});
-        event.FogModsOpt = fogMods;
+        if (#fogMods > 0) then
+            event.FogModsOpt = fogMods;
+        end
         event.TerritoryAnnotationsOpt = territoryAnnotations;
         event.Icon = "Build";
         addNewOrder(event);
