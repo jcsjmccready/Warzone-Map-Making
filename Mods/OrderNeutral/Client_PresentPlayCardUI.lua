@@ -27,8 +27,6 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
     game.CreateDialog(function(rootParent, setMaxSize, setScrollable, game, close)
         Close = close;
         SetDialogMaxSize = setMaxSize;
-        --always vertically scrollable so toggling the max size below doesn't leave stale space behind when
-        --shrinking back down from a territory with special units to one without
         setScrollable(false, true);
         setMaxSize(400, 260);
         local vert = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1); --set flexible width so things don't jump around while we change InstructionLabel
@@ -117,8 +115,6 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
     end);
 end
 
---(re)builds the army count input (if enabled) and one checkbox per special unit present on territoryID, letting the
---player choose exactly what accompanies the order rather than always sending the entire stack
 function Create_ArmyOptions_UI(territoryID)
     Destroy_ArmyOptions_UI();
 
@@ -169,13 +165,13 @@ function UpdatePlayCardBtnInteractable()
 end
 
 function FirstTerritoryClicked()
-	Game.HighlightTerritories({}); --clear any territories highlighted from a previous failed adjacent territory selection
+	Game.HighlightTerritories({});
 	UI.InterceptNextTerritoryClick(FirstTerritoryHandleClick);
 	FirstTerritoryInstructionLabel.SetText("Please click on the neutral territory you wish to create the attack/transfer order for.").SetColor(TEXT_DEFAULT_COLOUR);
 	FirstTerritoryBtn.SetInteractable(false);
     SecondTerritoryBtn.SetInteractable(false);
 
-    --picking a new neutral territory invalidates whatever was selected (or errored) for the adjacent territory
+    -- new primary territory selected, wipe latter
     SecondTerritoryID = nil;
     SecondTerritoryName = nil;
     SecondTerritoryInstructionLabel.SetText("");
@@ -191,7 +187,7 @@ function FirstTerritoryHandleClick(terrDetails)
 	FirstTerritoryBtn.SetInteractable(true);
 
 	if (terrDetails == nil) then
-		--The click request was cancelled.   Return to our default state.
+		-- click cancelled. reset to default state.
 		FirstTerritoryInstructionLabel.SetText("");
         FirstTerritoryID = nil;
         FirstTerritoryName = nil;
@@ -223,7 +219,7 @@ function FirstTerritoryHandleClick(terrDetails)
         Create_ArmyOptions_UI(FirstTerritoryID);
 	end
 
-    --if the second territory is no longer adjacent to the (possibly new) first territory, clear it out
+    -- if the second territory is no longer adjacent to the (possibly new) first territory, clear it out
     if (SecondTerritoryID ~= nil and (FirstTerritoryID == nil or Game.Map.Territories[FirstTerritoryID].ConnectedTo[SecondTerritoryID] == nil)) then
         SecondTerritoryID = nil;
         SecondTerritoryName = nil;
@@ -248,14 +244,12 @@ end
 
 function SecondTerritoryHandleClick(terrDetails)
 	if UI.IsDestroyed(SecondTerritoryBtn) then
-		-- Dialog was destroyed, so we don't need to intercept the click anymore
 		return WL.CancelClickIntercept;
 	end
 	FirstTerritoryBtn.SetInteractable(true);
     SecondTerritoryBtn.SetInteractable(true);
 
 	if (terrDetails == nil) then
-		--The click request was cancelled.   Return to our default state.
 		SecondTerritoryInstructionLabel.SetText("");
         SecondTerritoryID = nil;
         SecondTerritoryName = nil;
@@ -274,11 +268,10 @@ function SecondTerritoryHandleClick(terrDetails)
         adjacentTerritories = filter(adjacentTerritories, function(terrID) return terrID ~= FirstTerritoryID; end);
         Game.HighlightTerritories(adjacentTerritories);
     else
-		--Territory was clicked, remember its ID and name
-		Game.HighlightTerritories({}); --clear any territories highlighted from a previous failed adjacent territory selection
 		SecondTerritoryInstructionLabel.SetText("Selected adjacent territory: " .. terrDetails.Name).SetColor(TEXT_DEFAULT_COLOUR);
 		SecondTerritoryID = terrDetails.ID;
         SecondTerritoryName = terrDetails.Name;
+        Game.HighlightTerritories({FirstTerritoryID, SecondTerritoryID});
 	end
 
     UpdatePlayCardBtnInteractable();

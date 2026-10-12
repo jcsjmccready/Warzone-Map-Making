@@ -1,0 +1,2 @@
+A test mod for authenticated orders between mods. Its menu makes an order that asks this mod to send an authenticated order to IntermodTesterB.
+When IntermodTesterB receives it, it adds an order to the order list saying it arrived.

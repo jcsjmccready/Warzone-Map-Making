@@ -1,0 +1,12 @@
+This mod adds the Corrupt Hand card which provides the ability to block players from playing their cards if they are inattentive.
+
+Play the Corrupt Hand card on a chosen player to begin corrupting their hand.
+The chosen player will receive a Budding Corruption card or Corruption card dependent on config. A Budding Corruption card transforms into a Corruption card after a configurable number of turns.
+
+If a player holds a Corruption card, then each turn (including the turn it is given), it will transform a configurable number of cards into Corrupted cards (denying them from being able to use them for their original effect).
+
+Corrupted cards can be played to recover a percentage of pieces of the original card. Dependent on configuration a random card or a user chosen card will be recovered.
+
+Discarding/playing a Budding/Corruption card stops any further corruption from that source.
+
+The Budding Corruption Card is not very obvious so you'll need to pay attention to card entering your hand.

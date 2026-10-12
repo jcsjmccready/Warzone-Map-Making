@@ -131,7 +131,7 @@ function GiveFreeReconOfTerritory(playerID, targetTerritoryID, addNewOrder)
     addNewOrder(WL.GameOrderPlayCardReconnaissance.Create(instance.ID, playerID, targetTerritoryID));
 end
 
---returns territoryID plus all of its directly connected neighbours, used to mimic the area a recon card reveals
+-- returns territoryID plus all of its directly connected neighbours
 function GetTerritoryAndAdjacentIDs(game, territoryID)
     local territories = { territoryID };
     for neighbourID, _ in pairs(game.Map.Territories[territoryID].ConnectedTo) do
@@ -140,9 +140,6 @@ function GetTerritoryAndAdjacentIDs(game, territoryID)
     return territories;
 end
 
---manually grants playerID vision of targetTerritoryID and its neighbours for one turn by adding a high priority FogMod
---to 'event', restricted to that player only; the FogMod is tracked in PrivateGameData so Server_AdvanceTurn_Start can
---remove it again after that one turn of vision has been shown
 function GrantManualVisionOfTerritory(game, event, playerID, targetTerritoryID)
     local territories = GetTerritoryAndAdjacentIDs(game, targetTerritoryID);
     local fogMod = WL.FogMod.Create("Order Neutral - manual vision", WL.StandingFogLevel.Visible, 9000, territories, { playerID });
@@ -154,7 +151,6 @@ function GrantManualVisionOfTerritory(game, event, playerID, targetTerritoryID)
     Mod.PrivateGameData = privateGameData;
 end
 
---removes any manually granted vision FogMods added last turn, so the vision they grant lasts exactly one turn
 function RemoveExpiredVisionFogMods(addNewOrder)
     local privateGameData = Mod.PrivateGameData;
     local pendingIDs = privateGameData.PendingVisionFogModIDs;
@@ -168,7 +164,7 @@ function RemoveExpiredVisionFogMods(addNewOrder)
     Mod.PrivateGameData = privateGameData;
 end
 
---builds a "X armies, Special Unit Name, Special Unit Name" style description of a moving force
+-- builds string like "X armies, Special Unit Name, Special Unit Name"
 function DescribeArmyMovement (numArmies, specialUnits)
 	local parts = { numArmies .. " armies" };
 	for _, unit in pairs (specialUnits) do
@@ -177,8 +173,7 @@ function DescribeArmyMovement (numArmies, specialUnits)
 	return table.concat (parts, ", ");
 end
 
---builds a "X armies plus a Name, a Name, and a Name" style description of a moving force, matching the phrasing
---WZ itself uses for standard attack/transfer order messages
+-- builds a "X armies plus a Name, a Name, and a Name" to fit the WZ style attack/transfer message
 function DescribeArmyMovementForOrderMessage(numArmies, specialUnits)
 	local message = numArmies .. " armies";
 
@@ -205,12 +200,8 @@ function GetSpecialUnitName (unit)
 	return unit.proxyType; --eg "Commander"
 end
 
---WZ rejects a single TerritoryModification.AddSpecialUnits with more than 4 entries ("Cannot add more than 4 special
---units"), so large attacking/transferring forces (eg. 6 tanks) need to be split up. Sets targetMod.AddSpecialUnits to
---the first chunk (<=4 units) and returns an array of any leftover chunks (each itself an array of <=4 units) that
---didn't fit; pass those to QueueExtraSpecialUnitEvents once the primary event has been added, so they arrive as
---their own follow-up events rather than as extra TerritoryModifications on the same event (which don't reliably
---apply beyond the first one)
+--WZ rejects a single TerritoryModification.AddSpecialUnits with more than 4 entries ("Cannot add more than 4 special units")
+-- Chunk the operation, set the target modification with the first chunk and pass back any that can't fit
 function AssignAddSpecialUnits(targetMod, specialUnits)
 	local MAX_SPECIAL_UNITS_PER_MOD = 4;
 
@@ -238,8 +229,7 @@ function AssignAddSpecialUnits(targetMod, specialUnits)
 	return extraChunks;
 end
 
---queues a follow-up GameOrderEvent per leftover chunk returned by AssignAddSpecialUnits, each just adding that
---chunk of special units to territoryID; call this after the primary event for the order has already been queued
+-- helper function to handle extra chunks from AssignAddSpecialUnits, creating a new GameOrderEvent for each chunk
 function QueueExtraSpecialUnitEvents(territoryID, extraChunks, playerID, addNewOrder)
 	for _, chunk in ipairs(extraChunks) do
 		local extraMod = WL.TerritoryModification.Create(territoryID);
@@ -596,7 +586,7 @@ function startsWith(str, sub)
 	return string.sub(str, 1, string.len(sub)) == sub;
 end
 
-function shuffle(tbl)
+function shuffleInPlace(tbl)
 	for i = #tbl, 2, -1 do
 		local j = math.random(i)
 		tbl[i], tbl[j] = tbl[j], tbl[i]

@@ -1,0 +1,9 @@
+This mod places Points of Interest (POI) structures on chosen territories at the start of the game.
+There is one structure option for each letter of the NATO alphabet (Alpha to Zulu).
+
+They can be enabled and configured independently to override (No Fog, Light Fog or Fog) lobby fog settings on the territory they are placed on.
+
+Placements are added in the mod config, under Territory POI Placement: pick a POI and type the name of the territory it should be built on when the game starts.
+Territories that can not be found at game start will provide an error message to the users.
+
+A convenience option is provided (Planning Mode) that lets you placed POIs in a test game, then load those into the mod for your real game.
