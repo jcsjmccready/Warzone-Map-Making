@@ -1,11 +1,5 @@
 require("Utilities");
 
-----------------------------------------------------------------------------------------------------------------------
--- The DTOs below are Points of Interest's public ModAuth API shapes (see Api.lua), kept here instead so Api.lua can
--- require Application.lua without Application.lua needing to require Api.lua back - a real circular require crashes
--- the mod on load.
-----------------------------------------------------------------------------------------------------------------------
-
 ---@enum PointsOfInterestAction
 PointsOfInterestActions = {
     AddPointOfInterest = "AddPointOfInterest",
@@ -26,9 +20,7 @@ PointsOfInterestActions = {
 
 PointsOfInterestApplication = {};
 
----Publishes every NATO letter's custom StructureType ID to PublicGameData. Must be called from a server hook
----(Server_StartGame) - WL.StructureType.Custom can't be called from client code at all, so this is the only way
----client code (e.g. Client_PresentMenuUI's "Config from Map" map scan) can get hold of these IDs.
+---Publishes every NATO letter's custom StructureType ID to PublicGameData for access elsewhere
 ---@param game GameServerHook
 function PointsOfInterestApplication.PublishStructureIDs(game)
     local structureIDs = {};
@@ -58,12 +50,12 @@ end
 
 ---@class PointsOfInterestPlayerGameData # Per-player mod data. Set server-side via Server_GameCustomMessage
 ---@field SeenPlacementWarnings boolean | nil # Set once Client_GameRefresh has alerted this player about PlacementWarnings, so it only ever alerts them once
+---@field SeenPlanningModeWarning boolean | nil # Set once Client_GameRefresh has warned this player that Mod.Settings.IsPlanningMode is still on, so it only ever warns them once
 
----Adds the structure to the territory, records it in private game data, and grants its configured visibility.
 ---@param game GameServerHook
 ---@param addNewOrder fun(order: GameOrder)
 ---@param playerID PlayerID # Player who paid for it. Only used to attribute the order, ownership is irrelevant
----@param name string # Must be a valid NATO alphabet name, the caller is expected to have validated this
+---@param name string # Must be a valid NATO alphabet name
 ---@param territoryID TerritoryID # Must be a valid territory on the map, the caller is expected to have validated this
 function PointsOfInterestApplication.AddPointOfInterest(game, addNewOrder, playerID, name, territoryID)
     local territoryDetails = game.Map.Territories[territoryID];
@@ -100,8 +92,6 @@ function PointsOfInterestApplication.AddPointOfInterest(game, addNewOrder, playe
     Mod.PrivateGameData = priv;
 end
 
----Removes one Point of Interest instance from a territory: reverts the structure and removes the FogMod it applied,
----if any. Does nothing if no matching Point of Interest is tracked on that territory.
 ---@param game GameServerHook
 ---@param addNewOrder fun(order: GameOrder)
 ---@param territoryID TerritoryID
@@ -141,14 +131,6 @@ end
 ---@field Name string # A NATO alphabet name, e.g. "Alpha". Only placed if IsPoIEnabled(Name) at game start
 ---@field TerritoryName string # Matched case-insensitively against the map's territory names at game start - see FindTerritoryIDByName
 
----Builds every configured start-of-game Point of Interest placement (Mod.Settings.PoIPlacements) directly onto the
----starting standing - no order needed, since this runs before any orders exist. Guarded by a PrivateGameData flag
----so it never re-places on a later Server_StartGame (shouldn't happen, but cheap to guard against).
----
----FogMod visibility can't be set this way - FogMods only exist attached to a GameOrderEvent, and Server_StartGame
----has no addNewOrder - so that part is left for ApplyInitialPointOfInterestVisibility to pick up on the first
----Server_AdvanceTurn_Start. Territory names that couldn't be found are published to PublicGameData instead, for
----Client_GameRefresh to alert each player with directly (see ReadGameSettings by HangFire0963 for this pattern).
 ---@param game GameServerHook
 ---@param standing GameStanding
 function PointsOfInterestApplication.PlaceInitialPointsOfInterest(game, standing)
@@ -161,11 +143,12 @@ function PointsOfInterestApplication.PlaceInitialPointsOfInterest(game, standing
     for _, placement in ipairs(Mod.Settings.PoIPlacements or {}) do
         if (IsNatoName(placement.Name) and IsPoIEnabled(placement.Name)) then
             local territoryID = FindTerritoryIDByName(game, placement.TerritoryName);
-            if (territoryID == nil) then
+
+            if (territoryID == nil) then -- missing
                 local missingForPoi = missingTerritoryNamesByPoi[placement.Name] or {};
                 table.insert(missingForPoi, placement.TerritoryName);
                 missingTerritoryNamesByPoi[placement.Name] = missingForPoi;
-            else
+            else -- found
                 local territory = standing.Territories[territoryID];
                 local structureID = WL.StructureType.Custom(placement.Name);
 
@@ -190,7 +173,6 @@ function PointsOfInterestApplication.PlaceInitialPointsOfInterest(game, standing
     priv.InitialPlacementsDone = true;
     Mod.PrivateGameData = priv;
 
-    -- One line per POI, e.g. "Alpha: alpha1, alpha2, alpha3" - Client_GameRefresh joins these (with the header) into
     -- "The following territories could not be found:\nAlpha: alpha1, alpha2, alpha3\nBravo: bravo1, bravo2"
     local warnings = {};
     if (next(missingTerritoryNamesByPoi) ~= nil) then
@@ -208,8 +190,7 @@ function PointsOfInterestApplication.PlaceInitialPointsOfInterest(game, standing
     Mod.PublicGameData = pub;
 end
 
----Applies the FogMods for whichever initial placements configured a non-Default visibility. Call every
----Server_AdvanceTurn_Start; guarded by a PrivateGameData flag so it only ever does anything once.
+---Applies the FogMods for whichever initial placements configured a non-default visibility. Can only properly run once
 ---@param game GameServerHook
 ---@param addNewOrder fun(order: GameOrder)
 function PointsOfInterestApplication.ApplyInitialPointOfInterestVisibility(game, addNewOrder)
@@ -232,7 +213,7 @@ function PointsOfInterestApplication.ApplyInitialPointOfInterestVisibility(game,
     end
 
     if (#fogMods > 0) then
-        local event = WL.GameOrderEvent.Create(WL.PlayerID.Neutral, "Points of Interest placed", {}, {});
+        local event = WL.GameOrderEvent.Create(WL.PlayerID.Neutral, "POIs placed", {}, {});
         event.FogModsOpt = fogMods;
         event.TerritoryAnnotationsOpt = territoryAnnotations;
         event.Icon = "Build";

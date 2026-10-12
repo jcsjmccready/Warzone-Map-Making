@@ -7,20 +7,21 @@ require("Utilities");
 ---@param game GameClientHook
 ---@param close fun() # Zero parameter function that closes the dialog
 function Client_PresentMenuUI(rootParent, setMaxSize, setScrollable, game, close)
-    setMaxSize(500, 400);
+    setMaxSize(500, 470.
+);
     setScrollable(false, true);
 
     MenuGame = game;
 
     local vert = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
-    UI.CreateLabel(vert).SetText("Placement Testing Mode").SetColor(SUBHEADING_COLOUR);
+    UI.CreateLabel(vert).SetText("Placement Planning Mode").SetColor(SUBHEADING_COLOUR);
 
-    if (not Mod.Settings.IsTestingMode) then
-        UI.CreateLabel(vert).SetText("Used for testing mode. Nothing here to see...").SetColor(BUTTON_COLOURS.DarkGray);
+    if (not Mod.Settings.IsPlanningMode) then
+        UI.CreateLabel(vert).SetText("Used for planning mode. Nothing here to see...").SetColor(BUTTON_COLOURS.DarkGray);
         return;
     end
 
-    UI.CreateLabel(vert).SetText("Place POIs on the map via this mod menu.").SetColor(TEXT_DEFAULT_COLOUR);
+    UI.CreateLabel(vert).SetText("You can queue build orders to place POIs on to the map.");
 
     if (game.Us == nil) then
         UI.CreateLabel(vert).SetText("Spectators can't create orders.").SetColor(ERROR_COLOUR);
@@ -45,11 +46,11 @@ function Client_PresentMenuUI(rootParent, setMaxSize, setScrollable, game, close
     MenuVisibilityLabel = UI.CreateLabel(vert);
     MenuStructureDropDown = CreateDropDown(horz, options, initialKey, function(name)
         local visibility = GetConfiguredVisibility(name);
-        MenuVisibilityLabel.SetText("Visibility: " .. GetVisibilityText(visibility)).SetColor(GetPoIStateColor(visibility));
+        MenuVisibilityLabel.SetText("POI Visibility: " .. GetVisibilityText(visibility)).SetColor(GetPoIStateColor(visibility));
     end);
 
     local initialVisibility = GetConfiguredVisibility(initialKey);
-    MenuVisibilityLabel.SetText("Visibility: " .. GetVisibilityText(initialVisibility)).SetColor(GetPoIStateColor(initialVisibility));
+    MenuVisibilityLabel.SetText("POI Visibility: " .. GetVisibilityText(initialVisibility)).SetColor(GetPoIStateColor(initialVisibility));
 
     MenuTargetTerritoryBtn = UI.CreateButton(horz)
         .SetText("Create Build Order")
@@ -61,6 +62,8 @@ function Client_PresentMenuUI(rootParent, setMaxSize, setScrollable, game, close
 
     ---- Extract Placement Configuration
     UI.CreateLabel(vert).SetText('Export Placement Configuration').SetColor(SUBHEADING_COLOUR);
+    UI.CreateLabel(vert).SetText("You can export the placement data from the POIs currently on the map and also include queued build orders.");
+    UI.CreateLabel(vert).SetText("Copy the exported data and paste it into the mod config's Placement Configuration field to use it in future games.");
 
     local extractHorz = UI.CreateHorizontalLayoutGroup(vert).SetFlexibleWidth(1);
     UI.CreateButton(extractHorz)

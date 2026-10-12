@@ -4,7 +4,8 @@ require("Utilities");
 ---@param rootParent RootParent
 function Client_PresentSettingsUI(rootParent)
     local descriptionVGroup = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
-    UI.CreateLabel(descriptionVGroup).SetText("This mod adds Points of Interest structures (Alpha to Zulu), placed on configured territories at the start of the game. They belong to the whole lobby and cannot be removed.");
+    UI.CreateLabel(descriptionVGroup).SetText("This mod adds Points of Interest (POI) structures (Alpha to Zulu), placed on configured territories at the start of the game.");
+    UI.CreateLabel(descriptionVGroup).SetText("They can modify the fog level of the territory they are on (excluding turn 0).");
 
     local modVGroup = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
     UI.CreateLabel(modVGroup).SetText("POI Config:");
@@ -27,8 +28,7 @@ function Client_PresentSettingsUI(rootParent)
         UI.CreateLabel(modVGroup).SetText("No placements configured").SetColor(BUTTON_COLOURS.DarkGray);
     end
 
-    -- Grouped by POI (NATO alphabetical order) rather than configured order, so every territory sharing a POI is
-    -- listed together
+    -- Grouped by POI (NATO alphabetical order) 
     for _, name in ipairs(NATO_NAMES) do
         local territoryNames = {};
         for _, placement in ipairs(placements) do

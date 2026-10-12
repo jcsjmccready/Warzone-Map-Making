@@ -90,8 +90,6 @@ function Client_PresentConfigureUI(rootParent)
 
         local row; -- forward declared, the delete button below needs to close over it before it's created
 
-        -- GetEnabledOptions itself, not a snapshot, so the row's dropdown always offers whatever is enabled at the
-        -- time it's opened, even if a POI is enabled/disabled after this row was created
         local dropdown; -- forward declared, its own onChanged below needs to close over it before it's created
         dropdown = CreateDropDown(rowHorz, GetEnabledOptions, initialKey, function(key)
             dropdown.Button.SetColor(GetPoIStateColor(poiStateDropDowns[key].GetKey()));
@@ -121,7 +119,7 @@ function Client_PresentConfigureUI(rootParent)
 
     ---- POI Config
     UI.CreateLabel(mainModUI).SetText('POI Config').SetColor(SUBHEADING_COLOUR);
-    UI.CreateLabel(mainModUI).SetText('If multiple POIs with conflicting fog levels end up on the same territory, No Fog takes priority over Light Fog, which takes priority over Fog.').SetColor(BUTTON_COLOURS.DarkGray);
+    UI.CreateLabel(mainModUI).SetText('You can enable/disable the POIs in this section, as well as configure if they modify the fog level on the territory they are on.');
 
     -- Two columns side by side (first half of the alphabet, then the second) so this section doesn't take up
     -- as much vertical space with all 26 letters
@@ -156,8 +154,9 @@ function Client_PresentConfigureUI(rootParent)
 
     ---- Territory POI Placement
     UI.CreateLabel(mainModUI).SetText('Territory POI Placement').SetColor(SUBHEADING_COLOUR);
-    UI.CreateLabel(mainModUI).SetText('Each row places one POI on the named territory at the start of the game.').SetColor(BUTTON_COLOURS.DarkGray);
-    UI.CreateLabel(mainModUI).SetText('Multiple of the same POI can exist on the same territory. They are displayed on the map ordered alphabetically, not by placement order.').SetColor(BUTTON_COLOURS.DarkGray);
+    UI.CreateLabel(mainModUI).SetText('Each row places one POI on the named territory at the start of the game.');
+    UI.CreateLabel(mainModUI).SetText('Structures are ordered alphabetically on territories.');
+    UI.CreateLabel(mainModUI).SetText('POIs with conflicting fog levels on the same territory will be resolved in the order they are placed, with the first one taking effect.');
 
     placementStatusLabel = UI.CreateLabel(mainModUI).SetText("");
 
@@ -166,8 +165,16 @@ function Client_PresentConfigureUI(rootParent)
     placementRowsContainer = UI.CreateVerticalLayoutGroup(mainModUI).SetFlexibleWidth(1);
 
     local headerHorz = UI.CreateHorizontalLayoutGroup(placementRowsContainer).SetFlexibleWidth(1);
-    UI.CreateLabel(headerHorz).SetText("POI").SetColor(TEXT_DEFAULT_COLOUR).SetAlignment(WL.TextAlignmentOptions.Center).SetPreferredWidth(120).SetMinWidth(0).SetFlexibleWidth(0);
-    UI.CreateLabel(headerHorz).SetText("Territory Name").SetColor(TEXT_DEFAULT_COLOUR).SetAlignment(WL.TextAlignmentOptions.Left).SetPreferredWidth(0).SetMinWidth(0).SetFlexibleWidth(1);
+    UI.CreateLabel(headerHorz).SetText("POI").SetAlignment(WL.TextAlignmentOptions.Center)
+    .SetPreferredWidth(120)
+    .SetMinWidth(0)
+    .SetFlexibleWidth(0);
+
+    UI.CreateLabel(headerHorz).SetText("Territory Name").SetAlignment(WL.TextAlignmentOptions.Left)
+    .SetPreferredWidth(0)
+    .SetMinWidth(0)
+    .SetFlexibleWidth(1);
+
     addPlacementBtn = UI.CreateButton(headerHorz)
         .SetText("+")
         .SetPreferredWidth(40)
@@ -175,6 +182,7 @@ function Client_PresentConfigureUI(rootParent)
         .SetFlexibleWidth(0)
         .SetColor(BUTTON_COLOURS.DarkGreen)
         .SetOnClick(function() AddPlacementRow(nil, nil); end);
+
     UpdateAddPlacementButtonState();
 
     for _, placement in ipairs(Mod.Settings.PoIPlacements or {}) do
@@ -185,28 +193,31 @@ function Client_PresentConfigureUI(rootParent)
 
     UI.CreateEmpty(mainModUI).SetPreferredHeight(10);
 
-    ---- Testing
-    UI.CreateLabel(mainModUI).SetText('Testing').SetColor(SUBHEADING_COLOUR);
-    UI.CreateLabel(mainModUI).SetText('This mod allows you to place POIs in a test game via the mod menu and then load that data into the config.').SetColor(BUTTON_COLOURS.DarkGray);
+    ---- Planning
+    UI.CreateLabel(mainModUI).SetText('Planning Mode').SetColor(SUBHEADING_COLOUR);
+    UI.CreateLabel(mainModUI).SetText('Planning mode lets a game-maker place POIs in game and then import the placement data into the mod config.');
+    UI.CreateLabel(mainModUI).SetText('When enabled, the in-game mod menu in the bottom left lets you place configured POIs.');
+    UI.CreateLabel(mainModUI).SetText('You can then export the placement data, copy it, exit the game/return to this config and paste the data into the text box below.');
+    UI.CreateLabel(mainModUI).SetText('Clicking the overwrite button will replace your existing placement configuration.');
 
-    local testingModeHeading; -- the destroyable wrapper holding the paste box + button, nil while Is Testing Mode is unchecked
+    local planningModeHeading; -- the destroyable wrapper holding the paste box + button, nil while Is Planning Mode is unchecked
 
-    local isTestingModeCheckBox = UI.CreateCheckBox(mainModUI).SetText('Is Testing Mode').SetIsChecked(Mod.Settings.IsTestingMode or false);
-    local testingModeContainer = UI.CreateVerticalLayoutGroup(mainModUI).SetFlexibleWidth(1);
+    local isPlanningModeCheckBox = UI.CreateCheckBox(mainModUI).SetText('Is Planning Mode').SetIsChecked(Mod.Settings.IsPlanningMode or false);
+    local planningModeContainer = UI.CreateVerticalLayoutGroup(mainModUI).SetFlexibleWidth(1);
 
-    ---Builds the paste box and its overwrite button, shown while Is Testing Mode is checked
-    local function Create_TestingModeUI()
-        testingModeHeading = UI.CreateVerticalLayoutGroup(testingModeContainer).SetFlexibleWidth(1);
+    ---Builds the paste box and its overwrite button, shown while Is Planning Mode is checked
+    local function Create_PlanningModeUI()
+        planningModeHeading = UI.CreateVerticalLayoutGroup(planningModeContainer).SetFlexibleWidth(1);
 
-        local testingDataField = UI.CreateTextInputField(testingModeHeading)
+        local planningDataField = UI.CreateTextInputField(planningModeHeading)
             .SetPlaceholderText("Paste to import placement data")
             .SetMultiLine(true)
             .SetPreferredHeight(100)
             .SetFlexibleWidth(1);
 
-        local overwriteStatusLabel = UI.CreateLabel(testingModeHeading).SetText("");
+        local overwriteStatusLabel = UI.CreateLabel(planningModeHeading).SetText("");
 
-        local overwriteConfigBtn = UI.CreateButton(testingModeHeading)
+        local overwriteConfigBtn = UI.CreateButton(planningModeHeading)
             .SetText("Overwrite Placement Configuration")
             .SetColor(BUTTON_COLOURS.DarkGreen)
             .SetFlexibleWidth(1)
@@ -214,12 +225,12 @@ function Client_PresentConfigureUI(rootParent)
 
         -- No dialog/modal API is available in this hook, so the confirmation is an inline Yes/No row that replaces
         -- itself with the result, instead of a floating popup
-        local confirmContainer = UI.CreateVerticalLayoutGroup(testingModeHeading).SetFlexibleWidth(1);
+        local confirmContainer = UI.CreateVerticalLayoutGroup(planningModeHeading).SetFlexibleWidth(1);
         local confirmHeading; -- the destroyable Yes/No prompt, nil while not confirming
 
         ---Actually overwrites the placement rows from the pasted data - only called once the player confirms
         local function DoOverwritePlacementConfiguration()
-            local placements = DeserializePlacementData(testingDataField.GetText());
+            local placements = DeserializePlacementData(planningDataField.GetText());
             if (placements == nil) then
                 overwriteStatusLabel.SetText("Couldn't read that data: " .. IO.Reader.GetError()).SetColor(ERROR_COLOUR);
                 return;
@@ -239,11 +250,11 @@ function Client_PresentConfigureUI(rootParent)
             if (skippedCount > 0) then
                 message = message .. " Skipped " .. skippedCount .. " for a disabled POI.";
             end
-            overwriteStatusLabel.SetText(message).SetColor(TEXT_DEFAULT_COLOUR);
+            overwriteStatusLabel.SetText(message);
         end
 
-        testingDataField.SetOnValueChanged(function()
-            local text = testingDataField.GetText();
+        planningDataField.SetOnValueChanged(function()
+            local text = planningDataField.GetText();
             overwriteConfigBtn.SetInteractable(text ~= nil and text ~= "");
         end);
 
@@ -274,23 +285,23 @@ function Client_PresentConfigureUI(rootParent)
         end);
     end
 
-    isTestingModeCheckBox.SetOnValueChanged(function()
-        if (isTestingModeCheckBox.GetIsChecked()) then
-            Create_TestingModeUI();
+    isPlanningModeCheckBox.SetOnValueChanged(function()
+        if (isPlanningModeCheckBox.GetIsChecked()) then
+            Create_PlanningModeUI();
         else
-            UI.Destroy(testingModeHeading);
+            UI.Destroy(planningModeHeading);
         end
     end);
 
     -- one time check for loading up from settings
-    if (isTestingModeCheckBox.GetIsChecked()) then
-        Create_TestingModeUI();
+    if (isPlanningModeCheckBox.GetIsChecked()) then
+        Create_PlanningModeUI();
     end
 
     -- Client_SaveConfigureUI reads this back once the player saves
     PoIConfigureState = {
         StateDropDowns = poiStateDropDowns,
         PlacementRows = placementRows,
-        IsTestingModeCheckBox = isTestingModeCheckBox,
+        IsPlanningModeCheckBox = isPlanningModeCheckBox,
     };
 end

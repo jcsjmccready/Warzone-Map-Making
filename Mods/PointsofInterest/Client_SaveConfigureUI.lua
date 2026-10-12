@@ -28,5 +28,5 @@ function Client_SaveConfigureUI(alert, addCard)
     Mod.Settings.PoIEnabled = enabled;
     Mod.Settings.PoIVisibility = visibility;
     Mod.Settings.PoIPlacements = placements;
-    Mod.Settings.IsTestingMode = PoIConfigureState.IsTestingModeCheckBox.GetIsChecked();
+    Mod.Settings.IsPlanningMode = PoIConfigureState.IsPlanningModeCheckBox.GetIsChecked();
 end

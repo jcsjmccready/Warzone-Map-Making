@@ -4,7 +4,6 @@ require("IO.Reader");
 CURRENT_SETTINGS_VERSION = 1;
 
 --NATO phonetic alphabet, A-Z. Each name is both the custom structure's name and its image filename
---(StructureImages/<Name>.png)
 NATO_NAMES = {
     "Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golf", "Hotel", "India", "Juliet", "Kilo", "Lima", "Mike",
     "November", "Oscar", "Papa", "Quebec", "Romeo", "Sierra", "Tango", "Uniform", "Victor", "Whiskey", "X-ray", "Yankee", "Zulu",
@@ -19,8 +18,7 @@ VISIBILITY_OPTIONS = {
 };
 DEFAULT_VISIBILITY = "Default";
 
---The POI Config dropdown's options: every visibility option, plus Disabled. Picking Disabled is how a POI is
---switched off - there's no separate enable/disable control
+-- VISIBILITY_OPTIONS + Disabled entry
 POI_STATE_OPTIONS = { { Key = "Disabled", Text = "Disabled" } };
 for _, option in ipairs(VISIBILITY_OPTIONS) do
     table.insert(POI_STATE_OPTIONS, option);
@@ -42,10 +40,8 @@ function GetVisibilityText(key)
     return key;
 end
 
---Colour for a POI Config dropdown button, by its selected POI_STATE_OPTIONS key, so enabled/disabled and the
---visibility level are readable at a glance without having to read the button text
----@param key string # one of POI_STATE_OPTIONS' keys ("Disabled", "NoFog", "LightFog", "Fog", "Default")
----@return string
+---@param key string # one of POI_STATE_OPTIONS
+---@return string # hex colour string
 function GetPoIStateColor(key)
     if (key == "Disabled") then
         return BUTTON_COLOURS.Charcoal;
@@ -59,10 +55,7 @@ function GetPoIStateColor(key)
     return BUTTON_COLOURS.RoyalBlue; -- Default
 end
 
---Converts a stored visibility key into the standing fog level a FogMod should apply. Returns nil for Default, which
---makes no changes so the lobby's own fog settings decide what is shown. LightFog shows only the territory's owner
---(StandingFogLevel.OwnerOnly) - the territory's structures (including this POI) are visible whenever the owner is,
---regardless of fog level, so this is effectively "owner + structures visible, armies hidden"
+--Converts a stored visibility key into the standing fog level a FogMod should apply.
 ---@param key string
 ---@return EnumStandingFogLevel | nil
 function GetStandingFogLevel(key)
@@ -87,9 +80,7 @@ function IsNatoName(name)
     return false;
 end
 
---Maps a single letter (case-insensitive) to its NATO alphabet name, e.g. "b" or "B" -> "Bravo". NATO_NAMES is in
---A-Z order, so the letter's position in the alphabet is also its index into NATO_NAMES.
----@param letter string
+---@param letter string # Must be a single letter A-Z, case-insensitive`
 ---@return string | nil # nil if letter isn't exactly one A-Z letter
 function GetNatoNameForLetter(letter)
     if (type(letter) ~= "string" or #letter ~= 1) then return nil; end
@@ -101,9 +92,8 @@ function GetNatoNameForLetter(letter)
     return NATO_NAMES[index];
 end
 
---The inverse of GetNatoNameForLetter, e.g. "Bravo" -> "B"
 ---@param name string # Must be a valid NATO alphabet name, the caller is expected to have validated this
----@return string
+---@return string # The first letter of the name, uppercased
 function GetLetterForNatoName(name)
     return string.sub(name, 1, 1);
 end
@@ -230,16 +220,7 @@ function ParseBuildPayload(payload)
     return name, tonumber(territoryID);
 end
 
---Pasteable text format for Territory POI Placement data, used to move a set of placements between a test game's
---mod menu (export) and a lobby's configure UI (import) - see Client_PresentMenuUI and Client_PresentConfigureUI.
---Reuses IO.Writer/IO.Reader (the same encoder ModAuth payloads use) rather than inventing a bespoke format. Stores
---the single-letter form (see GetLetterForNatoName) rather than the full NATO name, since it's trivial to convert
---back (GetNatoNameForLetter) and every byte counts in something meant to be pasted by hand.
-
----Serializes a list of placements into a pasteable string, grouped by letter (letter -> territory names) rather
----than one Letter+TerritoryName entry per placement - placement order doesn't matter (map rendering reorders
----same-territory structures alphabetically regardless, see the Territory POI Placement note), so grouping avoids
----repeating the same letter once per territory
+---Serializes a list of placements into a pasteable string, grouped by letter (letter -> territory names)
 ---@param placements PointsOfInterestPlacementSetting[]
 ---@return string
 function SerializePlacementData(placements)
@@ -253,14 +234,11 @@ function SerializePlacementData(placements)
     return IO.Writer.Write(grouped);
 end
 
----Parses a string produced by SerializePlacementData back into a list of placements. Returns nil if the string
----isn't validly-formatted placement data - check IO.Reader.GetError() for why when it does
+---Parses a string produced by SerializePlacementData back into a list of placements. Returns nil if the errored
 ---@param text string
 ---@return PointsOfInterestPlacementSetting[] | nil
 function DeserializePlacementData(text)
     local parsed = IO.Reader.Read(text, "table");
-    -- must be letter -> territory names (an object), not an array. An empty table round-trips as "{}" either way
-    -- (Writer treats an empty table as an object), and IsArray considers {} an array too, so that case is let through
     if (type(parsed) ~= "table" or (not IO.Util.TableIsEmpty(parsed) and IO.Util.IsArray(parsed))) then return nil; end
 
     local placements = {};
