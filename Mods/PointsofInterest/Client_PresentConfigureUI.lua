@@ -117,6 +117,8 @@ function Client_PresentConfigureUI(rootParent)
         table.insert(placementRows, row);
     end
 
+    UI.CreateEmpty(mainModUI).SetPreferredHeight(10);
+
     ---- POI Config
     UI.CreateLabel(mainModUI).SetText('POI Config').SetColor(SUBHEADING_COLOUR);
     UI.CreateLabel(mainModUI).SetText('You can enable/disable the POIs in this section, as well as configure if they modify the fog level on the territory they are on.');
