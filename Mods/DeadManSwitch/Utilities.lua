@@ -1,4 +1,6 @@
 
+LATEST_SETTINGS_VERSION = 1;
+
 function first(array, func)
 	for _,v in pairs(array) do
 		if (func == nil or func(v)) then
