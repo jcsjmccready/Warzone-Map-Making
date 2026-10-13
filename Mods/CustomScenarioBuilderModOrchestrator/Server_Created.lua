@@ -34,8 +34,8 @@ end
 ---@param game GameServerHook
 ---@param settings GameSettings
 function Server_Created(game, settings)
-	-- Proxy objects may hand back copies, so every level is read into a local,
-	-- mutated, then reassigned back up the chain (see .agents/game-data.md).
+	-- CustomScenario.Territories is not writable, so the territory is mutated in place
+	-- through the Territories table rather than reassigned back up the chain.
 	local scenario = settings.CustomScenario;
 	if (scenario == nil) then
 		print('[CSBMO] settings.CustomScenario is nil - is the game using the Custom Scenario distribution?');
@@ -57,7 +57,6 @@ function Server_Created(game, settings)
 
 	scenarioTerritory.SpecialUnits = specialUnits;
 	territories[TEST_TERRITORY_ID] = scenarioTerritory;
-	scenario.Territories = territories;
 	settings.CustomScenario = scenario;
 
 	print('[CSBMO] Added a Tank owned by player ' .. tostring(ownerID) .. ' to territory ' .. TEST_TERRITORY_ID .. '.');
