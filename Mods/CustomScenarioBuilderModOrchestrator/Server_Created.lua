@@ -30,6 +30,16 @@ local function BuildTank(ownerID)
 	return builder.Build();
 end
 
+---True if the player is still part of the lobby. At Server_Created invitees usually
+---haven't accepted yet, so Invited counts as well as Playing; Declined, RemovedByHost
+---and any other state is skipped.
+---@param player GamePlayer
+---@return boolean
+local function IsInLobby(player)
+	return player.State == WL.GamePlayerState.Playing
+		or player.State == WL.GamePlayerState.Invited;
+end
+
 ---Returns the PlayerID of the first player in the lobby, or nil if there are none.
 ---Players is keyed by PlayerID, so pairs() order is undefined; GamePlayerID is the
 ---per-game identifier assigned as players are added, so the lowest one is the first.
@@ -38,7 +48,7 @@ end
 local function GetFirstLobbyPlayerID(game)
 	local firstPlayer = nil;
 	for _, player in pairs(game.Game.Players) do
-		if (firstPlayer == nil or player.GamePlayerID < firstPlayer.GamePlayerID) then
+		if (IsInLobby(player) and (firstPlayer == nil or player.GamePlayerID < firstPlayer.GamePlayerID)) then
 			firstPlayer = player;
 		end
 	end
