@@ -30,6 +30,24 @@ local function BuildTank(ownerID)
 	return builder.Build();
 end
 
+---Returns the PlayerID of the first player in the lobby, or nil if there are none.
+---Players is keyed by PlayerID, so pairs() order is undefined; GamePlayerID is the
+---per-game identifier assigned as players are added, so the lowest one is the first.
+---@param game GameServerHook
+---@return PlayerID | nil
+local function GetFirstLobbyPlayerID(game)
+	local firstPlayer = nil;
+	for _, player in pairs(game.Game.Players) do
+		if (firstPlayer == nil or player.GamePlayerID < firstPlayer.GamePlayerID) then
+			firstPlayer = player;
+		end
+	end
+	if (firstPlayer == nil) then
+		return nil;
+	end
+	return firstPlayer.ID;
+end
+
 ---Server_Created hook
 ---@param game GameServerHook
 ---@param settings GameSettings
@@ -49,14 +67,20 @@ function Server_Created(game, settings)
 		return;
 	end
 
-	-- No players are assigned at this point, so the tank starts neutral-owned.
+	-- Special units can't be neutral-owned, so give the tank to the first player in the lobby.
+	local ownerID = GetFirstLobbyPlayerID(game);
+	if (ownerID == nil) then
+		print('[CSBMO] No players in the lobby to own the Tank.');
+		return;
+	end
+
 	local specialUnits = scenarioTerritory.SpecialUnits or {};
-	table.insert(specialUnits, BuildTank(WL.PlayerID.Neutral));
+	table.insert(specialUnits, BuildTank(ownerID));
 
 	scenarioTerritory.SpecialUnits = specialUnits;
 	territories[TEST_TERRITORY_ID] = scenarioTerritory;
 	scenario.Territories = territories;
 	settings.CustomScenario = scenario;
 
-	print('[CSBMO] Added a Tank to territory ' .. TEST_TERRITORY_ID .. '.');
+	print('[CSBMO] Added a Tank owned by player ' .. ownerID .. ' to territory ' .. TEST_TERRITORY_ID .. '.');
 end
