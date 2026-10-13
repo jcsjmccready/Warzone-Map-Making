@@ -4,9 +4,9 @@
 -- custom scenario from Server_Created, so it is on the map when the game starts.
 --
 -- For this first test we hard-code a single Tank (stats copied from
--- FizzerWL/ExampleMods TanksMod) onto territory ID 0.
+-- FizzerWL/ExampleMods TanksMod) onto territory ID 1.
 
-local TEST_TERRITORY_ID = 0;
+local TEST_TERRITORY_ID = 1;
 local TANK_POWER = 5;
 
 ---Builds a Tank custom special unit, matching TanksMod's definition.
