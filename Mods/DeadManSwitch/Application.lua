@@ -3,6 +3,7 @@ require("Interface");
 require("Actions.ManualDamage");
 require("Actions.VanillaCards");
 require("Actions.Income");
+require("CustomScenarioBuilder");
 
 DeadManSwitchApplication = {};
 
@@ -324,4 +325,11 @@ end
 ---@param addNewOrder fun(order: GameOrder)
 function DeadManSwitchApplication.PlayPendingDiplomacy(addNewOrder)
     Actions.VanillaCards.Diplomacy.PlayPending(addNewOrder);
+end
+
+---@param placeholder CustomScenarioBuilderPlaceholder
+---@param territoryStanding TerritoryStanding
+function DeadManSwitchApplication.ResolveCustomScenarioBuilderPlaceholder(placeholder, territoryStanding)
+    local structureID = WL.StructureType.Custom("Dead Man's Switch");
+    CustomScenarioBuilder.ReplacePlaceholder(placeholder, territoryStanding, { AddStructures = { [structureID] = 1 } });
 end
