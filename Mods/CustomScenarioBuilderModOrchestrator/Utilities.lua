@@ -13,6 +13,28 @@ PLACEMENT_TYPE_OPTIONS = {
 };
 DEFAULT_PLACEMENT_TYPE = "SpecialUnit";
 
+---Formats one placement as "Territory Name: PlacementName [Type]" for display - e.g. in Client_PresentSettingsUI
+---and Client_GameRefresh's unreplaced-Placeholder warning.
+---@param placement PlaceholderPlacementSetting
+---@return string
+function FormatPlacementLine(placement)
+    local placementType = placement.Type or DEFAULT_PLACEMENT_TYPE;
+    return placement.TerritoryName .. ": " .. (placement.PlacementName or "(no Placement Name)") .. " [" .. GetOptionText(PLACEMENT_TYPE_OPTIONS, placementType) .. "]";
+end
+
+---Returns a shallow copy of placements sorted alphabetically (case-insensitive) by TerritoryName - the order rows
+---were added in the configuration UI isn't a sensible display order.
+---@param placements PlaceholderPlacementSetting[]
+---@return PlaceholderPlacementSetting[]
+function SortPlacementsByTerritoryName(placements)
+    local sorted = {};
+    for _, placement in ipairs(placements) do
+        table.insert(sorted, placement);
+    end
+    table.sort(sorted, function(a, b) return string.lower(a.TerritoryName) < string.lower(b.TerritoryName); end);
+    return sorted;
+end
+
 -- Encoded into every placed Placeholder's own ModData field, so any other mod can read what it's standing in for
 -- without needing access to this mod's own Settings (Mod.* storages are private per-mod; ModData lives on the
 -- unit itself and survives the unit being cloned, e.g. during combat). Uses the same quoted-string, "{key:value}"

@@ -4,6 +4,7 @@ require("Application");
 local SEEN_FLAG_BY_ACTION = {
     MarkPlacementWarningsSeen = "SeenPlacementWarnings",
     MarkNotCustomScenarioWarningSeen = "SeenNotCustomScenarioWarning",
+    MarkUnreplacedPlaceholdersWarningSeen = "SeenUnreplacedPlaceholdersWarning",
 };
 
 ---@param game GameServerHook

@@ -14,12 +14,7 @@ function Client_PresentSettingsUI(rootParent)
         UI.CreateLabel(modVGroup).SetText("No placements configured").SetColor(BUTTON_COLOURS.DarkGray);
     end
 
-    for _, placement in ipairs(placements) do
-        local placementType = placement.Type or DEFAULT_PLACEMENT_TYPE;
-        local text = "[" .. GetOptionText(PLACEMENT_TYPE_OPTIONS, placementType) .. "] " .. placement.TerritoryName;
-        if (placement.PlacementName ~= nil) then
-            text = text .. "  (" .. placement.PlacementName .. ")";
-        end
-        UI.CreateLabel(modVGroup).SetText(text);
+    for _, placement in ipairs(SortPlacementsByTerritoryName(placements)) do
+        UI.CreateLabel(modVGroup).SetText(FormatPlacementLine(placement));
     end
 end

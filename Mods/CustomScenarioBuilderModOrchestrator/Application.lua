@@ -14,6 +14,7 @@ CustomScenarioBuilderModOrchestratorApplication = {};
 ---@class CustomScenarioBuilderModOrchestratorPlayerGameData # Per-player mod data. Set server-side via Server_GameCustomMessage
 ---@field SeenPlacementWarnings boolean | nil # Set once Client_GameRefresh has alerted this player about PlacementWarnings, so it only ever alerts them once
 ---@field SeenNotCustomScenarioWarning boolean | nil # Set once Client_GameRefresh has alerted this player about NotUsingCustomScenario, so it only ever alerts them once
+---@field SeenUnreplacedPlaceholdersWarning boolean | nil # Set once Client_GameRefresh has alerted this player about a Placeholder nothing ever resolved, so it only ever alerts them once
 
 ---Builds a Placeholder custom special unit: a stand-in for a structure or special unit from another mod.
 ---@param ownerID PlayerID
