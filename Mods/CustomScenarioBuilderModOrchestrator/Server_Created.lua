@@ -30,25 +30,24 @@ local function BuildTank(ownerID)
 	return builder.Build();
 end
 
----True if the player is still part of the lobby. At Server_Created invitees usually
----haven't accepted yet, so Invited counts as well as Playing; Declined, RemovedByHost
----and any other state is skipped.
+---True if the player could be the game creator. The API has no creator field, but at
+---Server_Created invitees are still Invited, so the creator is the human who is already
+---Playing. AIs added by the creator are excluded.
 ---@param player GamePlayer
 ---@return boolean
-local function IsInLobby(player)
-	return player.State == WL.GamePlayerState.Playing
-		or player.State == WL.GamePlayerState.Invited;
+local function IsCreatorCandidate(player)
+	return player.State == WL.GamePlayerState.Playing and not player.IsAI;
 end
 
----Returns the PlayerID of the first player in the lobby, or nil if there are none.
----Players is keyed by PlayerID, so pairs() order is undefined; GamePlayerID is the
----per-game identifier assigned as players are added, so the lowest one is the first.
+---Returns the PlayerID of the game creator, or nil if none can be found.
+---Players is keyed by PlayerID, so pairs() order is undefined; if more than one player
+---qualifies, the lowest GamePlayerID (the earliest added) is taken.
 ---@param game GameServerHook
 ---@return PlayerID | nil
-local function GetFirstLobbyPlayerID(game)
+local function GetGameCreatorID(game)
 	local firstPlayer = nil;
 	for _, player in pairs(game.Game.Players) do
-		if (IsInLobby(player) and (firstPlayer == nil or player.GamePlayerID < firstPlayer.GamePlayerID)) then
+		if (IsCreatorCandidate(player) and (firstPlayer == nil or player.GamePlayerID < firstPlayer.GamePlayerID)) then
 			firstPlayer = player;
 		end
 	end
@@ -77,10 +76,10 @@ function Server_Created(game, settings)
 		return;
 	end
 
-	-- Special units can't be neutral-owned, so give the tank to the first player in the lobby.
-	local ownerID = GetFirstLobbyPlayerID(game);
+	-- Special units can't be neutral-owned, so give the tank to the game creator.
+	local ownerID = GetGameCreatorID(game);
 	if (ownerID == nil) then
-		print('[CSBMO] No players in the lobby to own the Tank.');
+		print('[CSBMO] Could not find the game creator to own the Tank.');
 		return;
 	end
 
