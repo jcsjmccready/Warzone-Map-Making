@@ -1,4 +1,5 @@
 require("Utilities");
+require("Templates");
 
 ---Client_PresentConfigureUI hook
 ---@param rootParent RootParent
@@ -79,9 +80,37 @@ function Client_PresentConfigureUI(rootParent)
     UI.CreateEmpty(mainModUI).SetPreferredHeight(10);
 
     ---- Placeholder Placement
-    UI.CreateLabel(mainModUI).SetText('Placeholder Placement').SetColor(SUBHEADING_COLOUR);
-    UI.CreateLabel(mainModUI).SetText('Each row places a Placeholder special unit on the named territory at the start of the game.');
-    UI.CreateLabel(mainModUI).SetText('Placeholders stand in for a structure or special unit from another mod. Every placement is placed as the same Placeholder special unit regardless of Type - that field is tracking data only - but Placement Name matters: a supporting mod matches against it exactly to know which placeholders are meant for it.');
+    UI.CreateLabel(mainModUI).SetText('Structure/Special Unit Placement').SetColor(SUBHEADING_COLOUR);
+    UI.CreateLabel(mainModUI).SetText('Each row places a special unit/structure on the named territory at the start of the game.');
+    UI.CreateLabel(mainModUI).SetText('Placement Name must match the name of the desired special unlike unit/structure, and Territory Name must match the name of a territory on the map.');
+
+    UI.CreateEmpty(mainModUI).SetPreferredHeight(10);
+
+    local addRowHorz = UI.CreateHorizontalLayoutGroup(mainModUI).SetFlexibleWidth(1);
+    UI.CreateButton(addRowHorz)
+        .SetText("Add Row")
+        .SetColor(BUTTON_COLOURS.DarkGreen)
+        .SetPreferredWidth(0)
+        .SetMinWidth(0)
+        .SetFlexibleWidth(1)
+        .SetOnClick(function() AddPlacementRow(nil, nil, nil); end);
+
+    UI.CreateButton(addRowHorz)
+        .SetText("Add from Template")
+        .SetColor(BUTTON_COLOURS.DarkGreen)
+        .SetPreferredWidth(0)
+        .SetMinWidth(0)
+        .SetFlexibleWidth(1)
+        .SetOnClick(function()
+            local list = {};
+            for _, template in ipairs(PLACEMENT_TEMPLATES) do
+                table.insert(list, {
+                    text = template.Text,
+                    selected = function() AddPlacementRow(template.Type, template.PlacementName, nil); end,
+                });
+            end
+            UI.PromptFromList("Select a template", list);
+        end);
 
     -- The header row is added as the first child of placementRowsContainer, below, rather than as a sibling of it -
     -- that way it shares the exact same layout context as the rows and its columns line up with theirs
@@ -105,14 +134,6 @@ function Client_PresentConfigureUI(rootParent)
         .SetMinWidth(0)
         .SetFlexibleWidth(0);
 
-    UI.CreateButton(headerHorz)
-        .SetText("+")
-        .SetPreferredWidth(40)
-        .SetMinWidth(0)
-        .SetFlexibleWidth(0)
-        .SetColor(BUTTON_COLOURS.DarkGreen)
-        .SetOnClick(function() AddPlacementRow(nil, nil, nil); end);
-
     for _, placement in ipairs(Mod.Settings.PlaceholderPlacements or {}) do
         AddPlacementRow(placement.Type, placement.PlacementName, placement.TerritoryName);
     end
@@ -121,9 +142,9 @@ function Client_PresentConfigureUI(rootParent)
 
     ---- Planning
     UI.CreateLabel(mainModUI).SetText('Planning Mode').SetColor(SUBHEADING_COLOUR);
-    UI.CreateLabel(mainModUI).SetText('Planning mode lets a game-maker lay out a map with real structures/special units (e.g. from other installed mods) and then export that layout into this mod config.');
-    UI.CreateLabel(mainModUI).SetText('When enabled, the in-game mod menu in the bottom left lets you place a vanilla structure on a territory as a visual marker, and export every structure/special unit currently on the map.');
-    UI.CreateLabel(mainModUI).SetText('You can then export the placement data, copy it, exit the game/return to this config and paste the data into the text box below.');
+    UI.CreateLabel(mainModUI).SetText('Planning mode is a convenience option, providing an alternative method of entering where to place structures/special units on the map.');
+    UI.CreateLabel(mainModUI).SetText('When enabled, launch into a game and using the mod-menu in the bottom left, export the placement data. Then return to this config and paste the data into the text box below.');
+    UI.CreateLabel(mainModUI).SetText('Additionally, using the mod-menu you can place vanilla structures on the map.');
     UI.CreateLabel(mainModUI).SetText('Clicking the overwrite button will replace your existing placement configuration.');
 
     local planningModeHeading; -- the destroyable wrapper holding the paste box + button, nil while Is Planning Mode is unchecked
