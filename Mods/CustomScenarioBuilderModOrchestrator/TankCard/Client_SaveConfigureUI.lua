@@ -1,41 +1,25 @@
-require("Utilities");
-
----Client_SaveConfigureUI hook
----@param alert fun(message: string) # Alert the player that something is wrong, for example, when a setting is not configured correctly. When invoked, cancels the player from saving and returning
----@param addCard fun(name: string, description: string, filename: string, piecesForWholeCard: integer, piecesPerTurn: integer, initialPieces: integer, cardWeight: number, duration: integer | nil, expireBehaviour: ActiveCardExpireBehaviorOptions): CardID
 function Client_SaveConfigureUI(alert, addCard)
-    Mod.Settings.Version = CURRENT_SETTINGS_VERSION;
+	local numPieces = numPiecesField.GetValue();
+	local cardWeight = cardWeightField.GetValue();
+	local minPieces = minPiecesField.GetValue();
+	local initialPieces = initialPiecesField.GetValue();
 
-    Mod.Settings.NumPieces = numPieces.GetValue();
-    Mod.Settings.CardWeight = cardWeight.GetValue();
-    Mod.Settings.MinPieces = minPieces.GetValue();
-    Mod.Settings.InitialPieces = initialPieces.GetValue();
+	if numPieces < 1 then alert('Number of pieces must be positive'); return; end
+	if cardWeight < 0 then alert('Card weight cannot be negative'); return; end
+	if minPieces < 0 then alert('Minimum pieces cannot be negative'); return; end
+	if initialPieces < 0 then alert('Initial pieces cannot be negative'); return; end
 
-    if (Mod.Settings.NumPieces < 1) then
-        alert("Number of pieces cannot be less than 1");
-        return;
-    end
-    if (Mod.Settings.CardWeight < 0) then
-        alert("Card weight cannot be less than 0");
-        return;
-    end
-    if (Mod.Settings.MinPieces < 0) then
-        alert("Minimum pieces cannot be less than 0");
-        return;
-    end
-    if (Mod.Settings.InitialPieces < 0) then
-        alert("Initial pieces cannot be less than 0");
-        return;
-    end
+	Mod.Settings.NumPieces = numPieces;
+	Mod.Settings.CardWeight = cardWeight;
+	Mod.Settings.MinPieces = minPieces;
+	Mod.Settings.InitialPieces = initialPieces;
 
-    local tankCardID = addCard(
-        "Tank Card",
-        "Play this card to build a Tank on any territory you control (at the end of the turn).",
-        "TankCard.png",
-        Mod.Settings.NumPieces,
-        Mod.Settings.MinPieces,
-        Mod.Settings.InitialPieces,
-        Mod.Settings.CardWeight);
-
-    Mod.Settings.TankCardID = tankCardID;
+	Mod.Settings.TankCardID = addCard(
+		"Tank Card",
+		"Play this card to build a Tank on any territory you control (at the end of the turn).",
+		"TankCard.png",
+		numPieces,
+		minPieces,
+		initialPieces,
+		cardWeight);
 end
