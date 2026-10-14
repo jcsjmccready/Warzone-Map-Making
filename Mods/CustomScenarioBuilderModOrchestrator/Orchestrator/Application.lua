@@ -11,12 +11,14 @@ CustomScenarioBuilderModOrchestratorApplication = {};
 ---@field PlacementWarnings string[] | nil # Set once by PlacePlaceholders - territory names from Mod.Settings.PlaceholderPlacements that couldn't be found on the map. Read by Client_GameRefresh to alert the game-maker
 ---@field NotUsingCustomScenario boolean | nil # Set once by PlacePlaceholders if Placeholder Placement is configured but settings.CustomScenario is nil - the game isn't using the Custom Scenario distribution, so nothing can be placed. Read by Client_GameRefresh to alert the game-maker
 ---@field VanillaStructureNames table<EnumStructureType, string> | nil # Set once by PublishVanillaStructureNames - WL.StructureType.<field> -> its VANILLA_STRUCTURE_TYPES display name, precomputed since resolving it needs a server hook. Read by Client_PresentMenuUI's Planning Mode map scan, which otherwise has no way to name a structure ID it finds back
+---@field NoSpareSlotForNeutralPlacements boolean | nil # Set once by PlacePlaceholders - true if a neutral (non-player-start) territory needed a Slot borrowed/invented for it, but every slot up to MAX_KNOWN_VALID_SLOT is already in use. Read by Client_GameRefresh to alert the game-maker
 
 ---@class CustomScenarioBuilderModOrchestratorPlayerGameData # Per-player mod data. Set server-side via Server_GameCustomMessage
 ---@field SeenPlacementWarnings boolean | nil # Set once Client_GameRefresh has alerted this player about PlacementWarnings, so it only ever alerts them once
 ---@field SeenNotCustomScenarioWarning boolean | nil # Set once Client_GameRefresh has alerted this player about NotUsingCustomScenario, so it only ever alerts them once
 ---@field SeenUnreplacedPlaceholdersWarning boolean | nil # Set once Client_GameRefresh has alerted this player about a Placeholder nothing ever resolved, so it only ever alerts them once
 ---@field SeenPlanningModeWarning boolean | nil # Set once Client_GameRefresh has warned this player that Mod.Settings.IsPlanningMode is still enabled, so it only ever warns them once
+---@field SeenNoSpareSlotWarning boolean | nil # Set once Client_GameRefresh has warned this player about NoSpareSlotForNeutralPlacements, so it only ever warns them once
 
 ---Builds a Placeholder custom special unit: a stand-in for a structure or special unit from another mod.
 ---@param ownerID PlayerID
@@ -61,15 +63,33 @@ function CustomScenarioBuilderModOrchestratorApplication.PlacePlaceholders(game,
     local territories = scenario.Territories;
     local ownerID = WL.PlayerID.Neutral;
 
-    -- EXPERIMENTAL: under the "Custom Scenario" distribution mode, a territory with no Slot assigned may be
-    -- getting ignored entirely by the engine, regardless of what we put in its SpecialUnits - testing whether
-    -- giving every touched territory its own Slot (reusing its TerritoryID as an arbitrary, unique Slot value)
-    -- makes the engine actually apply our data to non-player-start/neutral territories.
-    local slotsAvailable = scenario.SlotsAvailable or {};
-    local existingSlots = {};
-    for _, slot in ipairs(slotsAvailable) do existingSlots[slot] = true; end
+    -- Under the "Custom Scenario" distribution mode, the engine ignores a territory's CustomScenario data
+    -- entirely unless that territory has a Slot assigned (confirmed by testing: a neutral territory with no
+    -- Slot got no structures/special units placed on it at all, while a player-start territory - which already
+    -- has a Slot from the normal distribution - worked). Slot has to be an integer, not the letter the client
+    -- displays it as ("Found string of (C), expected Integer").
+    -- game.Game.Players[*].Slot is unset for everyone this early in the hook lifecycle, so "already claimed" is
+    -- read instead from the pre-existing entries in territories itself - a player-start territory already
+    -- carries its owner's real Slot from the normal distribution before this function ever touches it.
+    -- If every existing slot is already claimed, the next sequential one (one past the highest in use) is
+    -- invented and added to scenario.SlotsAvailable - confirmed working even for a slot the game wasn't
+    -- originally created with, so game-makers don't need to set up a spare slot themselves. One shared slot is
+    -- reused for every neutral territory here, the same way a real player's own Slot ends up on every one of
+    -- their several starting territories - one spare slot is enough for any number of neutral placements, not
+    -- one per territory.
+    local maxSlot = -1;
+    for _, slot in ipairs(scenario.SlotsAvailable or {}) do
+        if (slot > maxSlot) then maxSlot = slot; end
+    end
+
+    local sharedNeutralSlot = maxSlot + 1;
+    local slotLimitReached = sharedNeutralSlot > MAX_KNOWN_VALID_SLOT;
+    if (not slotLimitReached) then
+        table.insert(scenario.SlotsAvailable, sharedNeutralSlot);
+    end
 
     local missingTerritoryNames = {};
+    local neutralPlacementsSkipped = false; -- true if a neutral territory needed sharedNeutralSlot but slotLimitReached
     for _, placement in ipairs(Mod.Settings.PlaceholderPlacements or {}) do
         local territoryID = FindTerritoryIDByName(game, placement.TerritoryName);
 
@@ -77,14 +97,14 @@ function CustomScenarioBuilderModOrchestratorApplication.PlacePlaceholders(game,
             table.insert(missingTerritoryNames, placement.TerritoryName);
         else
             local scenarioTerritory = territories[territoryID]
-                or { TerritoryID = territoryID, InitialArmies = 0, SpecialUnits = {}, Slot = territoryID };
+                or { TerritoryID = territoryID, InitialArmies = 0, SpecialUnits = {} };
 
             if (scenarioTerritory.Slot == nil) then
-                scenarioTerritory.Slot = territoryID;
-            end
-            if (not existingSlots[scenarioTerritory.Slot]) then
-                existingSlots[scenarioTerritory.Slot] = true;
-                table.insert(slotsAvailable, scenarioTerritory.Slot);
+                if (slotLimitReached) then
+                    neutralPlacementsSkipped = true;
+                else
+                    scenarioTerritory.Slot = sharedNeutralSlot;
+                end
             end
 
             local specialUnit = CustomScenarioBuilderModOrchestratorApplication.BuildPlaceholder(
@@ -99,11 +119,11 @@ function CustomScenarioBuilderModOrchestratorApplication.PlacePlaceholders(game,
         end
     end
 
-    scenario.SlotsAvailable = slotsAvailable;
     settings.CustomScenario = scenario;
 
     local pub = Mod.PublicGameData or {} --[[@as CustomScenarioBuilderModOrchestratorPublicGameData]];
     pub.PlacementWarnings = missingTerritoryNames;
+    pub.NoSpareSlotForNeutralPlacements = neutralPlacementsSkipped;
     Mod.PublicGameData = pub;
 end
 

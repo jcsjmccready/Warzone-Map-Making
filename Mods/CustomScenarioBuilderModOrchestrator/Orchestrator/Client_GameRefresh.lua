@@ -43,7 +43,9 @@ function Client_GameRefresh(game)
 
     local showPlanningModeWarning = Mod.Settings.IsPlanningMode and not (playerData ~= nil and playerData.SeenPlanningModeWarning);
 
-    if (not showPlacementWarnings and not showNotCustomScenarioWarning and not showUnreplacedPlaceholdersWarning and not showPlanningModeWarning) then return; end;
+    local showNoSpareSlotWarning = (pub ~= nil and pub.NoSpareSlotForNeutralPlacements == true) and not (playerData ~= nil and playerData.SeenNoSpareSlotWarning);
+
+    if (not showPlacementWarnings and not showNotCustomScenarioWarning and not showUnreplacedPlaceholdersWarning and not showPlanningModeWarning and not showNoSpareSlotWarning) then return; end;
 
     -- UI.Alert only shows the latest call, so every warning that applies has to go in a single call rather than
     -- separate ones - otherwise whichever fires second silently replaces the first
@@ -60,6 +62,9 @@ function Client_GameRefresh(game)
     if (showPlanningModeWarning) then
         table.insert(messageParts, "Custom Scenario Builder (Mod Support): Planning Mode is enabled. Remember to disable it before starting a real game.");
     end
+    if (showNoSpareSlotWarning) then
+        table.insert(messageParts, "Custom Scenario Builder (Mod Support): All possible slots (A-OJ) are used. One unused slot is required for this mod.");
+    end
     UI.Alert(table.concat(messageParts, "\n\n"));
 
     -- tells the server to remember this player has seen whichever of these applied, so they aren't shown again
@@ -74,5 +79,8 @@ function Client_GameRefresh(game)
     end
     if (showPlanningModeWarning) then
         game.SendGameCustomMessage("Custom Scenario Builder Mod Orchestrator", { Action = "MarkPlanningModeWarningSeen" }, function(_) end);
+    end
+    if (showNoSpareSlotWarning) then
+        game.SendGameCustomMessage("Custom Scenario Builder Mod Orchestrator", { Action = "MarkNoSpareSlotWarningSeen" }, function(_) end);
     end
 end

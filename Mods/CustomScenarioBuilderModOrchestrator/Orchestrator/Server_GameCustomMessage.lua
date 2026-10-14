@@ -6,6 +6,7 @@ local SEEN_FLAG_BY_ACTION = {
     MarkNotCustomScenarioWarningSeen = "SeenNotCustomScenarioWarning",
     MarkUnreplacedPlaceholdersWarningSeen = "SeenUnreplacedPlaceholdersWarning",
     MarkPlanningModeWarningSeen = "SeenPlanningModeWarning",
+    MarkNoSpareSlotWarningSeen = "SeenNoSpareSlotWarning",
 };
 
 ---@param game GameServerHook

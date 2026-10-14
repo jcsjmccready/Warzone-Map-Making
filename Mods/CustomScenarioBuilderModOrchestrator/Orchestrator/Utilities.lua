@@ -1,5 +1,12 @@
 CURRENT_SETTINGS_VERSION = 1;
 
+-- Custom Scenario Slots display as letters (A, B, ... Z, AA, AB, ...) - bijective base-26 with A=1, shifted down
+-- by one since Slot itself is 0-indexed (observed: a 2-slot, A/B game has CustomScenario.SlotsAvailable = {0, 1}).
+-- The highest ever actually observed in practice is "OJ" (1-indexed bijective value 15*26+10 = 400, so integer
+-- 399) on a very large template - used as the practical ceiling past which inventing a new slot for a neutral
+-- Placeholder Placement is assumed to risk the same "InvalidSlot" rejection an out-of-range value got in testing.
+MAX_KNOWN_VALID_SLOT = 399;
+
 -- The name (and SpecialUnitImages filename) of this mod's stand-in special unit. Placed on configured
 -- territories at game creation, to later be swapped out for a structure or special unit from another mod
 -- once that cross-mod replacement step is built.
@@ -21,12 +28,7 @@ PLACEMENT_TYPE_DROPDOWN_OPTIONS = {
     { Key = "SpecialUnit", Text = "Unit" },
 };
 
--- Fixed column widths shared between Client_PresentConfigureUI's header row and its placement rows, so the two
--- always line up regardless of what a player types into either field (see the comment on placementNameField there).
--- Sized to fit PLACEMENT_TYPE_DROPDOWN_OPTIONS's short Text values ("Struct"/"Unit"), not the full option names.
 TYPE_FIELD_WIDTH = 80;
--- Territory Name gets a bit more than Placement Name, since it has to exactly match a real (sometimes fairly long)
--- map territory name, while Placement Name is just a free-text label the game-maker picks for their own tracking.
 PLACEMENT_NAME_FIELD_WIDTH = 160;
 TERRITORY_NAME_FIELD_WIDTH = 200;
 
