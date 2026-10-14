@@ -44,27 +44,15 @@ function Client_PresentMenuUI(rootParent, setMaxSize, setScrollable, game, close
 
     ---- Extract Placement Configuration
     UI.CreateLabel(vert).SetText('Export Placement Configuration').SetColor(SUBHEADING_COLOUR);
-    UI.CreateLabel(vert).SetText("Exports every structure CSBMO recognizes (vanilla structures only - a custom structure from another mod has no name once placed) and every custom special unit currently on the map, by its own name.");
-    UI.CreateLabel(vert).SetText("Copy the exported data and paste it into the mod config's Placement Configuration field to use it in future games.");
+    UI.CreateLabel(vert).SetText("Exports the positional information of the structures and custom orders on the map.");
+    UI.CreateLabel(vert).SetText("Copy the exported data and paste it into the mod config's import section.");
 
-    local extractHorz = UI.CreateHorizontalLayoutGroup(vert).SetFlexibleWidth(1);
-    UI.CreateButton(extractHorz)
-        .SetText("Config from Map")
+    UI.CreateButton(vert)
+        .SetText("Export Structures/Special Units on Map")
         .SetColor(BUTTON_COLOURS.RoyalBlue)
         .SetFlexibleWidth(1)
         .SetOnClick(function()
             MenuExtractedConfigField.SetText(SerializePlacementData(GetPlacementsFromMap(game)));
-        end);
-    UI.CreateButton(extractHorz)
-        .SetText("Config from Map + Queued Orders")
-        .SetColor(BUTTON_COLOURS.RoyalBlue)
-        .SetFlexibleWidth(1)
-        .SetOnClick(function()
-            local placements = GetPlacementsFromMap(game);
-            for _, placement in ipairs(GetQueuedOrderPlacements(game)) do
-                table.insert(placements, placement);
-            end
-            MenuExtractedConfigField.SetText(SerializePlacementData(placements));
         end);
 
     MenuExtractedConfigField = UI.CreateTextInputField(vert)
@@ -104,24 +92,6 @@ function GetPlacementsFromMap(game)
         end
     end
 
-    return placements;
-end
-
---Scans the player's current (not yet processed) order list for queued Planning Mode build orders, for
---"Config from Map + Queued Orders" - these haven't reached LatestStanding yet, so GetPlacementsFromMap misses them
----@param game GameClientHook
----@return PlaceholderPlacementSetting[]
-function GetQueuedOrderPlacements(game)
-    local placements = {};
-    for _, order in ipairs(game.Orders) do
-        if (order.proxyType == 'GameOrderCustom') then
-            ---@cast order GameOrderCustom
-            local structureName, territoryID = ParsePlanningPayload(order.Payload);
-            if (structureName ~= nil) then
-                table.insert(placements, { Type = "Structure", PlacementName = structureName, TerritoryName = game.Map.Territories[territoryID].Name });
-            end
-        end
-    end
     return placements;
 end
 
