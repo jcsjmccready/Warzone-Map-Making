@@ -10,8 +10,8 @@ this list only summarizes what's in each file and when it applies.
 
 - **[.agents/settings.md](.agents/settings.md)** - Read before touching `Client_SaveConfigureUI.lua`,
   `Client_PresentConfigureUI.lua`, or anything that reads `Mod.Settings`. Covers the settings-version
-  convention (`Mod.Settings.Version`, migrations) and the rule that a mutually-exclusive settings
-  toggle must null out the inactive side on every save.
+  convention (`Mod.Settings.Version`, migrations), keeping validation `alert(...)` messages plain, and
+  the rule that a mutually-exclusive settings toggle must null out the inactive side on every save.
 - **[.agents/game-data.md](.agents/game-data.md)** - Read before writing to or reading from
   `Mod.Settings`, `Mod.PrivateGameData`, `Mod.PublicGameData` or `Mod.PlayerGameData` anywhere (hooks,
   `Application.lua`, etc.). Covers where card IDs and custom structure type IDs must be stored, and
