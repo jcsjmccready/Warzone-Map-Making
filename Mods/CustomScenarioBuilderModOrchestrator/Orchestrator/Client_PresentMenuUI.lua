@@ -62,11 +62,9 @@ function Client_PresentMenuUI(rootParent, setMaxSize, setScrollable, game, close
         .SetFlexibleWidth(1);
 end
 
---Scans every territory on the map for existing structures and custom special units, exporting one placement entry
---per instance - "Config from Map". Structures: only vanilla types CSBMO knows the name of (see
---VANILLA_STRUCTURE_TYPES/PublishVanillaStructureNames) can be identified this way, since a custom structure from
---another mod has no accessible name once placed, only an opaque type ID. Special units: any CustomSpecialUnit's
---own Name field is readable directly, regardless of which mod created it.
+-- Exports one placement per structure/special unit found, by name - a custom structure's own name comes straight
+-- out of its EnumStructureType (see GetCustomStructureTypeName), a vanilla one's from VANILLA_STRUCTURE_TYPES, and
+-- a special unit's own Name field is always readable regardless of which mod created it.
 ---@param game GameClientHook
 ---@return PlaceholderPlacementSetting[]
 function GetPlacementsFromMap(game)
@@ -77,7 +75,7 @@ function GetPlacementsFromMap(game)
         local territoryName = game.Map.Territories[territoryID].Name;
 
         for structureID, count in pairs(territoryStanding.Structures or {}) do
-            local structureName = vanillaStructureNames[structureID];
+            local structureName = vanillaStructureNames[structureID] or GetCustomStructureTypeName(structureID);
             if (structureName ~= nil) then
                 for _ = 1, count do
                     table.insert(placements, { Type = "Structure", PlacementName = structureName, TerritoryName = territoryName });

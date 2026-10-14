@@ -44,12 +44,6 @@ function Client_PresentConfigureUI(rootParent)
         typeDropdown.Button.SetPreferredWidth(TYPE_FIELD_WIDTH).SetMinWidth(0).SetFlexibleWidth(0);
         typeDropdown.Button.SetColor(GetPlacementTypeColor(defaultType or DEFAULT_PLACEMENT_TYPE));
 
-        -- Fixed width, not flexible: unlike Label, TextInputField sizes itself off its own text content rather than
-        -- treating SetPreferredWidth(0) as "zero baseline, pure flex" - with two of these side by side, whichever
-        -- has the longer text in it balloons and throws off the whole row's alignment with the header and other
-        -- rows. A concrete, non-flexible width keeps every row's columns identical for ordinary input; an
-        -- unbroken run of characters longer than the field (no spaces to wrap on) can still overflow it visually -
-        -- accepted as an edge case rather than capping how much a player can type.
         local placementNameField = UI.CreateTextInputField(rowHorz)
             .SetPlaceholderText("Placement Name")
             .SetText(defaultPlacementName or "")
@@ -174,9 +168,7 @@ function Client_PresentConfigureUI(rootParent)
         -- itself with the result, instead of a floating popup
         local confirmContainer = UI.CreateVerticalLayoutGroup(planningModeHeading).SetFlexibleWidth(1);
         local confirmHeading; -- the destroyable Yes/No prompt, nil while not confirming
-        local isConfirmPending = false; -- true while confirmHeading is showing - blocks the button regardless of
-        -- the paste box's own text, so editing it while a confirm is already up can't silently re-enable the
-        -- button underneath it and let a second Yes/No prompt get stacked on top
+        local isConfirmPending = false; -- blocks re-triggering the button while confirmHeading is already showing
 
         ---Actually overwrites the placement rows from the pasted data - only called once the player confirms
         local function DoOverwritePlacementConfiguration()

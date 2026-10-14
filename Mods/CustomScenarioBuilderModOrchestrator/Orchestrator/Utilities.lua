@@ -1,10 +1,7 @@
 CURRENT_SETTINGS_VERSION = 1;
 
--- Custom Scenario Slots display as letters (A, B, ... Z, AA, AB, ...) - bijective base-26 with A=1, shifted down
--- by one since Slot itself is 0-indexed (observed: a 2-slot, A/B game has CustomScenario.SlotsAvailable = {0, 1}).
--- The highest ever actually observed in practice is "OJ" (1-indexed bijective value 15*26+10 = 400, so integer
--- 399) on a very large template - used as the practical ceiling past which inventing a new slot for a neutral
--- Placeholder Placement is assumed to risk the same "InvalidSlot" rejection an out-of-range value got in testing.
+-- Custom Scenario Slots display as letters (A, B, ... Z, AA, AB, ...), 0-indexed integers underneath (A=0). "OJ"
+-- (399) is the highest ever observed in practice, used as the ceiling past which a new Slot risks "InvalidSlot".
 MAX_KNOWN_VALID_SLOT = 399;
 
 -- The name (and SpecialUnitImages filename) of this mod's stand-in special unit. Placed on configured
@@ -166,13 +163,10 @@ local function SplitLines(text)
     return lines;
 end
 
--- Planning Mode's exported placement data nests one level deeper than ModData's flat {"key":"value"} table - each
--- line is one territory, e.g. {"TerritoryName":"Meowth","Values":[{"Type":"S","Name":"Arena"}]} - grouping every
--- placement on that territory together instead of repeating the territory name per placement. Type is "S"/"U"
--- (Structure/SpecialUnit) to keep the format small. These Encode/DecodeExport* functions are a separate, slightly
--- more general extension of the same quoted-string token style (adding array-of-object support) - kept separate
--- from EncodeModDataTable/DecodeModDataTable (flat, string-only values) so ModData's own established format, which
--- other mods' copies of CustomScenarioBuilder.lua already decode, is never at risk of changing.
+-- Planning Mode's exported data groups placements by territory, one line each, e.g.
+-- {"TerritoryName":"Meowth","Values":[{"Type":"S","Name":"Arena"}]} - a separate, slightly more general format
+-- (adds array-of-object support) from EncodeModDataTable/DecodeModDataTable, kept apart so ModData's own format,
+-- which other mods' CustomScenarioBuilder.lua copies already decode, never changes.
 
 ---@param value string | table[] # a plain string, or an array of flat string-keyed, string-valued tables
 ---@return string
@@ -321,14 +315,9 @@ function DeserializePlacementData(text)
     return placements;
 end
 
--- Planning Mode places one of these vanilla structures directly (via a real, recognizable WL.StructureType, not
--- our own Placeholder special unit), so a game-maker can mark territories while testing and then export the
--- layout. Vanilla structures are the only kind CSBMO can reliably name back from a bare structure ID when scanning
--- the map - a custom structure from another mod has no accessible name once placed, only an opaque type ID, so it
--- can't be identified this way (unlike a CustomSpecialUnit, whose own Name field is always readable directly).
--- EnumField is the exact WL.StructureType field name, which can only be resolved in a server hook - see
--- CustomScenarioBuilderModOrchestratorApplication.PublishVanillaStructureNames, which publishes the resulting
--- ID -> Name map for the client-side map scan in Client_PresentMenuUI to use instead of resolving it itself.
+-- The vanilla (non-custom) structures, for Planning Mode's placement menu and build orders. EnumField is the
+-- WL.StructureType field name, resolvable only in a server hook (see PublishVanillaStructureNames) - unlike a
+-- custom structure's type, whose own name can be read directly (see GetCustomStructureTypeName).
 ---@type { Name: string, EnumField: string }[]
 VANILLA_STRUCTURE_TYPES = {
     { Name = "Arena", EnumField = "Arena" },
@@ -360,6 +349,15 @@ function GetVanillaStructureEnumField(structureName)
         end
     end
     return nil;
+end
+
+-- A custom structure's EnumStructureType (from WL.StructureType.Custom(name)) isn't actually an opaque integer -
+-- it's a string of the form "c|<ModID>|<Name>", so its own registered name can be read straight back out of it.
+---@param structureID EnumStructureType
+---@return string | nil # nil if structureID isn't a custom structure's type (e.g. a vanilla one)
+function GetCustomStructureTypeName(structureID)
+    if (type(structureID) ~= "string") then return nil; end
+    return string.match(structureID, "^c|%d+|(.+)$");
 end
 
 -- Marks a GameOrderCustom payload as a Planning Mode build request - "<prefix>{"StructureName":"...",
