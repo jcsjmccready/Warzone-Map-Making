@@ -1,8 +1,6 @@
 require("Utilities");
 
---For every configured placement, checks whether its territory still has a Placeholder special unit on it - meaning
---no installed mod ever claimed it via CustomScenarioBuilder.ReplacePlaceholder. IsVisibleToAllPlayers is set on
---every Placeholder (see BuildPlaceholder), so this doesn't need to account for fog.
+--Placeholder (see BuildPlaceholder), so this doesn't need to account for fog.
 ---@param game GameClientHook
 ---@return string[] # One "Territory Name: PlacementName [Type]" line per still-unreplaced placement, alphabetical by territory name
 local function GetUnreplacedPlacementLines(game)
@@ -10,11 +8,16 @@ local function GetUnreplacedPlacementLines(game)
     for _, placement in ipairs(SortPlacementsByTerritoryName(Mod.Settings.PlaceholderPlacements or {})) do
         local territoryID = FindTerritoryIDByName(game, placement.TerritoryName);
         local territoryStanding = territoryID ~= nil and game.LatestStanding.Territories[territoryID];
+        local placementType = placement.Type or DEFAULT_PLACEMENT_TYPE;
+
         if (territoryStanding ~= nil) then
             for _, specialUnit in ipairs(territoryStanding.NumArmies.SpecialUnits or {}) do
                 if (specialUnit.Name == PLACEHOLDER_NAME) then
-                    table.insert(unreplaced, FormatPlacementLine(placement));
-                    break;
+                    local unitType, unitPlacementName = DecodePlaceholderModData(specialUnit.ModData);
+                    if (unitType == placementType and unitPlacementName == placement.PlacementName) then
+                        table.insert(unreplaced, FormatPlacementLine(placement));
+                        break;
+                    end
                 end
             end
         end
@@ -34,10 +37,13 @@ function Client_GameRefresh(game)
 
     local showNotCustomScenarioWarning = (pub ~= nil and pub.NotUsingCustomScenario == true) and not (playerData ~= nil and playerData.SeenNotCustomScenarioWarning);
 
-    local unreplacedLines = GetUnreplacedPlacementLines(game);
-    local showUnreplacedPlaceholdersWarning = #unreplacedLines > 0 and not (playerData ~= nil and playerData.SeenUnreplacedPlaceholdersWarning);
+    local hasSeenUnreplacedPlaceholdersWarning = playerData ~= nil and playerData.SeenUnreplacedPlaceholdersWarning;
+    local unreplacedLines = (not hasSeenUnreplacedPlaceholdersWarning) and GetUnreplacedPlacementLines(game) or {};
+    local showUnreplacedPlaceholdersWarning = #unreplacedLines > 0;
 
-    if (not showPlacementWarnings and not showNotCustomScenarioWarning and not showUnreplacedPlaceholdersWarning) then return; end;
+    local showPlanningModeWarning = Mod.Settings.IsPlanningMode and not (playerData ~= nil and playerData.SeenPlanningModeWarning);
+
+    if (not showPlacementWarnings and not showNotCustomScenarioWarning and not showUnreplacedPlaceholdersWarning and not showPlanningModeWarning) then return; end;
 
     -- UI.Alert only shows the latest call, so every warning that applies has to go in a single call rather than
     -- separate ones - otherwise whichever fires second silently replaces the first
@@ -51,6 +57,9 @@ function Client_GameRefresh(game)
     if (showUnreplacedPlaceholdersWarning) then
         table.insert(messageParts, "Custom Scenario Builder (Mod Support): the following Placeholders were never replaced by a mod:\n" .. table.concat(unreplacedLines, "\n"));
     end
+    if (showPlanningModeWarning) then
+        table.insert(messageParts, "Custom Scenario Builder (Mod Support): Planning Mode is enabled. Remember to disable it before starting a real game.");
+    end
     UI.Alert(table.concat(messageParts, "\n\n"));
 
     -- tells the server to remember this player has seen whichever of these applied, so they aren't shown again
@@ -62,5 +71,8 @@ function Client_GameRefresh(game)
     end
     if (showUnreplacedPlaceholdersWarning) then
         game.SendGameCustomMessage("Custom Scenario Builder Mod Orchestrator", { Action = "MarkUnreplacedPlaceholdersWarningSeen" }, function(_) end);
+    end
+    if (showPlanningModeWarning) then
+        game.SendGameCustomMessage("Custom Scenario Builder Mod Orchestrator", { Action = "MarkPlanningModeWarningSeen" }, function(_) end);
     end
 end

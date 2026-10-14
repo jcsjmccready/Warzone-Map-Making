@@ -11,13 +11,19 @@ function Client_SaveConfigureUI(alert, addCard)
     for _, row in ipairs(PlaceholderConfigureState.PlacementRows) do
         local territoryName = TrimString(row.TerritoryField.GetText() or "");
         if (territoryName == "") then
-            alert("Every Placeholder Placement row needs a territory name");
+            alert("Every row needs a territory name");
             return;
         end
 
         local placementName = TrimString(row.PlacementNameField.GetText() or "");
-        table.insert(placements, { Type = row.TypeDropdown.GetKey(), TerritoryName = territoryName, PlacementName = (placementName ~= "") and placementName or nil });
+        if (placementName == "") then
+            alert("Every row needs a placement name");
+            return;
+        end
+
+        table.insert(placements, { Type = row.TypeDropdown.GetKey(), TerritoryName = territoryName, PlacementName = placementName });
     end
 
     Mod.Settings.PlaceholderPlacements = placements;
+    Mod.Settings.IsPlanningMode = PlaceholderConfigureState.IsPlanningModeCheckBox.GetIsChecked();
 end

@@ -13,6 +13,34 @@ PLACEMENT_TYPE_OPTIONS = {
 };
 DEFAULT_PLACEMENT_TYPE = "SpecialUnit";
 
+-- Same options/keys as PLACEMENT_TYPE_OPTIONS, just with shorter Text - used only for the Type dropdown button in
+-- Client_PresentConfigureUI, which is too narrow to fit "Special Unit". Everywhere else (settings summary, alerts)
+-- keeps using PLACEMENT_TYPE_OPTIONS's full text via FormatPlacementLine.
+PLACEMENT_TYPE_DROPDOWN_OPTIONS = {
+    { Key = "Structure", Text = "Struct" },
+    { Key = "SpecialUnit", Text = "Unit" },
+};
+
+-- Fixed column widths shared between Client_PresentConfigureUI's header row and its placement rows, so the two
+-- always line up regardless of what a player types into either field (see the comment on placementNameField there).
+-- Sized to fit PLACEMENT_TYPE_DROPDOWN_OPTIONS's short Text values ("Struct"/"Unit"), not the full option names.
+TYPE_FIELD_WIDTH = 80;
+-- Territory Name gets a bit more than Placement Name, since it has to exactly match a real (sometimes fairly long)
+-- map territory name, while Placement Name is just a free-text label the game-maker picks for their own tracking.
+PLACEMENT_NAME_FIELD_WIDTH = 160;
+TERRITORY_NAME_FIELD_WIDTH = 200;
+
+---@param key string # one of PLACEMENT_TYPE_OPTIONS's keys
+---@return string # hex colour string
+function GetPlacementTypeColor(key)
+    if (key == "Structure") then
+        return BUTTON_COLOURS.RoyalBlue;
+    elseif (key == "SpecialUnit") then
+        return BUTTON_COLOURS.Orchid;
+    end
+    return BUTTON_COLOURS.DarkGray;
+end
+
 ---Formats one placement as "Territory Name: PlacementName [Type]" for display - e.g. in Client_PresentSettingsUI
 ---and Client_GameRefresh's unreplaced-Placeholder warning.
 ---@param placement PlaceholderPlacementSetting
@@ -47,6 +75,16 @@ local function EncodeModDataString(s)
     return "\"" .. string.gsub(string.gsub(s, "\\", "\\\\"), "\"", "\\\"") .. "\"";
 end
 
+---@param fields table<string, string>
+---@return string
+local function EncodeModDataTable(fields)
+    local pairsList = {};
+    for key, value in pairs(fields) do
+        table.insert(pairsList, EncodeModDataString(key) .. ":" .. EncodeModDataString(value));
+    end
+    return "{" .. table.concat(pairsList, ",") .. "}";
+end
+
 ---@param placementType string
 ---@param placementName string | nil
 ---@return string
@@ -55,12 +93,302 @@ function EncodePlaceholderModData(placementType, placementName)
     if (placementName ~= nil and placementName ~= "") then
         fields.PlacementName = placementName;
     end
+    return EncodeModDataTable(fields);
+end
 
+---Reads one quoted, backslash-escaped string starting at s[index] (which must be a quote).
+---@param s string
+---@param index integer
+---@return string | nil value, integer | nil nextIndex # nextIndex is just past the closing quote. Both nil if malformed
+local function DecodeModDataString(s, index)
+    if (string.sub(s, index, index) ~= "\"") then return nil, nil; end
+
+    local chars = {};
+    local escaped = false;
+    index = index + 1;
+    while (index <= #s) do
+        local c = string.sub(s, index, index);
+        if (c == "\"" and not escaped) then
+            return table.concat(chars), index + 1;
+        end
+        escaped = (c == "\\") and not escaped;
+        table.insert(chars, c);
+        index = index + 1;
+    end
+    return nil, nil; -- ran off the end without a closing quote
+end
+
+---Decodes a flat, string-keyed, string-valued table previously produced by EncodePlaceholderModData.
+---@param s string
+---@return table<string, string> | nil
+local function DecodeModDataTable(s)
+    if (string.sub(s, 1, 1) ~= "{" or string.sub(s, #s, #s) ~= "}") then return nil; end
+
+    local fields = {};
+    local index = 2;
+    while (index < #s) do
+        local key, afterKey = DecodeModDataString(s, index);
+        if (key == nil or string.sub(s, afterKey, afterKey) ~= ":") then return nil; end
+
+        local value, afterValue = DecodeModDataString(s, afterKey + 1);
+        if (value == nil) then return nil; end
+
+        fields[key] = value;
+        index = afterValue;
+        if (string.sub(s, index, index) == ",") then index = index + 1; end
+    end
+    return fields;
+end
+
+---Decodes a Placeholder special unit's own ModData field (see EncodePlaceholderModData). Returns nil if modData
+---isn't a well-formed encoding.
+---@param modData string | nil
+---@return string | nil placementType
+---@return string | nil placementName
+function DecodePlaceholderModData(modData)
+    if (type(modData) ~= "string" or modData == "") then return nil, nil; end
+
+    local fields = DecodeModDataTable(modData);
+    if (fields == nil) then return nil, nil; end
+
+    return fields.Type, fields.PlacementName;
+end
+
+---@param text string
+---@return string[]
+local function SplitLines(text)
+    local lines = {};
+    for line in (text .. "\n"):gmatch("([^\n]*)\n") do
+        table.insert(lines, (string.gsub(line, "\r$", "")));
+    end
+    return lines;
+end
+
+-- Planning Mode's exported placement data nests one level deeper than ModData's flat {"key":"value"} table - each
+-- line is one territory, e.g. {"TerritoryName":"Meowth","Values":[{"Type":"S","Name":"Arena"}]} - grouping every
+-- placement on that territory together instead of repeating the territory name per placement. Type is "S"/"U"
+-- (Structure/SpecialUnit) to keep the format small. These Encode/DecodeExport* functions are a separate, slightly
+-- more general extension of the same quoted-string token style (adding array-of-object support) - kept separate
+-- from EncodeModDataTable/DecodeModDataTable (flat, string-only values) so ModData's own established format, which
+-- other mods' copies of CustomScenarioBuilder.lua already decode, is never at risk of changing.
+
+---@param value string | table[] # a plain string, or an array of flat string-keyed, string-valued tables
+---@return string
+local function EncodeExportValue(value)
+    if (type(value) == "string") then
+        return EncodeModDataString(value);
+    end
+
+    local items = {};
+    for _, item in ipairs(value) do
+        table.insert(items, EncodeModDataTable(item));
+    end
+    return "[" .. table.concat(items, ",") .. "]";
+end
+
+---@param fields table<string, string | table[]>
+---@return string
+local function EncodeExportObject(fields)
     local pairsList = {};
     for key, value in pairs(fields) do
-        table.insert(pairsList, EncodeModDataString(key) .. ":" .. EncodeModDataString(value));
+        table.insert(pairsList, EncodeModDataString(key) .. ":" .. EncodeExportValue(value));
     end
     return "{" .. table.concat(pairsList, ",") .. "}";
+end
+
+local DecodeExportValueAt, DecodeExportObjectAt, DecodeExportArrayAt; -- forward declared, these mutually recurse
+
+---@param s string
+---@param index integer
+---@return string | table[] | nil value, integer | nil nextIndex
+function DecodeExportValueAt(s, index)
+    local c = string.sub(s, index, index);
+    if (c == "\"") then return DecodeModDataString(s, index); end
+    if (c == "[") then return DecodeExportArrayAt(s, index); end
+    return nil, nil;
+end
+
+---@param s string
+---@param index integer
+---@return table<string, string | table[]> | nil value, integer | nil nextIndex
+function DecodeExportObjectAt(s, index)
+    if (string.sub(s, index, index) ~= "{") then return nil, nil; end
+    index = index + 1;
+
+    local fields = {};
+    if (string.sub(s, index, index) == "}") then return fields, index + 1; end
+
+    while (true) do
+        local key, afterKey = DecodeModDataString(s, index);
+        if (key == nil or string.sub(s, afterKey, afterKey) ~= ":") then return nil, nil; end
+
+        local value, afterValue = DecodeExportValueAt(s, afterKey + 1);
+        if (value == nil) then return nil, nil; end
+
+        fields[key] = value;
+        index = afterValue;
+        if (string.sub(s, index, index) == ",") then
+            index = index + 1;
+        elseif (string.sub(s, index, index) == "}") then
+            return fields, index + 1;
+        else
+            return nil, nil;
+        end
+    end
+end
+
+---@param s string
+---@param index integer
+---@return table[] | nil value, integer | nil nextIndex
+function DecodeExportArrayAt(s, index)
+    if (string.sub(s, index, index) ~= "[") then return nil, nil; end
+    index = index + 1;
+
+    local items = {};
+    if (string.sub(s, index, index) == "]") then return items, index + 1; end
+
+    while (true) do
+        local item, afterItem = DecodeExportObjectAt(s, index);
+        if (item == nil) then return nil, nil; end
+
+        table.insert(items, item);
+        index = afterItem;
+        if (string.sub(s, index, index) == ",") then
+            index = index + 1;
+        elseif (string.sub(s, index, index) == "]") then
+            return items, index + 1;
+        else
+            return nil, nil;
+        end
+    end
+end
+
+---Serializes a list of placements into a pasteable string for Planning Mode - one line per distinct TerritoryName.
+---@param placements PlaceholderPlacementSetting[]
+---@return string
+function SerializePlacementData(placements)
+    local order = {}; -- TerritoryName, in first-seen order
+    local byTerritory = {}; -- TerritoryName -> { Type: "S" | "U", Name: string }[]
+    for _, placement in ipairs(placements) do
+        local group = byTerritory[placement.TerritoryName];
+        if (group == nil) then
+            group = {};
+            byTerritory[placement.TerritoryName] = group;
+            table.insert(order, placement.TerritoryName);
+        end
+
+        local placementType = placement.Type or DEFAULT_PLACEMENT_TYPE;
+        table.insert(group, { Type = (placementType == "Structure") and "S" or "U", Name = placement.PlacementName or "" });
+    end
+
+    local lines = {};
+    for _, territoryName in ipairs(order) do
+        table.insert(lines, EncodeExportObject({ TerritoryName = territoryName, Values = byTerritory[territoryName] }));
+    end
+    return table.concat(lines, "\n");
+end
+
+---Parses a string produced by SerializePlacementData back into a list of placements. Returns nil if any
+---non-blank line isn't well-formed.
+---@param text string
+---@return PlaceholderPlacementSetting[] | nil
+function DeserializePlacementData(text)
+    local placements = {};
+    for _, line in ipairs(SplitLines(text or "")) do
+        if (line ~= "") then
+            local object, nextIndex = DecodeExportObjectAt(line, 1);
+            if (object == nil or nextIndex ~= #line + 1) then return nil; end
+
+            local territoryName = object.TerritoryName;
+            local values = object.Values;
+            if (type(territoryName) ~= "string" or territoryName == "" or type(values) ~= "table") then return nil; end
+
+            for _, value in ipairs(values) do
+                local typeChar = value.Type;
+                local name = value.Name;
+                if ((typeChar ~= "S" and typeChar ~= "U") or type(name) ~= "string") then return nil; end
+
+                table.insert(placements, {
+                    Type = (typeChar == "S") and "Structure" or "SpecialUnit",
+                    TerritoryName = territoryName,
+                    PlacementName = (name ~= "") and name or nil,
+                });
+            end
+        end
+    end
+    return placements;
+end
+
+-- Planning Mode places one of these vanilla structures directly (via a real, recognizable WL.StructureType, not
+-- our own Placeholder special unit), so a game-maker can mark territories while testing and then export the
+-- layout. Vanilla structures are the only kind CSBMO can reliably name back from a bare structure ID when scanning
+-- the map - a custom structure from another mod has no accessible name once placed, only an opaque type ID, so it
+-- can't be identified this way (unlike a CustomSpecialUnit, whose own Name field is always readable directly).
+-- EnumField is the exact WL.StructureType field name, which can only be resolved in a server hook - see
+-- CustomScenarioBuilderModOrchestratorApplication.PublishVanillaStructureNames, which publishes the resulting
+-- ID -> Name map for the client-side map scan in Client_PresentMenuUI to use instead of resolving it itself.
+---@type { Name: string, EnumField: string }[]
+VANILLA_STRUCTURE_TYPES = {
+    { Name = "Arena", EnumField = "Arena" },
+    { Name = "Army Cache", EnumField = "ArmyCache" },
+    { Name = "Army Camp", EnumField = "ArmyCamp" },
+    { Name = "Attack", EnumField = "Attack" },
+    { Name = "City", EnumField = "City" },
+    { Name = "Crafter", EnumField = "Crafter" },
+    { Name = "Dig Site", EnumField = "DigSite" },
+    { Name = "Draft", EnumField = "Draft" },
+    { Name = "Hospital", EnumField = "Hospital" },
+    { Name = "Market", EnumField = "Market" },
+    { Name = "Mercenary Camp", EnumField = "MercenaryCamp" },
+    { Name = "Mine", EnumField = "Mine" },
+    { Name = "Money Cache", EnumField = "MoneyCache" },
+    { Name = "Mortar", EnumField = "Mortar" },
+    { Name = "Power", EnumField = "Power" },
+    { Name = "Recipe", EnumField = "Recipe" },
+    { Name = "Resource Cache", EnumField = "ResourceCache" },
+    { Name = "Smelter", EnumField = "Smelter" },
+};
+
+---@param structureName string
+---@return string | nil # WL.StructureType's field name, or nil if structureName isn't one of VANILLA_STRUCTURE_TYPES
+function GetVanillaStructureEnumField(structureName)
+    for _, entry in ipairs(VANILLA_STRUCTURE_TYPES) do
+        if (entry.Name == structureName) then
+            return entry.EnumField;
+        end
+    end
+    return nil;
+end
+
+-- Marks a GameOrderCustom payload as a Planning Mode build request - "<prefix>{"StructureName":"...",
+-- "TerritoryID":"..."}" using the same table format as ModData. Lets a game-maker place a vanilla structure
+-- directly via the in-game mod menu, without needing the Custom Scenario distribution.
+local PLANNING_MODE_PAYLOAD_PREFIX = "CSBMOPlanningBuild~";
+
+---@param structureName string # one of VANILLA_STRUCTURE_TYPES's Name values
+---@param territoryID TerritoryID
+---@return string
+function BuildPlanningPayload(structureName, territoryID)
+    return PLANNING_MODE_PAYLOAD_PREFIX .. EncodeModDataTable({
+        StructureName = structureName,
+        TerritoryID = tostring(territoryID),
+    });
+end
+
+---@param payload string | nil
+---@return string | nil structureName
+---@return TerritoryID | nil territoryID
+function ParsePlanningPayload(payload)
+    if (type(payload) ~= "string" or string.sub(payload, 1, #PLANNING_MODE_PAYLOAD_PREFIX) ~= PLANNING_MODE_PAYLOAD_PREFIX) then
+        return nil, nil;
+    end
+
+    local fields = DecodeModDataTable(string.sub(payload, #PLANNING_MODE_PAYLOAD_PREFIX + 1));
+    if (fields == nil or fields.StructureName == nil or fields.TerritoryID == nil) then
+        return nil, nil;
+    end
+
+    return fields.StructureName, tonumber(fields.TerritoryID);
 end
 
 ---@param str string
@@ -192,6 +520,14 @@ function GetButtonColors()
         Fuchsia = "#FF00FF";
         ScreaminGreen = "#76FF7A";
     };
+end
+
+--given a hex colour string like "#RRGGBB", return a single 24-bit integer, useful for annotations
+---@param hexColour string
+---@return integer
+function GetColourIntegerFromHex(hexColour)
+    local normalized = string.gsub(hexColour, "#", "");
+    return tonumber(normalized, 16);
 end
 
 TEXT_DEFAULT_COLOUR = "#CCCCCC";
