@@ -16,6 +16,18 @@ migrated instead of breaking existing games.
   in under their new version suffix. Use `Mod.Settings.Version` to determine which files to use.
   We can write a MigrateModSettings function and default the new setting to whatever the pre-existing behaviour was.
 
+## Keep `alert(...)` messages plain
+
+When `Client_SaveConfigureUI` rejects a save because a required field is missing, state the
+requirement directly - don't add a flourish explaining why it matters or what breaks without it.
+
+- Good: `alert("Every Placeholder Placement row needs a placement name")`
+- Not: `alert("Every Placeholder Placement row needs a placement name - without one, nothing can
+  ever resolve it to a real structure/special unit")`
+
+The rationale belongs in a code comment near the validation, if it's not obvious, not in the dialog
+the game-maker sees.
+
 ## Null out the inactive side of a mutually-exclusive settings toggle
 
 `Client_SaveConfigureUI` can run more than once across a mod's lifetime in the same game's settings

@@ -862,7 +862,7 @@
 ---@field Market EnumValue # Idle market
 ---@field ArmyCache EnumValue # Idle army cache
 ---@field MoneyCache EnumValue # Idle money cache
----@field ResourceChache EnumValue # Idle resource cache
+---@field ResourceCache EnumValue # Idle resource cache
 ---@field MercenaryCamp EnumValue # Idle mercenary cache
 ---@field Power EnumValue # Idle power
 ---@field Draft EnumValue # Idle draft
