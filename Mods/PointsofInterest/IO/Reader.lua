@@ -9,7 +9,7 @@ local Reader = {
 function Reader.ReadString()
     if not Reader.ReadNextIfEqual(IO.TokenType.START_STRING) then
         Reader.CreateError("Start of string expected, got " .. Reader.GetNext(), "Reader.ReadString");
-        return;
+        return nil;
     end
 
     local s = "";
@@ -39,6 +39,7 @@ function Reader.ReadString()
         return s;
     else
         Reader.CreateError("Unsafe loop stoppage", "Reader.ReadString");
+        return nil;
     end
 end
 
@@ -47,7 +48,7 @@ end
 function Reader.ReadTable()
     if not Reader.ReadNextIfEqual(IO.TokenType.START_TABLE) then
         Reader.CreateError("Start of table expected, got " .. Reader.GetNext(), "Reader.ReadTable");
-        return;
+        return nil;
     end
 
     local t = {};
@@ -58,17 +59,17 @@ function Reader.ReadTable()
 
             if key == nil then
                 Reader.CreateError("Key value was nil", "Reader.ReadTable");
-                return;
+                return nil;
             end
 
             if value == nil then
                 Reader.CreateError("Value was nil", "Reader.ReadTable");
-                return;
+                return nil;
             end
 
             if t[key] ~= nil then
                 Reader.CreateError("Duplicate keys found: " .. key, "Reader.ReadTable");
-                return;
+                return nil;
             end
 
             t[key] = value;
@@ -81,7 +82,7 @@ function Reader.ReadTable()
 
     if not Reader.ReadNextIfEqual(IO.TokenType.END_TABLE) then
         Reader.CreateError("End of table expected, got " .. Reader.GetNext(), "Reader.ReadTable");
-        return;
+        return nil;
     end
 
     return t;
@@ -90,7 +91,7 @@ end
 function Reader.ReadArray(f)
     if not Reader.ReadNextIfEqual(IO.TokenType.START_ARRAY) then
         Reader.CreateError("Start of array expected, got " .. Reader.GetNext(), "Reader.ReadArray");
-        return;
+        return nil;
     end
 
     local l = {};
@@ -101,7 +102,7 @@ function Reader.ReadArray(f)
 
             if e == nil then
                 Reader.CreateError(string.format("Array element #%d is nil", #l), "Reader.ReadArray");
-                return;
+                return nil;
             end
 
             table.insert(l, e);
@@ -114,7 +115,7 @@ function Reader.ReadArray(f)
 
     if not Reader.ReadNextIfEqual(IO.TokenType.END_ARRAY) then
         Reader.CreateError("End of array expected, got " .. Reader.GetNext(), "Reader.ReadArray");
-        return;
+        return nil;
     end
 
     return l;
@@ -129,7 +130,7 @@ function Reader.ReadBoolean()
         return false;
     else
         Reader.CreateError("Expected 'true' or 'false', first character is " .. Reader.GetNext(), "Reader.ReadBoolean");
-        return;
+        return nil;
     end
 end
 
@@ -192,12 +193,12 @@ function Reader.ReadPair()
 
     if key == nil then
         Reader.CreateError("Key value was nil", "Reader.ReadPair");
-        return;
+        return nil;
     end
 
     if not Reader.ReadNextIfEqual(IO.TokenType.KEY_VALUE_SEPARATOR) then
         Reader.CreateError("Key-value separator expected, got " .. Reader.GetNext(), "Reader.ReadPair");
-        return;
+        return nil;
     end
 
     return key, Reader.ReadNext();
@@ -207,16 +208,16 @@ function Reader.ReadNumber()
     local s = "";
     local decimal = false;
 
-    while Reader.IsValid do
+    while Reader.IsValid() do
         local c = Reader.GetNext();
 
         -- 48 = '0' | 57 = '9'
-        if string.byte(c) >= 48 and string.byte(c) <= 57 then
+        if c ~= "" and string.byte(c) >= 48 and string.byte(c) <= 57 then
             s = s .. c;
         elseif c == "." then
             if decimal then     -- Can not have multiple decimal points
                 Reader.CreateError("Second decimal point found", "Reader.ReadNumber");
-                return;
+                return nil;
             end
 
             decimal = true;
@@ -235,7 +236,7 @@ function Reader.ReadNumber()
         return n;
     else
         Reader.CreateError(string.format("Could not convert '%s' to a number", s), "Reader.ReadNumber");
-        return;
+        return nil;
     end
 end
 
@@ -252,19 +253,19 @@ end
 function Reader.ReadMessage()
     if not Reader.ReadNextIfEqual(IO.TokenType.START_MESSAGE) then
         Reader.CreateError("Start of message expected, got " .. Reader.GetNext(), "Reader.ReadMessage");
-        return;
+        return nil;
     end
 
     local mes = Reader.ReadNext();
 
     if mes == nil then
         Reader.CreateError("Expected a Message object, got nil", "Reader.ReadMessage");
-        return;
+        return nil;
     end
 
     if not Reader.ReadNextIfEqual(IO.TokenType.END_MESSAGE) then
         Reader.CreateError("End of message expected, got " .. Reader.GetNext(), "Reader.ReadMessage");
-        return;
+        return nil;
     end
 
     return mes;
