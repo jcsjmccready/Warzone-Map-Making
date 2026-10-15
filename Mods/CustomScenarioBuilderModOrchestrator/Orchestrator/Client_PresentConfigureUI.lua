@@ -101,7 +101,7 @@ local function RenderNav(currentPage)
     else
         UI.CreateButton(State.NavContent)
             .SetText("Return")
-            .SetColor(BUTTON_COLOURS.DarkGray)
+            .SetColor(BUTTON_COLOURS.TyrianPurple)
             .SetFlexibleWidth(1)
             .SetOnClick(function() State.ShowHomePage(); end);
     end
@@ -119,26 +119,40 @@ local function RenderEditTypeFields()
     local existing = State.EditExisting;
 
     if (typeKey == "Structure" and not State.EditIsFromTemplate) then
-        UI.CreateLabel(State.EditTypeFieldsContainer).SetText("Structure ID (leave blank for vanilla - matched by Placement Name)");
+        UI.CreateLabel(State.EditTypeFieldsContainer).SetText("Structure ID (c|ModId|StructureName)");
         State.EditStructureIDField = UI.CreateTextInputField(State.EditTypeFieldsContainer)
-            .SetPlaceholderText("e.g. c|1203|Dead Man's Switch")
+            .SetPlaceholderText("Empty if vanilla structure")
             .SetText((existing ~= nil and existing.StructureID) or "")
+            .SetInteractable(false)
             .SetFlexibleWidth(1);
     elseif (typeKey ~= "Structure") then
         for _, descriptor in ipairs(SPECIAL_UNIT_FIELD_DESCRIPTORS) do
             local existingValue = (existing ~= nil and existing.SpecialUnitFields ~= nil) and existing.SpecialUnitFields[descriptor.Key] or nil;
 
             local fieldRow = UI.CreateHorizontalLayoutGroup(State.EditTypeFieldsContainer).SetFlexibleWidth(1);
-            UI.CreateLabel(fieldRow).SetText(descriptor.Key).SetPreferredWidth(PLACEMENT_NAME_FIELD_WIDTH).SetMinWidth(0).SetFlexibleWidth(0);
+            UI.CreateLabel(fieldRow).SetText(HumanizePascalCase(descriptor.Key)).SetPreferredWidth(PLACEMENT_NAME_FIELD_WIDTH).SetMinWidth(0).SetFlexibleWidth(0);
 
             if (descriptor.Type == "boolean") then
-                State.EditSpecialUnitFieldControls[descriptor.Key] = UI.CreateCheckBox(fieldRow).SetIsChecked(existingValue == "true");
+                State.EditSpecialUnitFieldControls[descriptor.Key] =
+                UI.CreateCheckBox(fieldRow)
+                    .SetText("")
+                    .SetIsChecked(existingValue == "true");
+
             elseif (descriptor.Type == "integer" or descriptor.Type == "number") then
-                local numberField = UI.CreateNumberInputField(fieldRow).SetWholeNumbers(descriptor.Type == "integer").SetFlexibleWidth(1);
+                local numberField = 
+                UI.CreateNumberInputField(fieldRow)
+                    .SetWholeNumbers(descriptor.Type == "integer")
+                    .SetFlexibleWidth(1);
+
                 numberField.SetValue(tonumber(existingValue) or 0);
                 State.EditSpecialUnitFieldControls[descriptor.Key] = numberField;
             else
-                State.EditSpecialUnitFieldControls[descriptor.Key] = UI.CreateTextInputField(fieldRow).SetText(existingValue or "").SetFlexibleWidth(1);
+                State.EditSpecialUnitFieldControls[descriptor.Key] =
+                UI.CreateTextInputField(fieldRow)
+                    .SetText(existingValue or "")
+                    .SetMultiLine(descriptor.Key == "ModData")
+                    .SetPreferredHeight((descriptor.Key == "ModData") and 100 or -1)
+                    .SetFlexibleWidth(1);
             end
         end
     end
@@ -348,16 +362,21 @@ State.ShowEditView = function(index, prefill, isFromTemplate)
         RenderEditTypeFields();
     end);
     State.EditTypeDropdown.Button.SetColor(GetPlacementTypeColor((State.EditExisting ~= nil and State.EditExisting.Type) or DEFAULT_PLACEMENT_TYPE));
-    State.EditTypeDropdown.Button.SetInteractable(not State.EditIsFromTemplate); -- templates are always Structure, so Type can't be changed away from it
+    State.EditTypeDropdown.Button.SetInteractable(not State.EditIsFromTemplate and index == nil); -- templates are always Structure, and an existing row can't change Type after the fact, so Type can't be changed away from it
 
     State.EditTerritoryField = UI.CreateTextInputField(State.ViewContent)
         .SetPlaceholderText("Territory Name")
         .SetText((State.EditExisting ~= nil and State.EditExisting.TerritoryName) or "")
         .SetFlexibleWidth(1);
 
+    -- An existing modded structure's name came from its StructureID (parsed out on import), not typed by hand, so
+    -- it can't be changed independently of it - unlike a vanilla structure, which is matched by this name alone
+    local isExistingModdedStructure = index ~= nil and State.EditExisting ~= nil and State.EditExisting.Type == "Structure" and State.EditExisting.StructureID ~= nil;
+
     State.EditPlacementNameField = UI.CreateTextInputField(State.ViewContent)
         .SetPlaceholderText("Placement Name")
         .SetText((State.EditExisting ~= nil and State.EditExisting.PlacementName) or "")
+        .SetInteractable(not isExistingModdedStructure)
         .SetFlexibleWidth(1);
 
     State.EditFieldsParent = UI.CreateVerticalLayoutGroup(State.ViewContent).SetFlexibleWidth(1);

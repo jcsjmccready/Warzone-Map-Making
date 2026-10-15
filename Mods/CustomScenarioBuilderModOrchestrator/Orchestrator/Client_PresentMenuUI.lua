@@ -111,7 +111,7 @@ function GetPlacementsFromMap(game)
                         IsVisibleToAllPlayers = tostring(specialUnit.IsVisibleToAllPlayers),
                         ModData = specialUnit.ModData or "",
                         ModID = tostring(specialUnit.ModID),
-                        TextOverHeadOpt = tostring(specialUnit.TextOverHeadOpt),
+                        TextOverHeadOpt = specialUnit.TextOverHeadOpt or "",
                     },
                 });
             end

@@ -323,11 +323,18 @@ function DeserializePlacementData(text)
 
                 local placementName = name;
                 local structureID = nil;
+                local specialUnitFields = nil;
                 if (typeChar == "S") then
                     local customName = ParseCustomStructureName(name);
                     if (customName ~= nil) then
                         structureID = name;
                         placementName = customName;
+                    end
+                else
+                    specialUnitFields = {};
+                    for _, descriptor in ipairs(SPECIAL_UNIT_FIELD_DESCRIPTORS) do
+                        local fieldValue = value[descriptor.Key];
+                        if (fieldValue ~= nil) then specialUnitFields[descriptor.Key] = tostring(fieldValue); end
                     end
                 end
 
@@ -336,6 +343,7 @@ function DeserializePlacementData(text)
                     TerritoryName = territoryName,
                     PlacementName = (placementName ~= "") and placementName or nil,
                     StructureID = structureID,
+                    SpecialUnitFields = specialUnitFields,
                 });
             end
         end
@@ -397,6 +405,7 @@ SPECIAL_UNIT_FIELD_DESCRIPTORS = {
     { Key = "IncludeABeforeName", Type = "boolean" },
     { Key = "IsVisibleToAllPlayers", Type = "boolean" },
     { Key = "ModData", Type = "string" },
+    { Key = "ModID", Type = "integer" },
     { Key = "TextOverHeadOpt", Type = "string" },
 };
 
@@ -466,6 +475,14 @@ end
 ---@return string
 function TrimString(str)
     return (string.gsub(str, "^%s*(.-)%s*$", "%1"));
+end
+
+---Turns a PascalCase identifier (e.g. a SPECIAL_UNIT_FIELD_DESCRIPTORS Key) into human-readable words, e.g.
+---"AttackPowerPercentage" -> "Attack Power Percentage", "ModID" -> "Mod ID"
+---@param pascalCase string
+---@return string
+function HumanizePascalCase(pascalCase)
+    return (string.gsub(pascalCase, "(%l)(%u)", "%1 %2"));
 end
 
 --Finds the TerritoryID of the territory whose name matches territoryName, case-insensitively. Used to resolve the
