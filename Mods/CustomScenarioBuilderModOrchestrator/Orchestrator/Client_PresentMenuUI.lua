@@ -62,9 +62,13 @@ function Client_PresentMenuUI(rootParent, setMaxSize, setScrollable, game, close
         .SetFlexibleWidth(1);
 end
 
--- Exports one placement per structure/special unit found, by name - a custom structure's own name comes straight
--- out of its EnumStructureType (see GetCustomStructureTypeName), a vanilla one's from VANILLA_STRUCTURE_TYPES, and
--- a special unit's own Name field is always readable regardless of which mod created it.
+-- Exports one placement per structure/special unit found. A vanilla structure exports by its display name (from
+-- VANILLA_STRUCTURE_TYPES); a custom structure exports its full, raw EnumStructureType string
+-- ("c|<ModID>|<Name>") rather than just the name parsed out of it, since that whole string can be used to
+-- recreate the exact same structure type. Only CustomSpecialUnit special units (proxyType check) are exported,
+-- since a vanilla one (Commander, Boss1-4, ...) can't be recreated by another mod anyway - and a custom one
+-- exports every CustomSpecialUnitClass field (see SpecialUnitFields), not just its Name, so it can be fully
+-- recreated too.
 ---@param game GameClientHook
 ---@return PlaceholderPlacementSetting[]
 function GetPlacementsFromMap(game)
@@ -75,7 +79,7 @@ function GetPlacementsFromMap(game)
         local territoryName = game.Map.Territories[territoryID].Name;
 
         for structureID, count in pairs(territoryStanding.Structures or {}) do
-            local structureName = vanillaStructureNames[structureID] or GetCustomStructureTypeName(structureID);
+            local structureName = vanillaStructureNames[structureID] or tostring(structureID);
             if (structureName ~= nil) then
                 for _ = 1, count do
                     table.insert(placements, { Type = "Structure", PlacementName = structureName, TerritoryName = territoryName });
@@ -84,8 +88,32 @@ function GetPlacementsFromMap(game)
         end
 
         for _, specialUnit in ipairs(territoryStanding.NumArmies.SpecialUnits or {}) do
-            if (specialUnit.Name ~= nil) then
-                table.insert(placements, { Type = "SpecialUnit", PlacementName = specialUnit.Name, TerritoryName = territoryName });
+            if (specialUnit.proxyType == "CustomSpecialUnit") then
+                ---@cast specialUnit CustomSpecialUnit
+                table.insert(placements, {
+                    Type = "SpecialUnit",
+                    PlacementName = specialUnit.Name,
+                    TerritoryName = territoryName,
+                    SpecialUnitFields = {
+                        AttackPower = tostring(specialUnit.AttackPower),
+                        AttackPowerPercentage = tostring(specialUnit.AttackPowerPercentage),
+                        CanBeAirliftedToSelf = tostring(specialUnit.CanBeAirliftedToSelf),
+                        CanBeAirliftedToTeammate = tostring(specialUnit.CanBeAirliftedToTeammate),
+                        CanBeGiftedWithGiftCard = tostring(specialUnit.CanBeGiftedWithGiftCard),
+                        CanBeTransferredToTeammate = tostring(specialUnit.CanBeTransferredToTeammate),
+                        CombatOrder = tostring(specialUnit.CombatOrder),
+                        DamageAbsorbedWhenAttacked = tostring(specialUnit.DamageAbsorbedWhenAttacked),
+                        DamageToKill = tostring(specialUnit.DamageToKill),
+                        DefensePower = tostring(specialUnit.DefensePower),
+                        DefensePowerPercentage = tostring(specialUnit.DefensePowerPercentage),
+                        Health = tostring(specialUnit.Health),
+                        IncludeABeforeName = tostring(specialUnit.IncludeABeforeName),
+                        IsVisibleToAllPlayers = tostring(specialUnit.IsVisibleToAllPlayers),
+                        ModData = specialUnit.ModData or "",
+                        ModID = tostring(specialUnit.ModID),
+                        TextOverHeadOpt = tostring(specialUnit.TextOverHeadOpt),
+                    },
+                });
             end
         end
     end

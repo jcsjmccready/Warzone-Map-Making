@@ -28,6 +28,8 @@ PLACEMENT_TYPE_DROPDOWN_OPTIONS = {
 TYPE_FIELD_WIDTH = 80;
 PLACEMENT_NAME_FIELD_WIDTH = 160;
 TERRITORY_NAME_FIELD_WIDTH = 200;
+ICON_SIZE = 28; -- the icons are square, so this is applied to both their width and height
+LIST_VIEW_ICON_SIZE = 20; -- smaller than ICON_SIZE, used for the status icons in the Placement list view's rows
 
 ---@param key string # one of PLACEMENT_TYPE_OPTIONS's keys
 ---@return string # hex colour string
@@ -274,7 +276,11 @@ function SerializePlacementData(placements)
         end
 
         local placementType = placement.Type or DEFAULT_PLACEMENT_TYPE;
-        table.insert(group, { Type = (placementType == "Structure") and "S" or "U", Name = placement.PlacementName or "" });
+        local valueEntry = { Type = (placementType == "Structure") and "S" or "U", Name = placement.PlacementName or "" };
+        for key, value in pairs(placement.SpecialUnitFields or {}) do
+            valueEntry[key] = value;
+        end
+        table.insert(group, valueEntry);
     end
 
     local lines = {};
@@ -284,8 +290,19 @@ function SerializePlacementData(placements)
     return table.concat(lines, "\n");
 end
 
+---Parses a raw custom structure EnumStructureType string ("c|<ModID>|<Name>") into its display Name. Returns nil
+---if structureID isn't in that format (i.e. it's a vanilla structure name instead, which has no StructureID).
+---@param structureID string
+---@return string | nil
+function ParseCustomStructureName(structureID)
+    return string.match(structureID, "^c|[^|]*|(.*)$");
+end
+
 ---Parses a string produced by SerializePlacementData back into a list of placements. Returns nil if any
----non-blank line isn't well-formed.
+---non-blank line isn't well-formed. A Structure whose Name is a raw custom EnumStructureType string
+---("c|<ModID>|<Name>", as GetPlacementsFromMap exports a modded structure) has its Name split back apart - the
+---full string goes into StructureID, and just <Name> into PlacementName - so the Edit view shows the two fields
+---the same way it would if the row had been filled in by hand.
 ---@param text string
 ---@return PlaceholderPlacementSetting[] | nil
 function DeserializePlacementData(text)
@@ -304,10 +321,21 @@ function DeserializePlacementData(text)
                 local name = value.Name;
                 if ((typeChar ~= "S" and typeChar ~= "U") or type(name) ~= "string") then return nil; end
 
+                local placementName = name;
+                local structureID = nil;
+                if (typeChar == "S") then
+                    local customName = ParseCustomStructureName(name);
+                    if (customName ~= nil) then
+                        structureID = name;
+                        placementName = customName;
+                    end
+                end
+
                 table.insert(placements, {
                     Type = (typeChar == "S") and "Structure" or "SpecialUnit",
                     TerritoryName = territoryName,
-                    PlacementName = (name ~= "") and name or nil,
+                    PlacementName = (placementName ~= "") and placementName or nil,
+                    StructureID = structureID,
                 });
             end
         end
@@ -316,8 +344,7 @@ function DeserializePlacementData(text)
 end
 
 -- The vanilla (non-custom) structures, for Planning Mode's placement menu and build orders. EnumField is the
--- WL.StructureType field name, resolvable only in a server hook (see PublishVanillaStructureNames) - unlike a
--- custom structure's type, whose own name can be read directly (see GetCustomStructureTypeName).
+-- WL.StructureType field name, resolvable only in a server hook (see PublishVanillaStructureNames).
 ---@type { Name: string, EnumField: string }[]
 VANILLA_STRUCTURE_TYPES = {
     { Name = "Arena", EnumField = "Arena" },
@@ -351,13 +378,57 @@ function GetVanillaStructureEnumField(structureName)
     return nil;
 end
 
--- A custom structure's EnumStructureType (from WL.StructureType.Custom(name)) isn't actually an opaque integer -
--- it's a string of the form "c|<ModID>|<Name>", so its own registered name can be read straight back out of it.
----@param structureID EnumStructureType
----@return string | nil # nil if structureID isn't a custom structure's type (e.g. a vanilla one)
-function GetCustomStructureTypeName(structureID)
-    if (type(structureID) ~= "string") then return nil; end
-    return string.match(structureID, "^c|%d+|(.+)$");
+-- Every CustomSpecialUnitClass field the Placement Edit view exposes as its own typed input, driving both that
+-- form and (later) resolution logic. ModID/Name/ID excluded - ModID isn't settable, Name is already PlacementName.
+---@type { Key: string, Type: "integer"|"number"|"boolean"|"string" }[]
+SPECIAL_UNIT_FIELD_DESCRIPTORS = {
+    { Key = "AttackPower", Type = "integer" },
+    { Key = "AttackPowerPercentage", Type = "number" },
+    { Key = "CanBeAirliftedToSelf", Type = "boolean" },
+    { Key = "CanBeAirliftedToTeammate", Type = "boolean" },
+    { Key = "CanBeGiftedWithGiftCard", Type = "boolean" },
+    { Key = "CanBeTransferredToTeammate", Type = "boolean" },
+    { Key = "CombatOrder", Type = "integer" },
+    { Key = "DamageAbsorbedWhenAttacked", Type = "integer" },
+    { Key = "DamageToKill", Type = "integer" },
+    { Key = "DefensePower", Type = "integer" },
+    { Key = "DefensePowerPercentage", Type = "integer" },
+    { Key = "Health", Type = "integer" },
+    { Key = "IncludeABeforeName", Type = "boolean" },
+    { Key = "IsVisibleToAllPlayers", Type = "boolean" },
+    { Key = "ModData", Type = "string" },
+    { Key = "TextOverHeadOpt", Type = "string" },
+};
+
+-- The Placement Placement list view's status icons - filenames in UIImages. The plain (non-Bg) variant is the
+-- placeholder default; swapping to a Bg variant later is a one-line change here.
+ICON_STRUCTURE = "Structure.png";
+ICON_SPECIAL_UNIT = "SpecialUnit.png";
+ICON_VANILLA = "Vanilla.png";
+ICON_MODDED = "Modded.png";
+ICON_BUILT_IN_SUPPORT = "BuiltInSupport.png";
+ICON_HAS_DATA = "HasData.png";
+ICON_EDIT = "Edit.png";
+
+---@param placement PlaceholderPlacementSetting
+---@return boolean
+function IsModdedStructure(placement)
+    return placement.Type == "Structure" and placement.StructureID ~= nil;
+end
+
+---@param placement PlaceholderPlacementSetting
+---@return boolean
+function PlacementHasData(placement)
+    if (placement.Type == "Structure") then
+        return placement.StructureID ~= nil;
+    end
+    return placement.SpecialUnitFields ~= nil and next(placement.SpecialUnitFields) ~= nil;
+end
+
+---@param placement PlaceholderPlacementSetting
+---@return boolean
+function PlacementHasBuiltInSupport(placement)
+    return false; -- STUB: revisit once ModSupport matching is wired up
 end
 
 -- Marks a GameOrderCustom payload as a Planning Mode build request - "<prefix>{"StructureName":"...",

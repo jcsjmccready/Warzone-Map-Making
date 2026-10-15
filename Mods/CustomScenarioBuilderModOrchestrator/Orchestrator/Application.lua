@@ -6,6 +6,8 @@ CustomScenarioBuilderModOrchestratorApplication = {};
 ---@field Type string | nil # One of PLACEMENT_TYPE_OPTIONS's keys. Missing/nil means DEFAULT_PLACEMENT_TYPE
 ---@field TerritoryName string # Matched case-insensitively against the map's territory names - see FindTerritoryIDByName
 ---@field PlacementName string | nil
+---@field StructureID string | nil # Type=Structure only. Full raw EnumStructureType ("c|<ModID>|<Name>") for a modded structure. nil means vanilla - PlacementName is then matched against VANILLA_STRUCTURE_TYPES
+---@field SpecialUnitFields table<string, string> | nil # Type=SpecialUnit only. Every CustomSpecialUnitClass field, stringified
 
 ---@class CustomScenarioBuilderModOrchestratorPublicGameData # State PlacePlaceholders/PublishVanillaStructureNames set server-side for Client_GameRefresh/Client_PresentMenuUI to read
 ---@field PlacementWarnings string[] | nil # Configured TerritoryNames that couldn't be found on the map

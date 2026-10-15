@@ -6,24 +6,8 @@ require("Utilities");
 function Client_SaveConfigureUI(alert, addCard)
     Mod.Settings.Version = CURRENT_SETTINGS_VERSION;
 
-    ---@type PlaceholderPlacementSetting[]
-    local placements = {};
-    for _, row in ipairs(PlaceholderConfigureState.PlacementRows) do
-        local territoryName = TrimString(row.TerritoryField.GetText() or "");
-        if (territoryName == "") then
-            alert("Every row needs a territory name");
-            return;
-        end
-
-        local placementName = TrimString(row.PlacementNameField.GetText() or "");
-        if (placementName == "") then
-            alert("Every row needs a placement name");
-            return;
-        end
-
-        table.insert(placements, { Type = row.TypeDropdown.GetKey(), TerritoryName = territoryName, PlacementName = placementName });
-    end
-
-    Mod.Settings.PlaceholderPlacements = placements;
-    Mod.Settings.IsPlanningMode = PlaceholderConfigureState.IsPlanningModeCheckBox.GetIsChecked();
+    -- Territory/Placement Name are validated (and the plain PlaceholderPlacementSetting struct built) when a row
+    -- is saved in the Edit view - PlaceholderConfigureState.Placements is already in the exact shape to persist
+    Mod.Settings.PlaceholderPlacements = PlaceholderConfigureState.Placements;
+    Mod.Settings.IsPlanningMode = PlaceholderConfigureState.IsPlanningModeValue;
 end
