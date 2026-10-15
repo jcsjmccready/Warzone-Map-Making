@@ -126,19 +126,13 @@ function OptionsContainKey(options, key)
     return false;
 end
 
----@param str string
----@return string
-function TrimString(str)
-    return (string.gsub(str, "^%s*(.-)%s*$", "%1"));
-end
-
 --Finds the TerritoryID of the territory whose name matches territoryName, case-insensitively. Used to resolve the
 --free-text territory names stored in Mod.Settings.PoIPlacements against the actual map at game start
 ---@param game GameServerHook
 ---@param territoryName string
 ---@return TerritoryID | nil
 function FindTerritoryIDByName(game, territoryName)
-    local normalized = string.lower(TrimString(territoryName or ""));
+    local normalized = string.lower(territoryName or "");
     if (normalized == "") then return nil; end
 
     for territoryID, territoryDetails in pairs(game.Map.Territories) do

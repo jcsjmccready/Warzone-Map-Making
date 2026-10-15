@@ -17,7 +17,7 @@ function Client_SaveConfigureUI(alert, addCard)
     ---@type PointsOfInterestPlacementSetting[]
     local placements = {};
     for _, row in ipairs(PoIConfigureState.PlacementRows) do
-        local territoryName = TrimString(row.TerritoryField.GetText() or "");
+        local territoryName = row.TerritoryField.GetText() or "";
         if (territoryName == "") then
             alert("Every Territory POI Placement row needs a territory name");
             return;
