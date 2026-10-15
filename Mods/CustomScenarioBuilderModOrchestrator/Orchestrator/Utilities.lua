@@ -471,6 +471,54 @@ function ParsePlanningPayload(payload)
     return fields.StructureName, tonumber(fields.TerritoryID);
 end
 
+-- Marks a GameOrderCustom payload as a Planning Mode delete request - removes one structure/special unit
+-- instance already standing on the map, chosen from a PromptFromList of what's currently on the clicked territory.
+local DELETE_MODE_PAYLOAD_PREFIX = "CSBMOPlanningDelete~";
+
+---@param territoryID TerritoryID
+---@param structureName string # a VANILLA_STRUCTURE_TYPES Name, or a raw custom EnumStructureType string ("c|<ModID>|<Name>")
+---@return string
+function BuildDeleteStructurePayload(territoryID, structureName)
+    return DELETE_MODE_PAYLOAD_PREFIX .. EncodeModDataTable({
+        Kind = "Structure",
+        TerritoryID = tostring(territoryID),
+        Identifier = structureName,
+    });
+end
+
+---@param territoryID TerritoryID
+---@param specialUnitID GUID
+---@return string
+function BuildDeleteSpecialUnitPayload(territoryID, specialUnitID)
+    return DELETE_MODE_PAYLOAD_PREFIX .. EncodeModDataTable({
+        Kind = "SpecialUnit",
+        TerritoryID = tostring(territoryID),
+        Identifier = specialUnitID,
+    });
+end
+
+---@param payload string | nil
+---@return ("Structure" | "SpecialUnit") | nil kind
+---@return TerritoryID | nil territoryID
+---@return string | nil identifier # StructureName (Structure) or SpecialUnitID (SpecialUnit)
+function ParseDeletePayload(payload)
+    if (type(payload) ~= "string" or string.sub(payload, 1, #DELETE_MODE_PAYLOAD_PREFIX) ~= DELETE_MODE_PAYLOAD_PREFIX) then
+        return nil, nil, nil;
+    end
+
+    local fields = DecodeModDataTable(string.sub(payload, #DELETE_MODE_PAYLOAD_PREFIX + 1));
+    if (fields == nil) then return nil, nil, nil; end
+
+    local kind = fields.Kind;
+    local territoryID = tonumber(fields.TerritoryID);
+    local identifier = fields.Identifier;
+    if ((kind ~= "Structure" and kind ~= "SpecialUnit") or territoryID == nil or type(identifier) ~= "string" or identifier == "") then
+        return nil, nil, nil;
+    end
+
+    return kind, territoryID, identifier;
+end
+
 ---@param str string
 ---@return string
 function TrimString(str)

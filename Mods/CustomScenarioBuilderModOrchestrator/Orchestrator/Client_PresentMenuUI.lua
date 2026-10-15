@@ -40,6 +40,12 @@ function Client_PresentMenuUI(rootParent, setMaxSize, setScrollable, game, close
         .SetFlexibleWidth(1)
         .SetColor(BUTTON_COLOURS.DarkGreen);
 
+    MenuDeleteTerritoryBtn = UI.CreateButton(vert)
+        .SetText("Delete Structure/Special Unit")
+        .SetOnClick(MenuDeleteTerritoryClicked)
+        .SetFlexibleWidth(1)
+        .SetColor(BUTTON_COLOURS.Red);
+
     UI.CreateEmpty(vert).SetPreferredHeight(10);
 
     ---- Extract Placement Configuration
@@ -157,4 +163,81 @@ function MenuTerritoryClicked(terrDetails)
     MenuGame.Orders = orders;
 
     MenuGame.HighlightTerritories({ terrDetails.ID });
+end
+
+---Queues a GameOrderCustom carrying payload, to be processed into the actual effect by Server_AdvanceTurn_Order
+---@param message string
+---@param payload string
+---@param territoryID TerritoryID
+local function SubmitCustomOrder(message, payload, territoryID)
+    local order = WL.GameOrderCustom.Create(MenuGame.Us.ID, message, payload, nil, WL.TurnPhase.Attacks);
+
+    -- Re-assign rather than mutate in place: Orders is a snapshot, so table.insert on the value returned by
+    -- MenuGame.Orders alone wouldn't persist the new order back to the game.
+    local orders = MenuGame.Orders;
+    table.insert(orders, order);
+    MenuGame.Orders = orders;
+
+    MenuGame.HighlightTerritories({ territoryID });
+end
+
+--- Initiate territory selection for deleting a structure/special unit already standing on the map
+function MenuDeleteTerritoryClicked()
+    MenuDeleteTerritoryBtn.SetInteractable(false);
+    UI.InterceptNextTerritoryClick(MenuDeleteTerritoryTerritoryClicked);
+end
+
+-- Territory on click callback - prompts with every structure/special unit currently standing on the clicked
+-- territory, and queues a delete order for whichever one is picked
+---@param terrDetails TerritoryDetailsVM | nil
+function MenuDeleteTerritoryTerritoryClicked(terrDetails)
+    if UI.IsDestroyed(MenuDeleteTerritoryBtn) then
+        -- Dialog was destroyed, so we don't need to intercept the click anymore
+        return WL.CancelClickIntercept;
+    end
+
+    MenuDeleteTerritoryBtn.SetInteractable(true);
+
+    if (terrDetails == nil) then
+        --The click request was cancelled. Let the player try again.
+        return;
+    end
+
+    local vanillaStructureNames = (Mod.PublicGameData or {}).VanillaStructureNames or {};
+    local territoryStanding = MenuGame.LatestStanding.Territories[terrDetails.ID];
+
+    local list = {};
+    for structureID, count in pairs((territoryStanding or {}).Structures or {}) do
+        local structureName = vanillaStructureNames[structureID] or tostring(structureID);
+        for _ = 1, count do
+            table.insert(list, {
+                text = structureName .. " (structure)",
+                selected = function()
+                    SubmitCustomOrder(
+                        "Removed a " .. structureName .. " from " .. terrDetails.Name,
+                        BuildDeleteStructurePayload(terrDetails.ID, structureName),
+                        terrDetails.ID);
+                end,
+            });
+        end
+    end
+
+    for _, specialUnit in ipairs(((territoryStanding or {}).NumArmies or {}).SpecialUnits or {}) do
+        table.insert(list, {
+            text = specialUnit.Name .. " (special unit)",
+            selected = function()
+                SubmitCustomOrder(
+                    "Removed a special unit from " .. terrDetails.Name,
+                    BuildDeleteSpecialUnitPayload(terrDetails.ID, specialUnit.ID),
+                    terrDetails.ID);
+            end,
+        });
+    end
+
+    if (#list == 0) then
+        UI.Alert("Nothing to delete on " .. terrDetails.Name);
+        return;
+    end
+
+    UI.PromptFromList("Select what to delete from " .. terrDetails.Name, list);
 end

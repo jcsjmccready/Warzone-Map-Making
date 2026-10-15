@@ -190,3 +190,60 @@ function CustomScenarioBuilderModOrchestratorApplication.AddVanillaStructure(gam
     event.Icon = "Build";
     addNewOrder(event);
 end
+
+---@param game GameServerHook
+---@param addNewOrder fun(order: GameOrder)
+---@param playerID PlayerID
+---@param territoryID TerritoryID
+---@param structureName string # a VANILLA_STRUCTURE_TYPES Name, or the raw custom EnumStructureType string ("c|<ModID>|<Name>") as GetPlacementsFromMap/MenuDeleteTerritoryTerritoryClicked read it straight off the standing
+function CustomScenarioBuilderModOrchestratorApplication.RemoveStructure(game, addNewOrder, playerID, territoryID, structureName)
+    local territoryDetails = game.Map.Territories[territoryID];
+    if (territoryDetails == nil) then return; end
+
+    -- Matched against the live standing's own keys (by tostring), rather than reconstructed via
+    -- WL.StructureType.Custom(name) - that rejects the pipe symbol in our "c|<ModID>|<Name>" encoding outright,
+    -- and even with the ModID portion stripped back off there's no guarantee it resolves to the exact same key
+    -- already sitting in Structures. SetStructuresOpt (full replace) is used instead of AddStructuresOpt(-1),
+    -- matching the proven pattern BombShelterApplication.DestroyBombShelter already uses for the same operation.
+    local territory = game.ServerGame.LatestTurnStanding.Territories[territoryID];
+    if (territory == nil or territory.Structures == nil) then return; end
+
+    local enumField = GetVanillaStructureEnumField(structureName);
+    local structures = {};
+    local matchedKey = nil;
+    for key, count in pairs(territory.Structures) do
+        structures[key] = count;
+        if ((enumField ~= nil and key == WL.StructureType[enumField]) or (enumField == nil and tostring(key) == structureName)) then
+            matchedKey = key;
+        end
+    end
+
+    if (matchedKey == nil or (structures[matchedKey] or 0) <= 0) then return; end
+    structures[matchedKey] = structures[matchedKey] - 1;
+
+    local territoryModification = WL.TerritoryModification.Create(territoryID);
+    territoryModification.SetStructuresOpt = structures;
+
+    local event = WL.GameOrderEvent.Create(playerID, "Removed a " .. structureName .. " from " .. territoryDetails.Name, {}, { territoryModification });
+    event.JumpToActionSpotOpt = WL.RectangleVM.Create(territoryDetails.MiddlePointX, territoryDetails.MiddlePointY, territoryDetails.MiddlePointX, territoryDetails.MiddlePointY);
+    event.Icon = "Destroyed";
+    addNewOrder(event);
+end
+
+---@param game GameServerHook
+---@param addNewOrder fun(order: GameOrder)
+---@param playerID PlayerID
+---@param territoryID TerritoryID
+---@param specialUnitID GUID
+function CustomScenarioBuilderModOrchestratorApplication.RemoveSpecialUnit(game, addNewOrder, playerID, territoryID, specialUnitID)
+    local territoryDetails = game.Map.Territories[territoryID];
+    if (territoryDetails == nil) then return; end
+
+    local territoryModification = WL.TerritoryModification.Create(territoryID);
+    territoryModification.RemoveSpecialUnitsOpt = { specialUnitID };
+
+    local event = WL.GameOrderEvent.Create(playerID, "Removed a special unit from " .. territoryDetails.Name, {}, { territoryModification });
+    event.JumpToActionSpotOpt = WL.RectangleVM.Create(territoryDetails.MiddlePointX, territoryDetails.MiddlePointY, territoryDetails.MiddlePointX, territoryDetails.MiddlePointY);
+    event.Icon = "Destroyed";
+    addNewOrder(event);
+end

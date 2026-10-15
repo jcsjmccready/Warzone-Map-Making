@@ -12,8 +12,16 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
     if (order.proxyType ~= 'GameOrderCustom') then return; end
     ---@cast order GameOrderCustom
 
-    local structureName, territoryID = ParsePlanningPayload(order.Payload);
-    if (structureName == nil) then return; end
+    local structureName, buildTerritoryID = ParsePlanningPayload(order.Payload);
+    if (structureName ~= nil) then
+        CustomScenarioBuilderModOrchestratorApplication.AddVanillaStructure(game, addNewOrder, order.PlayerID, structureName, buildTerritoryID);
+        return;
+    end
 
-    CustomScenarioBuilderModOrchestratorApplication.AddVanillaStructure(game, addNewOrder, order.PlayerID, structureName, territoryID);
+    local kind, deleteTerritoryID, identifier = ParseDeletePayload(order.Payload);
+    if (kind == "Structure") then
+        CustomScenarioBuilderModOrchestratorApplication.RemoveStructure(game, addNewOrder, order.PlayerID, deleteTerritoryID, identifier);
+    elseif (kind == "SpecialUnit") then
+        CustomScenarioBuilderModOrchestratorApplication.RemoveSpecialUnit(game, addNewOrder, order.PlayerID, deleteTerritoryID, identifier);
+    end
 end
