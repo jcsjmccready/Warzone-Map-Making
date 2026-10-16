@@ -239,11 +239,156 @@ function CustomScenarioBuilderModOrchestratorApplication.RemoveSpecialUnit(game,
     local territoryDetails = game.Map.Territories[territoryID];
     if (territoryDetails == nil) then return; end
 
+    local territory = game.ServerGame.LatestTurnStanding.Territories[territoryID];
+    local specialUnitName = "special unit";
+    for _, specialUnit in ipairs(((territory or {}).NumArmies or {}).SpecialUnits or {}) do
+        if (specialUnit.ID == specialUnitID) then
+            specialUnitName = specialUnit.Name;
+            break;
+        end
+    end
+
     local territoryModification = WL.TerritoryModification.Create(territoryID);
     territoryModification.RemoveSpecialUnitsOpt = { specialUnitID };
 
-    local event = WL.GameOrderEvent.Create(playerID, "Removed a special unit from " .. territoryDetails.Name, {}, { territoryModification });
+    local event = WL.GameOrderEvent.Create(playerID, "Removed a " .. specialUnitName .. " from " .. territoryDetails.Name, {}, { territoryModification });
     event.JumpToActionSpotOpt = WL.RectangleVM.Create(territoryDetails.MiddlePointX, territoryDetails.MiddlePointY, territoryDetails.MiddlePointX, territoryDetails.MiddlePointY);
     event.Icon = "Destroyed";
+    addNewOrder(event);
+end
+
+---@param game GameServerHook
+---@param addNewOrder fun(order: GameOrder)
+---@param playerID PlayerID
+---@param fromTerritoryID TerritoryID
+---@param toTerritoryID TerritoryID
+---@param structureName string # a VANILLA_STRUCTURE_TYPES Name, or the raw custom EnumStructureType string ("c|<ModID>|<Name>")
+function CustomScenarioBuilderModOrchestratorApplication.MoveStructure(game, addNewOrder, playerID, fromTerritoryID, toTerritoryID, structureName)
+    local fromDetails = game.Map.Territories[fromTerritoryID];
+    local toDetails = game.Map.Territories[toTerritoryID];
+    if (fromDetails == nil or toDetails == nil) then return; end
+
+    -- Matched against the live standing's own keys, same approach RemoveStructure uses
+    local territory = game.ServerGame.LatestTurnStanding.Territories[fromTerritoryID];
+    if (territory == nil or territory.Structures == nil) then return; end
+
+    local enumField = GetVanillaStructureEnumField(structureName);
+    local structures = {};
+    local matchedKey = nil;
+    for key, count in pairs(territory.Structures) do
+        structures[key] = count;
+        if ((enumField ~= nil and key == WL.StructureType[enumField]) or (enumField == nil and tostring(key) == structureName)) then
+            matchedKey = key;
+        end
+    end
+
+    if (matchedKey == nil or (structures[matchedKey] or 0) <= 0) then return; end
+    structures[matchedKey] = structures[matchedKey] - 1;
+
+    local fromModification = WL.TerritoryModification.Create(fromTerritoryID);
+    fromModification.SetStructuresOpt = structures;
+
+    local toModification = WL.TerritoryModification.Create(toTerritoryID);
+    toModification.AddStructuresOpt = { [matchedKey] = 1 };
+
+    local event = WL.GameOrderEvent.Create(playerID, "Moved a " .. structureName .. " from " .. fromDetails.Name .. " to " .. toDetails.Name, {}, { fromModification, toModification });
+    event.JumpToActionSpotOpt = WL.RectangleVM.Create(toDetails.MiddlePointX, toDetails.MiddlePointY, toDetails.MiddlePointX, toDetails.MiddlePointY);
+    event.Icon = "Build";
+    addNewOrder(event);
+end
+
+---@param game GameServerHook
+---@param addNewOrder fun(order: GameOrder)
+---@param playerID PlayerID
+---@param fromTerritoryID TerritoryID
+---@param toTerritoryID TerritoryID
+---@param specialUnitID GUID
+function CustomScenarioBuilderModOrchestratorApplication.MoveSpecialUnit(game, addNewOrder, playerID, fromTerritoryID, toTerritoryID, specialUnitID)
+    local fromDetails = game.Map.Territories[fromTerritoryID];
+    local toDetails = game.Map.Territories[toTerritoryID];
+    if (fromDetails == nil or toDetails == nil) then return; end
+
+    local territory = game.ServerGame.LatestTurnStanding.Territories[fromTerritoryID];
+    local specialUnitObject = nil;
+    for _, specialUnit in ipairs(((territory or {}).NumArmies or {}).SpecialUnits or {}) do
+        if (specialUnit.ID == specialUnitID) then
+            specialUnitObject = specialUnit;
+            break;
+        end
+    end
+    if (specialUnitObject == nil) then return; end
+
+    local fromModification = WL.TerritoryModification.Create(fromTerritoryID);
+    fromModification.RemoveSpecialUnitsOpt = { specialUnitID };
+
+    local toModification = WL.TerritoryModification.Create(toTerritoryID);
+    toModification.AddSpecialUnits = { specialUnitObject };
+
+    local event = WL.GameOrderEvent.Create(playerID, "Moved a " .. specialUnitObject.Name .. " from " .. fromDetails.Name .. " to " .. toDetails.Name, {}, { fromModification, toModification });
+    event.JumpToActionSpotOpt = WL.RectangleVM.Create(toDetails.MiddlePointX, toDetails.MiddlePointY, toDetails.MiddlePointX, toDetails.MiddlePointY);
+    event.Icon = "Build";
+    addNewOrder(event);
+end
+
+---@param game GameServerHook
+---@param addNewOrder fun(order: GameOrder)
+---@param playerID PlayerID
+---@param territoryID TerritoryID
+---@param structureName string # a VANILLA_STRUCTURE_TYPES Name, or the raw custom EnumStructureType string ("c|<ModID>|<Name>")
+function CustomScenarioBuilderModOrchestratorApplication.CloneStructure(game, addNewOrder, playerID, territoryID, structureName)
+    local territoryDetails = game.Map.Territories[territoryID];
+    if (territoryDetails == nil) then return; end
+
+    local territory = game.ServerGame.LatestTurnStanding.Territories[territoryID];
+    if (territory == nil or territory.Structures == nil) then return; end
+
+    local enumField = GetVanillaStructureEnumField(structureName);
+    local matchedKey = nil;
+    for key, _ in pairs(territory.Structures) do
+        if ((enumField ~= nil and key == WL.StructureType[enumField]) or (enumField == nil and tostring(key) == structureName)) then
+            matchedKey = key;
+            break;
+        end
+    end
+    if (matchedKey == nil) then return; end
+
+    local territoryModification = WL.TerritoryModification.Create(territoryID);
+    territoryModification.AddStructuresOpt = { [matchedKey] = 1 };
+
+    local event = WL.GameOrderEvent.Create(playerID, "Cloned a " .. structureName .. " on " .. territoryDetails.Name, {}, { territoryModification });
+    event.JumpToActionSpotOpt = WL.RectangleVM.Create(territoryDetails.MiddlePointX, territoryDetails.MiddlePointY, territoryDetails.MiddlePointX, territoryDetails.MiddlePointY);
+    event.Icon = "Build";
+    addNewOrder(event);
+end
+
+---Only works for a CustomSpecialUnit - there's no mod API to mint a fresh copy of a vanilla special unit
+---(Commander/Boss1-4), so cloning one of those is silently a no-op.
+---@param game GameServerHook
+---@param addNewOrder fun(order: GameOrder)
+---@param playerID PlayerID
+---@param territoryID TerritoryID
+---@param specialUnitID GUID
+function CustomScenarioBuilderModOrchestratorApplication.CloneSpecialUnit(game, addNewOrder, playerID, territoryID, specialUnitID)
+    local territoryDetails = game.Map.Territories[territoryID];
+    if (territoryDetails == nil) then return; end
+
+    local territory = game.ServerGame.LatestTurnStanding.Territories[territoryID];
+    local specialUnitObject = nil;
+    for _, specialUnit in ipairs(((territory or {}).NumArmies or {}).SpecialUnits or {}) do
+        if (specialUnit.ID == specialUnitID) then
+            specialUnitObject = specialUnit;
+            break;
+        end
+    end
+    if (specialUnitObject == nil or specialUnitObject.proxyType ~= "CustomSpecialUnit") then return; end
+
+    local clonedUnit = WL.CustomSpecialUnitBuilder.CreateCopy(specialUnitObject).Build();
+
+    local territoryModification = WL.TerritoryModification.Create(territoryID);
+    territoryModification.AddSpecialUnits = { clonedUnit };
+
+    local event = WL.GameOrderEvent.Create(playerID, "Cloned a " .. specialUnitObject.Name .. " on " .. territoryDetails.Name, {}, { territoryModification });
+    event.JumpToActionSpotOpt = WL.RectangleVM.Create(territoryDetails.MiddlePointX, territoryDetails.MiddlePointY, territoryDetails.MiddlePointX, territoryDetails.MiddlePointY);
+    event.Icon = "Build";
     addNewOrder(event);
 end

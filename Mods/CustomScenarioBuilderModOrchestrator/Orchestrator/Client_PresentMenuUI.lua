@@ -13,14 +13,12 @@ function Client_PresentMenuUI(rootParent, setMaxSize, setScrollable, game, close
     MenuGame = game;
 
     local vert = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
-    UI.CreateLabel(vert).SetText("Placeholder Planning Mode").SetColor(SUBHEADING_COLOUR);
+    UI.CreateLabel(vert).SetText("Add Vanilla Structures").SetColor(SUBHEADING_COLOUR);
 
     if (not Mod.Settings.IsPlanningMode) then
         UI.CreateLabel(vert).SetText("Used for planning mode. Nothing here to see...").SetColor(BUTTON_COLOURS.DarkGray);
         return;
     end
-
-    UI.CreateLabel(vert).SetText("You can place a vanilla structure on a territory as a visual marker, then export the map's layout into a Placeholder Placement config.");
 
     if (game.Us == nil) then
         UI.CreateLabel(vert).SetText("Spectators can't create orders.").SetColor(ERROR_COLOUR);
@@ -40,8 +38,27 @@ function Client_PresentMenuUI(rootParent, setMaxSize, setScrollable, game, close
         .SetFlexibleWidth(1)
         .SetColor(BUTTON_COLOURS.DarkGreen);
 
-    MenuDeleteTerritoryBtn = UI.CreateButton(vert)
-        .SetText("Delete Structure/Special Unit")
+    UI.CreateLabel(vert).SetText('Modify Structure/SU on Map').SetColor(SUBHEADING_COLOUR);
+
+    local modifyHorz = UI.CreateHorizontalLayoutGroup(vert).SetFlexibleWidth(1);
+    MenuMoveTerritoryBtn = UI.CreateButton(modifyHorz)
+        .SetText("Move")
+        .SetIcon(ICON_MOVE)
+        .SetIconMinWidth(20).SetIconPreferredWidth(20)
+        .SetIconMinHeight(20).SetIconPreferredHeight(20)
+        .SetOnClick(MenuMoveTerritoryClicked)
+        .SetFlexibleWidth(1)
+        .SetColor(BUTTON_COLOURS.RoyalBlue);
+    MenuCloneTerritoryBtn = UI.CreateButton(modifyHorz)
+        .SetText("Clone")
+        .SetIcon(ICON_COPY)
+        .SetIconMinWidth(20).SetIconPreferredWidth(20)
+        .SetIconMinHeight(20).SetIconPreferredHeight(20)
+        .SetOnClick(MenuCloneTerritoryClicked)
+        .SetFlexibleWidth(1)
+        .SetColor(BUTTON_COLOURS.DarkGreen);
+    MenuDeleteTerritoryBtn = UI.CreateButton(modifyHorz)
+        .SetText("X Delete")
         .SetOnClick(MenuDeleteTerritoryClicked)
         .SetFlexibleWidth(1)
         .SetColor(BUTTON_COLOURS.Red);
@@ -181,63 +198,323 @@ local function SubmitCustomOrder(message, payload, territoryID)
     MenuGame.HighlightTerritories({ territoryID });
 end
 
---- Initiate territory selection for deleting a structure/special unit already standing on the map
-function MenuDeleteTerritoryClicked()
-    MenuDeleteTerritoryBtn.SetInteractable(false);
-    UI.InterceptNextTerritoryClick(MenuDeleteTerritoryTerritoryClicked);
+---Removes one item (structure/special unit), as picked from the Modify popup
+---@param territoryID TerritoryID
+---@param territoryName string
+---@param item ModifyPickerItem
+local function DeleteModifyItem(territoryID, territoryName, item)
+    if (item.type == "Structure") then
+        SubmitCustomOrder(
+            "Remove a " .. item.label .. " from " .. territoryName,
+            BuildDeleteStructurePayload(territoryID, item.identifier),
+            territoryID);
+    else
+        SubmitCustomOrder(
+            "Remove a " .. item.label .. " from " .. territoryName,
+            BuildDeleteSpecialUnitPayload(territoryID, item.identifier),
+            territoryID);
+    end
 end
 
--- Territory on click callback - prompts with every structure/special unit currently standing on the clicked
--- territory, and queues a delete order for whichever one is picked
----@param terrDetails TerritoryDetailsVM | nil
-function MenuDeleteTerritoryTerritoryClicked(terrDetails)
-    if UI.IsDestroyed(MenuDeleteTerritoryBtn) then
-        -- Dialog was destroyed, so we don't need to intercept the click anymore
-        return WL.CancelClickIntercept;
+---Duplicates one item (structure/special unit) onto the territory it's already on, as picked from the Modify
+---popup. Cloning a vanilla special unit (Commander/Boss1-4) is a no-op server-side - see CloneSpecialUnit.
+---@param territoryID TerritoryID
+---@param territoryName string
+---@param item ModifyPickerItem
+local function CloneModifyItem(territoryID, territoryName, item)
+    if (item.type == "Structure") then
+        SubmitCustomOrder(
+            "Clone a " .. item.label .. " on " .. territoryName,
+            BuildCloneStructurePayload(territoryID, item.identifier),
+            territoryID);
+    else
+        SubmitCustomOrder(
+            "Clone a " .. item.label .. " on " .. territoryName,
+            BuildCloneSpecialUnitPayload(territoryID, item.identifier),
+            territoryID);
+    end
+end
+
+---@class ModifyPickerItem
+---@field label string
+---@field icon string
+---@field originIcon string
+---@field type "Structure" | "SpecialUnit"
+---@field identifier string # structureName (raw ID/vanilla name) for Structure, specialUnitID (GUID) for SpecialUnit
+
+---Shows a custom popup dialog listing every modifiable item on a territory, each with just its icon/name and a
+---single action button - used instead of UI.PromptFromList so rows can carry an icon (Structure/SpecialUnit),
+---which PromptFromList's plain text-only ListOption shape has no room for. The action (Move/Clone/Delete) is
+---already decided by which button on the main dialog opened this picker - selecting a row just applies it.
+---@param territoryName string
+---@param items ModifyPickerItem[]
+---@param actionIcon string # icon shown on each row's action button; "" for a text button instead
+---@param actionText string # text shown on each row's action button when actionIcon is ""
+---@param actionColor string
+---@param onSelect fun(item: ModifyPickerItem)
+local function ShowSelectPicker(territoryName, items, actionIcon, actionText, actionColor, onSelect)
+    -- CreateDialog doesn't auto-close a previously opened dialog - close the last one ourselves so clicking
+    -- another territory while this popup is still open doesn't stack up duplicates
+    if (MenuModifyDialogClose ~= nil) then
+        MenuModifyDialogClose();
+        MenuModifyDialogClose = nil;
     end
 
-    MenuDeleteTerritoryBtn.SetInteractable(true);
+    MenuGame.CreateDialog(function(rootParent, setMaxSize, setScrollable, dialogGame, close)
+        MenuModifyDialogClose = close;
+        setMaxSize(400, 400);
+        setScrollable(false, true);
 
-    if (terrDetails == nil) then
-        --The click request was cancelled. Let the player try again.
-        return;
+        local vert = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
+        UI.CreateLabel(vert).SetText("Select a target on " .. territoryName).SetColor(SUBHEADING_COLOUR);
+
+        for _, item in ipairs(items) do
+            local row = UI.CreateHorizontalLayoutGroup(vert).SetFlexibleWidth(1);
+            UI.CreateImage(row).SetSprite(item.icon).SetPreferredWidth(ICON_SIZE).SetMinWidth(0).SetFlexibleWidth(0).SetPreferredHeight(ICON_SIZE).SetMinHeight(0);
+            UI.CreateImage(row).SetSprite(item.originIcon).SetPreferredWidth(ICON_SIZE).SetMinWidth(0).SetFlexibleWidth(0).SetPreferredHeight(ICON_SIZE).SetMinHeight(0);
+            UI.CreateLabel(row).SetText(item.label).SetFlexibleWidth(1);
+
+            local actionBtn = UI.CreateButton(row).SetColor(actionColor).SetPreferredWidth(40).SetMinWidth(0).SetFlexibleWidth(0).SetPreferredHeight(30).SetMinHeight(0);
+            if (actionIcon ~= "") then
+                actionBtn.SetText("").SetIcon(actionIcon).SetIconMinWidth(20).SetIconPreferredWidth(20).SetIconMinHeight(20).SetIconPreferredHeight(20);
+            else
+                actionBtn.SetText(actionText);
+            end
+            actionBtn.SetOnClick(function()
+                close();
+                onSelect(item);
+            end);
+        end
+    end);
+end
+
+---Shows the Move picker. Unlike ShowSelectPicker, selecting a row doesn't close the dialog straight away -
+---instead that row's button turns green and disables, the heading switches to asking for a destination
+---territory, and only once a territory is actually clicked does the dialog close and the order get queued.
+---Clicking a different row's button first cancels the pending pick and starts over on the new row.
+---@param fromTerritoryID TerritoryID
+---@param fromTerritoryName string
+---@param items ModifyPickerItem[]
+local function ShowMovePicker(fromTerritoryID, fromTerritoryName, items)
+    -- CreateDialog doesn't auto-close a previously opened dialog - close the last one ourselves so clicking
+    -- another territory while this popup is still open doesn't stack up duplicates
+    if (MenuModifyDialogClose ~= nil) then
+        MenuModifyDialogClose();
+        MenuModifyDialogClose = nil;
     end
 
+    MenuGame.CreateDialog(function(rootParent, setMaxSize, setScrollable, dialogGame, close)
+        MenuModifyDialogClose = close;
+        setMaxSize(400, 400);
+        setScrollable(false, true);
+
+        local vert = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
+        local headingLabel = UI.CreateLabel(vert).SetText("Select a target on " .. fromTerritoryName).SetColor(SUBHEADING_COLOUR);
+
+        -- Only one row can be "pending a territory pick" at a time - selecting another row cancels this one
+        local cancelPending = function() end;
+
+        for _, item in ipairs(items) do
+            local row = UI.CreateHorizontalLayoutGroup(vert).SetFlexibleWidth(1);
+            UI.CreateImage(row).SetSprite(item.icon).SetPreferredWidth(ICON_SIZE).SetMinWidth(0).SetFlexibleWidth(0).SetPreferredHeight(ICON_SIZE).SetMinHeight(0);
+            UI.CreateImage(row).SetSprite(item.originIcon).SetPreferredWidth(ICON_SIZE).SetMinWidth(0).SetFlexibleWidth(0).SetPreferredHeight(ICON_SIZE).SetMinHeight(0);
+            UI.CreateLabel(row).SetText(item.label).SetFlexibleWidth(1);
+
+            local actionBtn = UI.CreateButton(row)
+                .SetText("")
+                .SetIcon(ICON_MOVE)
+                .SetIconMinWidth(20).SetIconPreferredWidth(20).SetIconMinHeight(20).SetIconPreferredHeight(20)
+                .SetColor(BUTTON_COLOURS.RoyalBlue)
+                .SetPreferredWidth(40).SetMinWidth(0).SetFlexibleWidth(0)
+                .SetPreferredHeight(30).SetMinHeight(0);
+
+            actionBtn.SetOnClick(function()
+                cancelPending(); -- in case a different row was already pending
+
+                actionBtn.SetColor(BUTTON_COLOURS.DarkGreen).SetInteractable(false);
+                headingLabel.SetText("Select a territory to move " .. item.label .. " to");
+
+                local isCancelled = false;
+                cancelPending = function()
+                    isCancelled = true;
+                    actionBtn.SetColor(BUTTON_COLOURS.RoyalBlue).SetInteractable(true);
+                    headingLabel.SetText("Select a target on " .. fromTerritoryName);
+                end;
+
+                UI.InterceptNextTerritoryClick(function(toTerrDetails)
+                    if (isCancelled or UI.IsDestroyed(actionBtn)) then
+                        -- A different row was picked instead, or the dialog was destroyed - don't act on this click
+                        return WL.CancelClickIntercept;
+                    end
+
+                    if (toTerrDetails == nil) then
+                        --The click request was cancelled. Let the player try again.
+                        cancelPending();
+                        return;
+                    end
+
+                    if (toTerrDetails.ID == fromTerritoryID) then
+                        UI.Alert("Can't move " .. item.label .. " to the same territory it's already on.");
+                        cancelPending();
+                        return;
+                    end
+
+                    close();
+
+                    if (item.type == "Structure") then
+                        SubmitCustomOrder(
+                            "Move a " .. item.label .. " from " .. fromTerritoryName .. " to " .. toTerrDetails.Name,
+                            BuildMoveStructurePayload(fromTerritoryID, toTerrDetails.ID, item.identifier),
+                            toTerrDetails.ID);
+                    else
+                        SubmitCustomOrder(
+                            "Move a " .. item.label .. " from " .. fromTerritoryName .. " to " .. toTerrDetails.Name,
+                            BuildMoveSpecialUnitPayload(fromTerritoryID, toTerrDetails.ID, item.identifier),
+                            toTerrDetails.ID);
+                    end
+                end);
+            end);
+        end
+    end);
+end
+
+---Scans the player's already-queued orders for delete orders targeting this territory, and move orders taking
+---something away from it, so the picker can hide structures/special units that are already scheduled to leave
+---(deleted or moved elsewhere) instead of offering to queue a duplicate removal.
+---@param territoryID TerritoryID
+---@return table<string, integer> structureCounts # structureName (raw ID/vanilla name) -> how many are already queued to leave
+---@return table<GUID, boolean> specialUnitIDs # already-queued-to-leave special unit IDs
+local function GetPendingRemovals(territoryID)
+    local structureCounts = {};
+    local specialUnitIDs = {};
+
+    for _, order in ipairs(MenuGame.Orders) do
+        if (order.proxyType == 'GameOrderCustom') then
+            ---@cast order GameOrderCustom
+
+            local deleteType, deleteTerritoryID, deleteIdentifier = ParseDeletePayload(order.Payload);
+            if (deleteIdentifier ~= nil and deleteTerritoryID == territoryID) then
+                if (deleteType == "Structure") then
+                    structureCounts[deleteIdentifier] = (structureCounts[deleteIdentifier] or 0) + 1;
+                elseif (deleteType == "SpecialUnit") then
+                    specialUnitIDs[deleteIdentifier] = true;
+                end
+            end
+
+            local moveType, fromTerritoryID, _, moveIdentifier = ParseMovePayload(order.Payload);
+            if (moveIdentifier ~= nil and fromTerritoryID == territoryID) then
+                if (moveType == "Structure") then
+                    structureCounts[moveIdentifier] = (structureCounts[moveIdentifier] or 0) + 1;
+                elseif (moveType == "SpecialUnit") then
+                    specialUnitIDs[moveIdentifier] = true;
+                end
+            end
+        end
+    end
+
+    return structureCounts, specialUnitIDs;
+end
+
+---Builds the list of every structure/special unit standing on a territory that's still available to modify (not
+---already queued to leave via a pending delete/move order). Alerts and returns nil if there's nothing to show.
+---@param terrDetails TerritoryDetailsVM
+---@return ModifyPickerItem[] | nil
+local function BuildModifyItems(terrDetails)
     local vanillaStructureNames = (Mod.PublicGameData or {}).VanillaStructureNames or {};
     local territoryStanding = MenuGame.LatestStanding.Territories[terrDetails.ID];
+    local pendingStructureCounts, pendingSpecialUnitIDs = GetPendingRemovals(terrDetails.ID);
 
-    local list = {};
+    ---@type ModifyPickerItem[]
+    local items = {};
     for structureID, count in pairs((territoryStanding or {}).Structures or {}) do
         local structureName = vanillaStructureNames[structureID] or tostring(structureID);
-        for _ = 1, count do
-            table.insert(list, {
-                text = structureName .. " (structure)",
-                selected = function()
-                    SubmitCustomOrder(
-                        "Removed a " .. structureName .. " from " .. terrDetails.Name,
-                        BuildDeleteStructurePayload(terrDetails.ID, structureName),
-                        terrDetails.ID);
-                end,
+        -- The full raw ID ("c|<ModID>|<Name>") still goes into the order so the server can match it against the
+        -- live standing - only the display text here is shortened down to just <Name>, for a custom structure
+        local displayName = ParseCustomStructureName(structureName) or structureName;
+        local originIcon = (vanillaStructureNames[structureID] ~= nil) and ICON_VANILLA or ICON_MODDED;
+        local remainingCount = math.max(0, count - (pendingStructureCounts[structureName] or 0));
+        for _ = 1, remainingCount do
+            table.insert(items, {
+                label = displayName,
+                icon = ICON_STRUCTURE,
+                originIcon = originIcon,
+                type = "Structure",
+                identifier = structureName,
             });
         end
     end
 
     for _, specialUnit in ipairs(((territoryStanding or {}).NumArmies or {}).SpecialUnits or {}) do
-        table.insert(list, {
-            text = specialUnit.Name .. " (special unit)",
-            selected = function()
-                SubmitCustomOrder(
-                    "Removed a special unit from " .. terrDetails.Name,
-                    BuildDeleteSpecialUnitPayload(terrDetails.ID, specialUnit.ID),
-                    terrDetails.ID);
-            end,
-        });
+        if (not pendingSpecialUnitIDs[specialUnit.ID]) then
+            table.insert(items, {
+                label = specialUnit.Name,
+                icon = ICON_SPECIAL_UNIT,
+                originIcon = (specialUnit.proxyType == "CustomSpecialUnit") and ICON_MODDED or ICON_VANILLA,
+                type = "SpecialUnit",
+                identifier = specialUnit.ID,
+            });
+        end
     end
 
-    if (#list == 0) then
-        UI.Alert("Nothing to delete on " .. terrDetails.Name);
-        return;
+    if (#items == 0) then
+        UI.Alert("Nothing to modify on " .. terrDetails.Name);
+        return nil;
     end
 
-    UI.PromptFromList("Select what to delete from " .. terrDetails.Name, list);
+    return items;
+end
+
+--- Initiate territory selection for moving a structure/special unit already standing on the map
+function MenuMoveTerritoryClicked()
+    MenuMoveTerritoryBtn.SetInteractable(false);
+    UI.InterceptNextTerritoryClick(function(terrDetails)
+        if UI.IsDestroyed(MenuMoveTerritoryBtn) then
+            return WL.CancelClickIntercept;
+        end
+        MenuMoveTerritoryBtn.SetInteractable(true);
+        if (terrDetails == nil) then return; end
+
+        local items = BuildModifyItems(terrDetails);
+        if (items == nil) then return; end
+
+        ShowMovePicker(terrDetails.ID, terrDetails.Name, items);
+    end);
+end
+
+--- Initiate territory selection for cloning a structure/special unit already standing on the map
+function MenuCloneTerritoryClicked()
+    MenuCloneTerritoryBtn.SetInteractable(false);
+    UI.InterceptNextTerritoryClick(function(terrDetails)
+        if UI.IsDestroyed(MenuCloneTerritoryBtn) then
+            return WL.CancelClickIntercept;
+        end
+        MenuCloneTerritoryBtn.SetInteractable(true);
+        if (terrDetails == nil) then return; end
+
+        local items = BuildModifyItems(terrDetails);
+        if (items == nil) then return; end
+
+        ShowSelectPicker(terrDetails.Name, items, ICON_COPY, "", BUTTON_COLOURS.DarkGreen, function(item)
+            CloneModifyItem(terrDetails.ID, terrDetails.Name, item);
+        end);
+    end);
+end
+
+--- Initiate territory selection for deleting a structure/special unit already standing on the map
+function MenuDeleteTerritoryClicked()
+    MenuDeleteTerritoryBtn.SetInteractable(false);
+    UI.InterceptNextTerritoryClick(function(terrDetails)
+        if UI.IsDestroyed(MenuDeleteTerritoryBtn) then
+            return WL.CancelClickIntercept;
+        end
+        MenuDeleteTerritoryBtn.SetInteractable(true);
+        if (terrDetails == nil) then return; end
+
+        local items = BuildModifyItems(terrDetails);
+        if (items == nil) then return; end
+
+        ShowSelectPicker(terrDetails.Name, items, "", "X", BUTTON_COLOURS.Red, function(item)
+            DeleteModifyItem(terrDetails.ID, terrDetails.Name, item);
+        end);
+    end);
 end

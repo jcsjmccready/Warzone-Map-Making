@@ -418,6 +418,8 @@ ICON_MODDED = "Modded.png";
 ICON_BUILT_IN_SUPPORT = "BuiltInSupport.png";
 ICON_HAS_DATA = "HasData.png";
 ICON_EDIT = "Edit.png";
+ICON_MOVE = "Move.png";
+ICON_COPY = "Copy.png";
 
 ---@param placement PlaceholderPlacementSetting
 ---@return boolean
@@ -480,7 +482,7 @@ local DELETE_MODE_PAYLOAD_PREFIX = "CSBMOPlanningDelete~";
 ---@return string
 function BuildDeleteStructurePayload(territoryID, structureName)
     return DELETE_MODE_PAYLOAD_PREFIX .. EncodeModDataTable({
-        Kind = "Structure",
+        Type = "Structure",
         TerritoryID = tostring(territoryID),
         Identifier = structureName,
     });
@@ -491,14 +493,14 @@ end
 ---@return string
 function BuildDeleteSpecialUnitPayload(territoryID, specialUnitID)
     return DELETE_MODE_PAYLOAD_PREFIX .. EncodeModDataTable({
-        Kind = "SpecialUnit",
+        Type = "SpecialUnit",
         TerritoryID = tostring(territoryID),
         Identifier = specialUnitID,
     });
 end
 
 ---@param payload string | nil
----@return ("Structure" | "SpecialUnit") | nil kind
+---@return ("Structure" | "SpecialUnit") | nil type
 ---@return TerritoryID | nil territoryID
 ---@return string | nil identifier # StructureName (Structure) or SpecialUnitID (SpecialUnit)
 function ParseDeletePayload(payload)
@@ -509,14 +511,116 @@ function ParseDeletePayload(payload)
     local fields = DecodeModDataTable(string.sub(payload, #DELETE_MODE_PAYLOAD_PREFIX + 1));
     if (fields == nil) then return nil, nil, nil; end
 
-    local kind = fields.Kind;
+    local placementType = fields.Type;
     local territoryID = tonumber(fields.TerritoryID);
     local identifier = fields.Identifier;
-    if ((kind ~= "Structure" and kind ~= "SpecialUnit") or territoryID == nil or type(identifier) ~= "string" or identifier == "") then
+    if ((placementType ~= "Structure" and placementType ~= "SpecialUnit") or territoryID == nil or type(identifier) ~= "string" or identifier == "") then
         return nil, nil, nil;
     end
 
-    return kind, territoryID, identifier;
+    return placementType, territoryID, identifier;
+end
+
+-- Marks a GameOrderCustom payload as a Planning Mode move request - relocates one structure/special unit
+-- instance already standing on the map from one territory to another, chosen via two territory clicks.
+local MOVE_MODE_PAYLOAD_PREFIX = "CSBMOPlanningMove~";
+
+---@param fromTerritoryID TerritoryID
+---@param toTerritoryID TerritoryID
+---@param structureName string # a VANILLA_STRUCTURE_TYPES Name, or a raw custom EnumStructureType string ("c|<ModID>|<Name>")
+---@return string
+function BuildMoveStructurePayload(fromTerritoryID, toTerritoryID, structureName)
+    return MOVE_MODE_PAYLOAD_PREFIX .. EncodeModDataTable({
+        Type = "Structure",
+        FromTerritoryID = tostring(fromTerritoryID),
+        ToTerritoryID = tostring(toTerritoryID),
+        Identifier = structureName,
+    });
+end
+
+---@param fromTerritoryID TerritoryID
+---@param toTerritoryID TerritoryID
+---@param specialUnitID GUID
+---@return string
+function BuildMoveSpecialUnitPayload(fromTerritoryID, toTerritoryID, specialUnitID)
+    return MOVE_MODE_PAYLOAD_PREFIX .. EncodeModDataTable({
+        Type = "SpecialUnit",
+        FromTerritoryID = tostring(fromTerritoryID),
+        ToTerritoryID = tostring(toTerritoryID),
+        Identifier = specialUnitID,
+    });
+end
+
+---@param payload string | nil
+---@return ("Structure" | "SpecialUnit") | nil type
+---@return TerritoryID | nil fromTerritoryID
+---@return TerritoryID | nil toTerritoryID
+---@return string | nil identifier # StructureName (Structure) or SpecialUnitID (SpecialUnit)
+function ParseMovePayload(payload)
+    if (type(payload) ~= "string" or string.sub(payload, 1, #MOVE_MODE_PAYLOAD_PREFIX) ~= MOVE_MODE_PAYLOAD_PREFIX) then
+        return nil, nil, nil, nil;
+    end
+
+    local fields = DecodeModDataTable(string.sub(payload, #MOVE_MODE_PAYLOAD_PREFIX + 1));
+    if (fields == nil) then return nil, nil, nil, nil; end
+
+    local placementType = fields.Type;
+    local fromTerritoryID = tonumber(fields.FromTerritoryID);
+    local toTerritoryID = tonumber(fields.ToTerritoryID);
+    local identifier = fields.Identifier;
+    if ((placementType ~= "Structure" and placementType ~= "SpecialUnit") or fromTerritoryID == nil or toTerritoryID == nil or type(identifier) ~= "string" or identifier == "") then
+        return nil, nil, nil, nil;
+    end
+
+    return placementType, fromTerritoryID, toTerritoryID, identifier;
+end
+
+-- Marks a GameOrderCustom payload as a Planning Mode clone request - duplicates one structure/special unit
+-- instance already standing on the map, adding the copy onto the same territory it's already on.
+local CLONE_MODE_PAYLOAD_PREFIX = "CSBMOPlanningClone~";
+
+---@param territoryID TerritoryID
+---@param structureName string # a VANILLA_STRUCTURE_TYPES Name, or a raw custom EnumStructureType string ("c|<ModID>|<Name>")
+---@return string
+function BuildCloneStructurePayload(territoryID, structureName)
+    return CLONE_MODE_PAYLOAD_PREFIX .. EncodeModDataTable({
+        Type = "Structure",
+        TerritoryID = tostring(territoryID),
+        Identifier = structureName,
+    });
+end
+
+---@param territoryID TerritoryID
+---@param specialUnitID GUID
+---@return string
+function BuildCloneSpecialUnitPayload(territoryID, specialUnitID)
+    return CLONE_MODE_PAYLOAD_PREFIX .. EncodeModDataTable({
+        Type = "SpecialUnit",
+        TerritoryID = tostring(territoryID),
+        Identifier = specialUnitID,
+    });
+end
+
+---@param payload string | nil
+---@return ("Structure" | "SpecialUnit") | nil type
+---@return TerritoryID | nil territoryID
+---@return string | nil identifier # StructureName (Structure) or SpecialUnitID (SpecialUnit)
+function ParseClonePayload(payload)
+    if (type(payload) ~= "string" or string.sub(payload, 1, #CLONE_MODE_PAYLOAD_PREFIX) ~= CLONE_MODE_PAYLOAD_PREFIX) then
+        return nil, nil, nil;
+    end
+
+    local fields = DecodeModDataTable(string.sub(payload, #CLONE_MODE_PAYLOAD_PREFIX + 1));
+    if (fields == nil) then return nil, nil, nil; end
+
+    local placementType = fields.Type;
+    local territoryID = tonumber(fields.TerritoryID);
+    local identifier = fields.Identifier;
+    if ((placementType ~= "Structure" and placementType ~= "SpecialUnit") or territoryID == nil or type(identifier) ~= "string" or identifier == "") then
+        return nil, nil, nil;
+    end
+
+    return placementType, territoryID, identifier;
 end
 
 ---@param str string

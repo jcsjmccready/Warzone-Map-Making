@@ -10,4 +10,5 @@ function Client_SaveConfigureUI(alert, addCard)
     -- is saved in the Edit view - PlaceholderConfigureState.Placements is already in the exact shape to persist
     Mod.Settings.PlaceholderPlacements = PlaceholderConfigureState.Placements;
     Mod.Settings.IsPlanningMode = PlaceholderConfigureState.IsPlanningModeValue;
+    Mod.Settings.DisableAIMovements = PlaceholderConfigureState.DisableAIMovementsValue;
 end

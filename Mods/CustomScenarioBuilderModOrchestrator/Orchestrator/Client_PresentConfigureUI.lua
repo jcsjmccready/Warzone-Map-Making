@@ -22,6 +22,8 @@ require("Templates");
 ---@field EditSpecialUnitFieldControls table<string, table> # Type=SpecialUnit only: SPECIAL_UNIT_FIELD_DESCRIPTORS key -> its control
 ---@field EditStatusLabel Label | nil
 ---@field IsPlanningModeCheckBox CheckBox | nil
+---@field DisableAIMovementsValue boolean # cached from the checkbox on change, since the checkbox itself may be destroyed (page navigated away) by the time Client_SaveConfigureUI reads this back
+---@field DisableAIMovementsCheckBox CheckBox | nil
 ---@field PlanningModeContainer UIObject | nil # stable parent (inside the Planning page), created once per ShowPlanningPage call
 ---@field PlanningModeHeading UIObject | nil # the destroyable wrapper holding the paste box + button, nil while Is Planning Mode is unchecked
 ---@field PlanningDataField TextInputField | nil
@@ -41,6 +43,7 @@ require("Templates");
 local State = {
     Placements = {},
     IsPlanningModeValue = false,
+    DisableAIMovementsValue = false,
     EditIsFromTemplate = false,
     EditSpecialUnitFieldControls = {},
     IsConfirmPending = false,
@@ -218,6 +221,13 @@ end
 ---Builds the paste box and its overwrite button, shown while Is Planning Mode is checked
 local function Create_PlanningModeUI()
     State.PlanningModeHeading = UI.CreateVerticalLayoutGroup(State.PlanningModeContainer).SetFlexibleWidth(1);
+
+    State.DisableAIMovementsCheckBox = UI.CreateCheckBox(State.PlanningModeHeading)
+        .SetText('Disable AI Movements')
+        .SetIsChecked(State.DisableAIMovementsValue)
+        .SetOnValueChanged(function()
+            State.DisableAIMovementsValue = State.DisableAIMovementsCheckBox.GetIsChecked();
+        end);
 
     State.PlanningDataField = UI.CreateTextInputField(State.PlanningModeHeading)
         .SetPlaceholderText("Paste to import placement data")
@@ -500,6 +510,7 @@ State.ShowPlanningPage = function()
         if (State.IsPlanningModeValue) then
             Create_PlanningModeUI();
         else
+            State.DisableAIMovementsValue = false;
             DestroyIfExists(State.PlanningModeHeading);
         end
     end);
@@ -517,6 +528,8 @@ function Client_PresentConfigureUI(rootParent)
         table.insert(State.Placements, placement);
     end
     State.IsPlanningModeValue = Mod.Settings.IsPlanningMode or false;
+    State.DisableAIMovementsValue = Mod.Settings.DisableAIMovements or false;
+    State.DisableAIMovementsCheckBox = nil;
     State.NavContainer = nil;
     State.NavContent = nil;
     State.PageContainer = nil;
