@@ -388,25 +388,25 @@ end
 
 -- Every CustomSpecialUnitClass field the Placement Edit view exposes as its own typed input, driving both that
 -- form and (later) resolution logic. ModID/Name/ID excluded - ModID isn't settable, Name is already PlacementName.
----@type { Key: string, Type: "integer"|"number"|"boolean"|"string" }[]
+---@type { Key: string, Type: "integer"|"number"|"boolean"|"string", Label: string }[]
 SPECIAL_UNIT_FIELD_DESCRIPTORS = {
-    { Key = "AttackPower", Type = "integer" },
-    { Key = "AttackPowerPercentage", Type = "number" },
-    { Key = "CanBeAirliftedToSelf", Type = "boolean" },
-    { Key = "CanBeAirliftedToTeammate", Type = "boolean" },
-    { Key = "CanBeGiftedWithGiftCard", Type = "boolean" },
-    { Key = "CanBeTransferredToTeammate", Type = "boolean" },
-    { Key = "CombatOrder", Type = "integer" },
-    { Key = "DamageAbsorbedWhenAttacked", Type = "integer" },
-    { Key = "DamageToKill", Type = "integer" },
-    { Key = "DefensePower", Type = "integer" },
-    { Key = "DefensePowerPercentage", Type = "integer" },
-    { Key = "Health", Type = "integer" },
-    { Key = "IncludeABeforeName", Type = "boolean" },
-    { Key = "IsVisibleToAllPlayers", Type = "boolean" },
-    { Key = "ModData", Type = "string" },
-    { Key = "ModID", Type = "integer" },
-    { Key = "TextOverHeadOpt", Type = "string" },
+    { Key = "AttackPower", Type = "integer", Label = "Attack Power" },
+    { Key = "AttackPowerPercentage", Type = "number", Label = "Attack Power Percentage" },
+    { Key = "CanBeAirliftedToSelf", Type = "boolean", Label = "Can Be Airlifted To Self" },
+    { Key = "CanBeAirliftedToTeammate", Type = "boolean", Label = "Can Be Airlifted To Teammate" },
+    { Key = "CanBeGiftedWithGiftCard", Type = "boolean", Label = "Can Be Gifted With Gift Card" },
+    { Key = "CanBeTransferredToTeammate", Type = "boolean", Label = "Can Be Transferred To Teammate" },
+    { Key = "CombatOrder", Type = "integer", Label = "Combat Order" },
+    { Key = "DamageAbsorbedWhenAttacked", Type = "integer", Label = "Damage Absorbed When Attacked" },
+    { Key = "DamageToKill", Type = "integer", Label = "Damage To Kill" },
+    { Key = "DefensePower", Type = "integer", Label = "Defense Power" },
+    { Key = "DefensePowerPercentage", Type = "integer", Label = "Defense Power Percentage" },
+    { Key = "Health", Type = "integer", Label = "Health" },
+    { Key = "IncludeABeforeName", Type = "boolean", Label = "Include \"A\" Before Name" },
+    { Key = "IsVisibleToAllPlayers", Type = "boolean", Label = "Is Visible To All Players" },
+    { Key = "ModData", Type = "string", Label = "Mod Data" },
+    { Key = "ModID", Type = "integer", Label = "Mod ID" },
+    { Key = "TextOverHeadOpt", Type = "string", Label = "Text Over Head" },
 };
 
 -- The Placement Placement list view's status icons - filenames in UIImages. The plain (non-Bg) variant is the
@@ -629,13 +629,6 @@ function TrimString(str)
     return (string.gsub(str, "^%s*(.-)%s*$", "%1"));
 end
 
----Turns a PascalCase identifier (e.g. a SPECIAL_UNIT_FIELD_DESCRIPTORS Key) into human-readable words, e.g.
----"AttackPowerPercentage" -> "Attack Power Percentage", "ModID" -> "Mod ID"
----@param pascalCase string
----@return string
-function HumanizePascalCase(pascalCase)
-    return (string.gsub(pascalCase, "(%l)(%u)", "%1 %2"));
-end
 
 --Finds the TerritoryID of the territory whose name matches territoryName, case-insensitively. Used to resolve the
 --free-text territory names stored in Mod.Settings.PlaceholderPlacements against the actual map at game creation

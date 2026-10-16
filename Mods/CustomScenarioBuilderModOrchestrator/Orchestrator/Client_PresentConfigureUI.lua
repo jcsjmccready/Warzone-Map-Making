@@ -13,8 +13,10 @@ require("Templates");
 ---@field EditingIndex integer | nil # which State.Placements entry the Edit view is editing; nil while adding a new one
 ---@field EditExisting PlaceholderPlacementSetting | nil # the placement (or template prefill) the Edit view's fields were seeded from
 ---@field EditIsFromTemplate boolean # true when adding a new placement via "Add from Template" - hides the Structure ID field, since templates are always vanilla structures
----@field EditTypeDropdown table | nil # CreateDropDown's return value
+---@field EditTypeKey string | nil # "Structure"/"SpecialUnit" - fixed for the lifetime of the Edit view, never changeable by the player (see ShowEditView)
 ---@field EditTerritoryField TextInputField | nil
+---@field EditPlacementNameParent UIObject | nil # stable parent for EditPlacementNameContainer
+---@field EditPlacementNameContainer UIObject | nil # destroyable, rebuilt whenever Type changes
 ---@field EditPlacementNameField TextInputField | nil
 ---@field EditFieldsParent UIObject | nil # stable parent for EditTypeFieldsContainer
 ---@field EditTypeFieldsContainer UIObject | nil # destroyable, rebuilt whenever Type changes
@@ -32,7 +34,6 @@ require("Templates");
 ---@field ConfirmContainer UIObject | nil
 ---@field ConfirmHeading UIObject | nil # the destroyable Yes/No prompt, nil while not confirming
 ---@field IsConfirmPending boolean # blocks re-triggering the button while ConfirmHeading is already showing
----@field IsPromptFromListOpen boolean # blocks opening a second UI.PromptFromList while one is already showing
 ---@field ShowHomePage fun() | nil
 ---@field ShowPlacementPage fun() | nil
 ---@field ShowPlanningPage fun() | nil
@@ -47,7 +48,6 @@ local State = {
     EditIsFromTemplate = false,
     EditSpecialUnitFieldControls = {},
     IsConfirmPending = false,
-    IsPromptFromListOpen = false,
 };
 
 ---UI.Destroy's signature doesn't accept nil (unlike UI.IsDestroyed, which explicitly does) - calling it with a
@@ -60,26 +60,15 @@ local function DestroyIfExists(object)
     end
 end
 
----Wraps UI.PromptFromList so a second one can't be opened on top of an already-showing one (e.g. a double click),
----and so IsPromptFromListOpen is cleared again once an option is actually picked.
+---Thin wrapper around UI.PromptFromList. There used to be a re-entrancy guard here (a flag set before opening
+---and cleared once an option was picked), but the dialog's own built-in Cancel button closes it without ever
+---calling back into Lua - there's no dismiss/cancel callback for UI.PromptFromList - so that flag could get
+---stuck true forever and permanently block every future prompt for the rest of the session. A stray double-open
+---from a fast double click is a far smaller problem than that, so the guard was removed rather than patched.
 ---@param message string
 ---@param options ListOption[]
 local function ShowPromptFromList(message, options)
-    if (State.IsPromptFromListOpen) then return; end
-    State.IsPromptFromListOpen = true;
-
-    local wrappedOptions = {};
-    for _, option in ipairs(options) do
-        table.insert(wrappedOptions, {
-            text = option.text,
-            selected = function()
-                State.IsPromptFromListOpen = false;
-                option.selected();
-            end,
-        });
-    end
-
-    UI.PromptFromList(message, wrappedOptions);
+    UI.PromptFromList(message, options);
 end
 
 ---Rebuilds the persistent nav row for whichever page is now showing - on Home, the Placement Mode/Planning Mode
@@ -110,6 +99,43 @@ local function RenderNav(currentPage)
     end
 end
 
+---Rebuilds the Edit view's Placement Name field - called on open and whenever Type changes. A Structure's name
+---is matched against VANILLA_STRUCTURE_TYPES/StructureID at game start, so it can't be left free-typeable: a
+---vanilla structure's name is chosen from a prompt list instead, and a modded structure's name (parsed from its
+---StructureID on import) is always read-only, matching RenderEditTypeFields' handling of StructureID itself. A
+---SpecialUnit's fields (this one included) are all locked for now - see RenderEditTypeFields.
+local function RenderEditPlacementNameField()
+    DestroyIfExists(State.EditPlacementNameContainer);
+    State.EditPlacementNameContainer = UI.CreateHorizontalLayoutGroup(State.EditPlacementNameParent).SetFlexibleWidth(1);
+
+    local typeKey = State.EditTypeKey;
+    local existing = State.EditExisting;
+    local isModded = State.EditingIndex ~= nil and existing ~= nil and existing.Type == "Structure" and existing.StructureID ~= nil;
+
+    State.EditPlacementNameField = UI.CreateTextInputField(State.EditPlacementNameContainer)
+        .SetPlaceholderText("Placement Name")
+        .SetText((existing ~= nil and existing.PlacementName) or "")
+        .SetInteractable(false)
+        .SetFlexibleWidth(1);
+
+    if (typeKey == "Structure" and not isModded) then
+        UI.CreateButton(State.EditPlacementNameContainer)
+            .SetText("Choose")
+            .SetColor(BUTTON_COLOURS.RoyalBlue)
+            .SetPreferredWidth(80).SetMinWidth(0).SetFlexibleWidth(0)
+            .SetOnClick(function()
+                local list = {};
+                for _, entry in ipairs(VANILLA_STRUCTURE_TYPES) do
+                    table.insert(list, {
+                        text = entry.Name,
+                        selected = function() State.EditPlacementNameField.SetText(entry.Name); end,
+                    });
+                end
+                ShowPromptFromList("Select a vanilla structure", list);
+            end);
+    end
+end
+
 ---Rebuilds the Edit view's Type-specific fields section (Structure's StructureID field, or one control per
 ---SPECIAL_UNIT_FIELD_DESCRIPTORS entry for a SpecialUnit) - called on open and whenever Type changes
 local function RenderEditTypeFields()
@@ -118,7 +144,7 @@ local function RenderEditTypeFields()
     State.EditStructureIDField = nil;
     State.EditSpecialUnitFieldControls = {};
 
-    local typeKey = State.EditTypeDropdown.GetKey();
+    local typeKey = State.EditTypeKey;
     local existing = State.EditExisting;
 
     if (typeKey == "Structure" and not State.EditIsFromTemplate) then
@@ -133,18 +159,20 @@ local function RenderEditTypeFields()
             local existingValue = (existing ~= nil and existing.SpecialUnitFields ~= nil) and existing.SpecialUnitFields[descriptor.Key] or nil;
 
             local fieldRow = UI.CreateHorizontalLayoutGroup(State.EditTypeFieldsContainer).SetFlexibleWidth(1);
-            UI.CreateLabel(fieldRow).SetText(HumanizePascalCase(descriptor.Key)).SetPreferredWidth(PLACEMENT_NAME_FIELD_WIDTH).SetMinWidth(0).SetFlexibleWidth(0);
+            UI.CreateLabel(fieldRow).SetText(descriptor.Label).SetPreferredWidth(PLACEMENT_NAME_FIELD_WIDTH).SetMinWidth(0).SetFlexibleWidth(0);
 
             if (descriptor.Type == "boolean") then
                 State.EditSpecialUnitFieldControls[descriptor.Key] =
                 UI.CreateCheckBox(fieldRow)
                     .SetText("")
-                    .SetIsChecked(existingValue == "true");
+                    .SetIsChecked(existingValue == "true")
+                    .SetInteractable(false);
 
             elseif (descriptor.Type == "integer" or descriptor.Type == "number") then
-                local numberField = 
+                local numberField =
                 UI.CreateNumberInputField(fieldRow)
                     .SetWholeNumbers(descriptor.Type == "integer")
+                    .SetInteractable(false)
                     .SetFlexibleWidth(1);
 
                 numberField.SetValue(tonumber(existingValue) or 0);
@@ -155,6 +183,7 @@ local function RenderEditTypeFields()
                     .SetText(existingValue or "")
                     .SetMultiLine(descriptor.Key == "ModData")
                     .SetPreferredHeight((descriptor.Key == "ModData") and 100 or -1)
+                    .SetInteractable(false)
                     .SetFlexibleWidth(1);
             end
         end
@@ -172,7 +201,7 @@ local function BuildPlacementFromEditState()
     local placementName = TrimString(State.EditPlacementNameField.GetText() or "");
     if (placementName == "") then return nil, "Every row needs a placement name"; end
 
-    local typeKey = State.EditTypeDropdown.GetKey();
+    local typeKey = State.EditTypeKey;
     ---@type PlaceholderPlacementSetting
     local placement = { Type = typeKey, TerritoryName = territoryName, PlacementName = placementName };
 
@@ -286,14 +315,6 @@ State.ShowListView = function()
 
     local addRowHorz = UI.CreateHorizontalLayoutGroup(State.ViewContent).SetFlexibleWidth(1);
     UI.CreateButton(addRowHorz)
-        .SetText("Add Row")
-        .SetColor(BUTTON_COLOURS.DarkGreen)
-        .SetPreferredWidth(0)
-        .SetMinWidth(0)
-        .SetFlexibleWidth(1)
-        .SetOnClick(function() State.ShowEditView(nil, nil); end);
-
-    UI.CreateButton(addRowHorz)
         .SetText("Add from Template")
         .SetColor(BUTTON_COLOURS.DarkGreen)
         .SetPreferredWidth(0)
@@ -367,49 +388,45 @@ State.ShowEditView = function(index, prefill, isFromTemplate)
 
     UI.CreateLabel(State.ViewContent).SetText((index ~= nil) and "Edit Placement" or "Add Placement");
 
-    State.EditTypeDropdown = CreateDropDown(State.ViewContent, PLACEMENT_TYPE_OPTIONS, (State.EditExisting ~= nil and State.EditExisting.Type) or DEFAULT_PLACEMENT_TYPE, function(key)
-        State.EditTypeDropdown.Button.SetColor(GetPlacementTypeColor(key));
-        RenderEditTypeFields();
-    end);
-    State.EditTypeDropdown.Button.SetColor(GetPlacementTypeColor((State.EditExisting ~= nil and State.EditExisting.Type) or DEFAULT_PLACEMENT_TYPE));
-    State.EditTypeDropdown.Button.SetInteractable(not State.EditIsFromTemplate and index == nil); -- templates are always Structure, and an existing row can't change Type after the fact, so Type can't be changed away from it
+    -- Same status icons ShowListView shows per row - Type never changes in this view, so these stay accurate
+    -- for its whole lifetime without needing to be re-rendered
+    local displayPlacement = State.EditExisting or {};
+    local iconRow = UI.CreateHorizontalLayoutGroup(State.ViewContent).SetFlexibleWidth(1);
+    UI.CreateImage(iconRow)
+        .SetSprite((displayPlacement.Type == "Structure") and ICON_STRUCTURE or ICON_SPECIAL_UNIT)
+        .SetPreferredWidth(ICON_SIZE).SetMinWidth(0).SetFlexibleWidth(0).SetPreferredHeight(ICON_SIZE).SetMinHeight(0);
+
+    local originIcon = ICON_VANILLA;
+    if (displayPlacement.Type == "SpecialUnit" or IsModdedStructure(displayPlacement)) then
+        originIcon = ICON_MODDED;
+    end
+    UI.CreateImage(iconRow).SetSprite(originIcon).SetPreferredWidth(ICON_SIZE).SetMinWidth(0).SetFlexibleWidth(0).SetPreferredHeight(ICON_SIZE).SetMinHeight(0);
+
+    if (PlacementHasBuiltInSupport(displayPlacement)) then
+        UI.CreateImage(iconRow).SetSprite(ICON_BUILT_IN_SUPPORT).SetPreferredWidth(ICON_SIZE).SetMinWidth(0).SetFlexibleWidth(0).SetPreferredHeight(ICON_SIZE).SetMinHeight(0);
+    end
+
+    if (PlacementHasData(displayPlacement)) then
+        UI.CreateImage(iconRow).SetSprite(ICON_HAS_DATA).SetPreferredWidth(ICON_SIZE).SetMinWidth(0).SetFlexibleWidth(0).SetPreferredHeight(ICON_SIZE).SetMinHeight(0);
+    end
+
+    -- Type can never be changed in the Edit view (a template is always Structure, and an existing row can't
+    -- change Type after the fact) - just a plain label, not a dropdown, to reflect that
+    State.EditTypeKey = (State.EditExisting ~= nil and State.EditExisting.Type) or DEFAULT_PLACEMENT_TYPE;
+    UI.CreateLabel(State.ViewContent).SetText(GetOptionText(PLACEMENT_TYPE_OPTIONS, State.EditTypeKey));
 
     State.EditTerritoryField = UI.CreateTextInputField(State.ViewContent)
         .SetPlaceholderText("Territory Name")
         .SetText((State.EditExisting ~= nil and State.EditExisting.TerritoryName) or "")
         .SetFlexibleWidth(1);
 
-    -- An existing modded structure's name came from its StructureID (parsed out on import), not typed by hand, so
-    -- it can't be changed independently of it - unlike a vanilla structure, which is matched by this name alone
-    local isExistingModdedStructure = index ~= nil and State.EditExisting ~= nil and State.EditExisting.Type == "Structure" and State.EditExisting.StructureID ~= nil;
-
-    State.EditPlacementNameField = UI.CreateTextInputField(State.ViewContent)
-        .SetPlaceholderText("Placement Name")
-        .SetText((State.EditExisting ~= nil and State.EditExisting.PlacementName) or "")
-        .SetInteractable(not isExistingModdedStructure)
-        .SetFlexibleWidth(1);
+    State.EditPlacementNameParent = UI.CreateVerticalLayoutGroup(State.ViewContent).SetFlexibleWidth(1);
+    RenderEditPlacementNameField();
 
     State.EditFieldsParent = UI.CreateVerticalLayoutGroup(State.ViewContent).SetFlexibleWidth(1);
     RenderEditTypeFields();
 
     State.EditStatusLabel = UI.CreateLabel(State.ViewContent).SetText("");
-
-    if (index ~= nil) then
-        local deleteHorz = UI.CreateHorizontalLayoutGroup(State.ViewContent).SetFlexibleWidth(1);
-        UI.CreateButton(deleteHorz)
-            .SetText("Delete")
-            .SetColor(BUTTON_COLOURS.Red)
-            .SetFlexibleWidth(1)
-            .SetOnClick(function()
-                ShowPromptFromList("Delete this placement?", {
-                    { text = "Delete", selected = function()
-                        table.remove(State.Placements, index);
-                        State.ShowListView();
-                    end },
-                    { text = "Cancel", selected = function() end },
-                });
-            end);
-    end
 
     local buttonsHorz = UI.CreateHorizontalLayoutGroup(State.ViewContent).SetFlexibleWidth(1);
     UI.CreateButton(buttonsHorz)
@@ -430,6 +447,23 @@ State.ShowEditView = function(index, prefill, isFromTemplate)
             end
             State.ShowListView();
         end);
+
+    if (index ~= nil) then
+        UI.CreateButton(buttonsHorz)
+            .SetText("Delete")
+            .SetColor(BUTTON_COLOURS.Red)
+            .SetFlexibleWidth(1)
+            .SetOnClick(function()
+                ShowPromptFromList("Delete this placement?", {
+                    { text = "Delete", selected = function()
+                        table.remove(State.Placements, index);
+                        State.ShowListView();
+                    end },
+                    { text = "Cancel", selected = function() end },
+                });
+            end);
+    end
+
     UI.CreateButton(buttonsHorz)
         .SetText("Cancel")
         .SetColor(BUTTON_COLOURS.TyrianPurple)
