@@ -88,11 +88,15 @@ end
 
 ---@param placementType string
 ---@param placementName string | nil
+---@param structureID string | nil # Type=Structure only - the raw custom EnumStructureType string ("c|<ModID>|<Name>"), nil for a vanilla structure or a SpecialUnit
 ---@return string
-function EncodePlaceholderModData(placementType, placementName)
+function EncodePlaceholderModData(placementType, placementName, structureID)
     local fields = { Type = placementType };
     if (placementName ~= nil and placementName ~= "") then
         fields.PlacementName = placementName;
+    end
+    if (structureID ~= nil and structureID ~= "") then
+        fields.StructureID = structureID;
     end
     return EncodeModDataTable(fields);
 end
@@ -146,13 +150,14 @@ end
 ---@param modData string | nil
 ---@return string | nil placementType
 ---@return string | nil placementName
+---@return string | nil structureID # Type=Structure only - nil for a vanilla structure or a SpecialUnit
 function DecodePlaceholderModData(modData)
-    if (type(modData) ~= "string" or modData == "") then return nil, nil; end
+    if (type(modData) ~= "string" or modData == "") then return nil, nil, nil; end
 
     local fields = DecodeModDataTable(modData);
-    if (fields == nil) then return nil, nil; end
+    if (fields == nil) then return nil, nil, nil; end
 
-    return fields.Type, fields.PlacementName;
+    return fields.Type, fields.PlacementName, fields.StructureID;
 end
 
 ---@param text string

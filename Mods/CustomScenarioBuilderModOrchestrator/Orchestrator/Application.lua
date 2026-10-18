@@ -28,8 +28,10 @@ CustomScenarioBuilderModOrchestratorApplication = {};
 ---@param ownerID PlayerID
 ---@param placementType string # One of PLACEMENT_TYPE_OPTIONS's keys
 ---@param placementName string | nil
+---@param specialUnitFields table<string, string> | nil # Type=SpecialUnit only - every stored CustomSpecialUnitClass field value (see SPECIAL_UNIT_FIELD_DESCRIPTORS), overriding the defaults below wherever a value was actually captured
+---@param structureID string | nil # Type=Structure only - the raw custom EnumStructureType string ("c|<ModID>|<Name>"), nil for a vanilla structure
 ---@return CustomSpecialUnit
-function CustomScenarioBuilderModOrchestratorApplication.BuildPlaceholder(ownerID, placementType, placementName)
+function CustomScenarioBuilderModOrchestratorApplication.BuildPlaceholder(ownerID, placementType, placementName, specialUnitFields, structureID)
     local builder = WL.CustomSpecialUnitBuilder.Create(ownerID);
     builder.Name = PLACEHOLDER_NAME;
     builder.IncludeABeforeName = true;
@@ -44,10 +46,33 @@ function CustomScenarioBuilderModOrchestratorApplication.BuildPlaceholder(ownerI
     builder.CanBeAirliftedToSelf = false;
     builder.CanBeAirliftedToTeammate = false;
     builder.IsVisibleToAllPlayers = true;
-    builder.ModData = EncodePlaceholderModData(placementType, placementName);
+    builder.ModData = EncodePlaceholderModData(placementType, placementName, structureID);
     if (placementName ~= nil and placementName ~= "") then
         builder.TextOverHeadOpt = string.sub(placementName, 1, 8);
     end
+
+    -- Everything actually captured for this special unit overrides the generic placeholder defaults above, so
+    -- the stand-in on the map reflects it too, not just the (currently unimplemented) eventual real recreation.
+    -- ModData is excluded - that's reserved for the Type/PlacementName encoding ResolveStructurePlaceholders
+    -- and future SpecialUnit resolution logic need, not for the player's stored data. ModID is excluded because,
+    -- despite being documented as a CustomSpecialUnitClass field, it isn't actually writable on the builder
+    -- ("Key ModID is not writable on CustomSpecialUnitBuilder").
+    if (specialUnitFields ~= nil) then
+        for _, descriptor in ipairs(SPECIAL_UNIT_FIELD_DESCRIPTORS) do
+            local value = specialUnitFields[descriptor.Key];
+            if (value ~= nil and descriptor.Key ~= "ModData" and descriptor.Key ~= "ModID") then
+                if (descriptor.Type == "boolean") then
+                    builder[descriptor.Key] = (value == "true");
+                elseif (descriptor.Type == "integer" or descriptor.Type == "number") then
+                    local number = tonumber(value);
+                    if (number ~= nil) then builder[descriptor.Key] = number; end
+                else
+                    builder[descriptor.Key] = value;
+                end
+            end
+        end
+    end
+
     return builder.Build();
 end
 
@@ -103,7 +128,9 @@ function CustomScenarioBuilderModOrchestratorApplication.PlacePlaceholders(game,
             local specialUnit = CustomScenarioBuilderModOrchestratorApplication.BuildPlaceholder(
                 ownerID,
                 placement.Type or DEFAULT_PLACEMENT_TYPE,
-                placement.PlacementName);
+                placement.PlacementName,
+                placement.SpecialUnitFields,
+                placement.StructureID);
 
             local specialUnits = scenarioTerritory.SpecialUnits or {};
             table.insert(specialUnits, specialUnit);
@@ -136,16 +163,34 @@ function CustomScenarioBuilderModOrchestratorApplication.PublishVanillaStructure
     Mod.PublicGameData = pub;
 end
 
+---Resolves a Placeholder configured for a Structure into the real structure it stands in for - a vanilla one
+---(matched by name against VANILLA_STRUCTURE_TYPES) or a modded one. A modded structure's EnumStructureType is
+---actually just its raw "c|<ModID>|<Name>" string, usable directly as a Structures table key - WL.StructureType.Custom
+---can't be used for this, since it only ever resolves within the calling mod's own namespace, not an arbitrary
+---other mod's (confirmed by testing: directly assigning the raw string as a key, e.g.
+---standing.Territories[id].Structures = {["c|391|Testing"] = 1}, is what actually works).
 ---@param game GameServerHook
 ---@param standing GameStanding
-function CustomScenarioBuilderModOrchestratorApplication.ResolveVanillaStructurePlaceholders(game, standing)
+function CustomScenarioBuilderModOrchestratorApplication.ResolveStructurePlaceholders(game, standing)
     for _, territoryStanding in pairs(standing.Territories) do
         -- re-read fresh each iteration: resolving a Placeholder below reassigns territoryStanding.NumArmies
         for _, specialUnit in ipairs(territoryStanding.NumArmies.SpecialUnits or {}) do
             if (specialUnit.Name == PLACEHOLDER_NAME) then
-                local placementType, placementName = DecodePlaceholderModData(specialUnit.ModData);
-                local enumField = (placementType == "Structure" and placementName ~= nil) and GetVanillaStructureEnumField(placementName) or nil;
-                if (enumField ~= nil) then
+                local placementType, placementName, structureID = DecodePlaceholderModData(specialUnit.ModData);
+
+                local resolvedStructureType = nil;
+                if (placementType == "Structure") then
+                    if (structureID ~= nil) then
+                        resolvedStructureType = structureID;
+                    elseif (placementName ~= nil) then
+                        local enumField = GetVanillaStructureEnumField(placementName);
+                        if (enumField ~= nil) then
+                            resolvedStructureType = WL.StructureType[enumField];
+                        end
+                    end
+                end
+
+                if (resolvedStructureType ~= nil) then
                     local remainingSpecialUnits = {};
                     for _, otherSpecialUnit in ipairs(territoryStanding.NumArmies.SpecialUnits or {}) do
                         if (otherSpecialUnit.ID ~= specialUnit.ID) then
@@ -155,11 +200,10 @@ function CustomScenarioBuilderModOrchestratorApplication.ResolveVanillaStructure
                     territoryStanding.NumArmies = WL.Armies.Create(territoryStanding.NumArmies.NumArmies, remainingSpecialUnits);
 
                     local structures = {};
-                    for structureID, count in pairs(territoryStanding.Structures or {}) do
-                        structures[structureID] = count;
+                    for existingStructureID, count in pairs(territoryStanding.Structures or {}) do
+                        structures[existingStructureID] = count;
                     end
-                    local structureID = WL.StructureType[enumField];
-                    structures[structureID] = (structures[structureID] or 0) + 1;
+                    structures[resolvedStructureType] = (structures[resolvedStructureType] or 0) + 1;
                     territoryStanding.Structures = structures;
                 end
             end
