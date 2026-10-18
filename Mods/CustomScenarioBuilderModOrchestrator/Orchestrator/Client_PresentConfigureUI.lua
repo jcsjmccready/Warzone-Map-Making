@@ -336,7 +336,7 @@ State.ShowListView = function()
     local headerHorz = UI.CreateHorizontalLayoutGroup(State.ViewContent).SetFlexibleWidth(1);
     UI.CreateLabel(headerHorz).SetText("Placement Name").SetColor(BUTTON_COLOURS.Artichoke).SetPreferredWidth(0).SetMinWidth(0).SetFlexibleWidth(1);
     UI.CreateLabel(headerHorz).SetText("Territory Name").SetColor(BUTTON_COLOURS.Artichoke).SetPreferredWidth(0).SetMinWidth(0).SetFlexibleWidth(1);
-    UI.CreateEmpty(headerHorz).SetPreferredWidth(40).SetMinWidth(0).SetFlexibleWidth(0);
+    UI.CreateEmpty(headerHorz).SetPreferredWidth(LIST_VIEW_ICON_SIZE * 3).SetMinWidth(0).SetFlexibleWidth(0);
     UI.CreateEmpty(headerHorz).SetPreferredWidth(40).SetMinWidth(0).SetFlexibleWidth(0);
 
     for index, placement in ipairs(State.Placements) do
@@ -357,10 +357,8 @@ State.ShowListView = function()
 
         if (PlacementHasBuiltInSupport(placement)) then
             UI.CreateImage(rowHorz).SetSprite(ICON_BUILT_IN_SUPPORT).SetPreferredWidth(LIST_VIEW_ICON_SIZE).SetMinWidth(0).SetFlexibleWidth(0).SetPreferredHeight(LIST_VIEW_ICON_SIZE).SetMinHeight(0);
-        end
-
-        if (PlacementHasData(placement)) then
-            UI.CreateImage(rowHorz).SetSprite(ICON_HAS_DATA).SetPreferredWidth(LIST_VIEW_ICON_SIZE).SetMinWidth(0).SetFlexibleWidth(0).SetPreferredHeight(LIST_VIEW_ICON_SIZE).SetMinHeight(0);
+        else
+            UI.CreateEmpty(rowHorz).SetPreferredWidth(LIST_VIEW_ICON_SIZE).SetMinWidth(LIST_VIEW_ICON_SIZE).SetFlexibleWidth(0);
         end
 
         UI.CreateButton(rowHorz)
@@ -404,10 +402,6 @@ State.ShowEditView = function(index, prefill, isFromTemplate)
 
     if (PlacementHasBuiltInSupport(displayPlacement)) then
         UI.CreateImage(iconRow).SetSprite(ICON_BUILT_IN_SUPPORT).SetPreferredWidth(ICON_SIZE).SetMinWidth(0).SetFlexibleWidth(0).SetPreferredHeight(ICON_SIZE).SetMinHeight(0);
-    end
-
-    if (PlacementHasData(displayPlacement)) then
-        UI.CreateImage(iconRow).SetSprite(ICON_HAS_DATA).SetPreferredWidth(ICON_SIZE).SetMinWidth(0).SetFlexibleWidth(0).SetPreferredHeight(ICON_SIZE).SetMinHeight(0);
     end
 
     -- Type can never be changed in the Edit view (a template is always Structure, and an existing row can't
@@ -500,11 +494,6 @@ State.ShowHomePage = function()
     UI.CreateImage(supportRow).SetSprite(ICON_BUILT_IN_SUPPORT).SetPreferredWidth(ICON_SIZE).SetMinWidth(0).SetFlexibleWidth(0).SetPreferredHeight(ICON_SIZE).SetMinHeight(0);
     UI.CreateEmpty(supportRow).SetPreferredWidth(44).SetMinWidth(ICON_SIZE).SetFlexibleWidth(0);
     UI.CreateLabel(supportRow).SetText("Built-in Support - guaranteed to place with no issues. Without this, we require other mods to support this mod").SetFlexibleWidth(1);
-
-    local dataRow = UI.CreateHorizontalLayoutGroup(State.PageContent).SetFlexibleWidth(1);
-    UI.CreateImage(dataRow).SetSprite(ICON_HAS_DATA).SetPreferredWidth(ICON_SIZE).SetMinWidth(0).SetFlexibleWidth(0).SetPreferredHeight(ICON_SIZE).SetMinHeight(0);
-    UI.CreateEmpty(dataRow).SetPreferredWidth(22).SetMinWidth(ICON_SIZE).SetFlexibleWidth(0);
-    UI.CreateLabel(dataRow).SetText("Has extra recreation data, such as special unit strength").SetFlexibleWidth(1);
 end
 
 State.ShowPlacementPage = function()

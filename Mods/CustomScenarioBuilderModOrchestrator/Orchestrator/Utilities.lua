@@ -434,7 +434,6 @@ ICON_SPECIAL_UNIT = "SpecialUnit.png";
 ICON_VANILLA = "Vanilla.png";
 ICON_MODDED = "Modded.png";
 ICON_BUILT_IN_SUPPORT = "BuiltInSupport.png";
-ICON_HAS_DATA = "HasData.png";
 ICON_EDIT = "Edit.png";
 ICON_MOVE = "Move.png";
 ICON_COPY = "Copy.png";
@@ -443,15 +442,6 @@ ICON_COPY = "Copy.png";
 ---@return boolean
 function IsModdedStructure(placement)
     return placement.Type == "Structure" and placement.StructureID ~= nil;
-end
-
----@param placement PlaceholderPlacementSetting
----@return boolean
-function PlacementHasData(placement)
-    if (placement.Type == "Structure") then
-        return placement.StructureID ~= nil;
-    end
-    return placement.SpecialUnitFields ~= nil and next(placement.SpecialUnitFields) ~= nil;
 end
 
 ---@param placement PlaceholderPlacementSetting
