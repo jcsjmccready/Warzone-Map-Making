@@ -1,5 +1,4 @@
 require("Application");
-require("CustomScenarioBuilder");
 
 ---@param game GameServerHook
 ---@param standing GameStanding
@@ -8,7 +7,7 @@ function Server_StartGame(game, standing)
     pub.DmsStructureID = WL.StructureType.Custom("Dead Man's Switch");
     Mod.PublicGameData = pub;
 
-    -- picks up any CustomScenarioBuilderModOrchestrator Placeholders meant for this mod, so they're there on turn 0
-    CustomScenarioBuilder.Register(CustomScenarioBuilder.PlacementType.Structure, "Dead Man's Switch", DeadManSwitchApplication.ResolveCustomScenarioBuilderPlaceholder);
-    CustomScenarioBuilder.ResolvePlacements(game, standing);
+    -- A CustomScenarioBuilderModOrchestrator Placeholder configured with Type "Structure" and Placement Name
+    -- "Dead Man's Switch" is resolved into a real one by CSBMO itself - see CustomScenarioBuilder.lua's header.
+    -- Use CustomScenarioBuilder.FindStructurePlacements if this mod ever needs to know where they ended up.
 end
