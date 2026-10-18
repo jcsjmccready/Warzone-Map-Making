@@ -51,6 +51,14 @@ function FormatPlacementLine(placement)
     return placement.TerritoryName .. ": " .. (placement.PlacementName or "(no Placement Name)") .. " [" .. GetOptionText(PLACEMENT_TYPE_OPTIONS, placementType) .. "]";
 end
 
+---Same text as FormatPlacementLine, minus the bracketed "[Structure]"/"[Special Unit]" suffix - for callers that
+---show that distinction as an icon instead (see Client_PresentSettingsUI.lua).
+---@param placement PlaceholderPlacementSetting
+---@return string
+function FormatPlacementText(placement)
+    return placement.TerritoryName .. ": " .. (placement.PlacementName or "(no Placement Name)");
+end
+
 ---Returns a shallow copy of placements sorted alphabetically (case-insensitive) by TerritoryName - the order rows
 ---were added in the configuration UI isn't a sensible display order.
 ---@param placements PlaceholderPlacementSetting[]

@@ -386,7 +386,7 @@ State.ShowEditView = function(index, prefill, isFromTemplate)
     DestroyIfExists(State.ViewContent);
     State.ViewContent = UI.CreateVerticalLayoutGroup(State.ViewContainer).SetFlexibleWidth(1);
 
-    UI.CreateLabel(State.ViewContent).SetText((index ~= nil) and "Edit Placement" or "Add Placement");
+    UI.CreateLabel(State.ViewContent).SetText((index ~= nil) and "Edit Placement" or "Add Placement").SetColor(BUTTON_COLOURS.Artichoke);
 
     -- Same status icons ShowListView shows per row - Type never changes in this view, so these stay accurate
     -- for its whole lifetime without needing to be re-rendered
@@ -411,9 +411,8 @@ State.ShowEditView = function(index, prefill, isFromTemplate)
     end
 
     -- Type can never be changed in the Edit view (a template is always Structure, and an existing row can't
-    -- change Type after the fact) - just a plain label, not a dropdown, to reflect that
+    -- change Type after the fact) - the icon row above already shows which it is, so no separate label is needed
     State.EditTypeKey = (State.EditExisting ~= nil and State.EditExisting.Type) or DEFAULT_PLACEMENT_TYPE;
-    UI.CreateLabel(State.ViewContent).SetText(GetOptionText(PLACEMENT_TYPE_OPTIONS, State.EditTypeKey));
 
     State.EditTerritoryField = UI.CreateTextInputField(State.ViewContent)
         .SetPlaceholderText("Territory Name")
@@ -483,7 +482,7 @@ State.ShowHomePage = function()
 
     UI.CreateEmpty(State.PageContent).SetPreferredHeight(10);
 
-    UI.CreateLabel(State.PageContent).SetText('Icon Glossary');
+    UI.CreateLabel(State.PageContent).SetText('Icon Glossary').SetColor(BUTTON_COLOURS.Artichoke);
 
     local typeRow = UI.CreateHorizontalLayoutGroup(State.PageContent).SetFlexibleWidth(1);
     UI.CreateImage(typeRow).SetSprite(ICON_STRUCTURE).SetPreferredWidth(ICON_SIZE).SetMinWidth(0).SetFlexibleWidth(0).SetPreferredHeight(ICON_SIZE).SetMinHeight(0);
@@ -512,7 +511,7 @@ State.ShowPlacementPage = function()
     DestroyIfExists(State.PageContent);
     State.PageContent = UI.CreateVerticalLayoutGroup(State.PageContainer).SetFlexibleWidth(1);
 
-    UI.CreateLabel(State.PageContent).SetText('Structure/Special Unit Placement');
+    UI.CreateLabel(State.PageContent).SetText('Structure/Special Unit Placement').SetColor(BUTTON_COLOURS.Artichoke);
     UI.CreateLabel(State.PageContent).SetText('Each row places a special unit/structure on the named territory at the start of the game.');
     UI.CreateLabel(State.PageContent).SetText('Placement Name must match the name of the desired special unit/structure, and Territory Name must match the name of a territory on the map.');
 
@@ -529,7 +528,7 @@ State.ShowPlanningPage = function()
     DestroyIfExists(State.PageContent);
     State.PageContent = UI.CreateVerticalLayoutGroup(State.PageContainer).SetFlexibleWidth(1);
 
-    UI.CreateLabel(State.PageContent).SetText('Planning Mode');
+    UI.CreateLabel(State.PageContent).SetText('Planning Mode').SetColor(BUTTON_COLOURS.Artichoke);
     UI.CreateLabel(State.PageContent).SetText('Planning mode is a convenience option, providing an alternative method of entering where to place structures/special units on the map.');
     UI.CreateLabel(State.PageContent).SetText('When enabled, launch into a game and using the mod-menu in the bottom left, export the placement data. Then return to this config and paste the data into the text box below.');
     UI.CreateLabel(State.PageContent).SetText('Additionally, using the mod-menu you can place vanilla structures on the map.');
@@ -583,10 +582,6 @@ function Client_PresentConfigureUI(rootParent)
     State.IsConfirmPending = false;
 
     local mainModUI = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
-    UI.CreateEmpty(mainModUI).SetPreferredHeight(10);
-
-    -- Permanent header - never destroyed/hidden by page navigation, unlike everything below it
-    UI.CreateLabel(mainModUI).SetText('Custom Scenario Builder (Mod Support)');
     UI.CreateEmpty(mainModUI).SetPreferredHeight(10);
 
     State.NavContainer = UI.CreateVerticalLayoutGroup(mainModUI).SetFlexibleWidth(1);
