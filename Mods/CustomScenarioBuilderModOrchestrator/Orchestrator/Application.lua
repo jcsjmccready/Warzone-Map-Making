@@ -211,6 +211,41 @@ function CustomScenarioBuilderModOrchestratorApplication.ResolveStructurePlaceho
     end
 end
 
+---Resolves a Placeholder configured for a SpecialUnit into the real unit it stands in for, for every mod CSBMO
+---has built-in support for (see BuiltInSupport/) - built the same way that mod would build it itself, so no
+---integration/Register call from that mod's own Server_StartGame hook is needed. A SpecialUnit Placeholder whose
+---PlacementName isn't a known built-in-support unit is left alone - that's still a consumer mod's own job via
+---CustomScenarioBuilder.lua's Register/ReplacePlaceholder.
+---@param game GameServerHook
+---@param standing GameStanding
+function CustomScenarioBuilderModOrchestratorApplication.ResolveBuiltInSpecialUnitPlaceholders(game, standing)
+    for _, territoryStanding in pairs(standing.Territories) do
+        -- re-read fresh each iteration: resolving a Placeholder below reassigns territoryStanding.NumArmies
+        for _, specialUnit in ipairs(territoryStanding.NumArmies.SpecialUnits or {}) do
+            if (specialUnit.Name == PLACEHOLDER_NAME) then
+                local placementType, placementName = DecodePlaceholderModData(specialUnit.ModData);
+                local builtInUnit = (placementType == "SpecialUnit") and BuiltInSupport.Find(placementName) or nil;
+
+                if (builtInUnit ~= nil) then
+                    local remainingSpecialUnits = {};
+                    for _, otherSpecialUnit in ipairs(territoryStanding.NumArmies.SpecialUnits or {}) do
+                        if (otherSpecialUnit.ID ~= specialUnit.ID) then
+                            table.insert(remainingSpecialUnits, otherSpecialUnit);
+                        end
+                    end
+
+                    -- Owned by the territory's actual controlling player, not the Placeholder's own Neutral
+                    -- owner - the same TankCard bug (an un-ownable, unmovable Neutral unit) applies here too
+                    local newUnit = builtInUnit.Build(territoryStanding.OwnerPlayerID);
+                    table.insert(remainingSpecialUnits, newUnit);
+
+                    territoryStanding.NumArmies = WL.Armies.Create(territoryStanding.NumArmies.NumArmies, remainingSpecialUnits);
+                end
+            end
+        end
+    end
+end
+
 ---@param game GameServerHook
 ---@param addNewOrder fun(order: GameOrder)
 ---@param playerID PlayerID

@@ -478,6 +478,8 @@ State.ShowHomePage = function()
 
     UI.CreateLabel(State.PageContent).SetText('Configure structures/special units to place on the map at the start of the game, or use Planning Mode to lay them out visually in a test game first.');
 
+    UI.CreateEmpty(State.PageContent).SetPreferredHeight(10);
+
     UI.CreateLabel(State.PageContent).SetText(#State.Placements .. " placement" .. (#State.Placements == 1 and "" or "s") .. " configured").SetColor(SUBHEADING_COLOUR2);
 
     UI.CreateEmpty(State.PageContent).SetPreferredHeight(10);

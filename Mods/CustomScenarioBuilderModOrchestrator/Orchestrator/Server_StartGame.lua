@@ -11,4 +11,8 @@ function Server_StartGame(game, standing)
     -- A Placeholder configured for a Structure - vanilla (e.g. "City") or modded (recreated from its stored
     -- StructureID) - has no other mod registered to claim it, so CSBMO resolves it into the real structure itself.
     CustomScenarioBuilderModOrchestratorApplication.ResolveStructurePlaceholders(game, standing);
+
+    -- A Placeholder configured for a SpecialUnit CSBMO has built-in support for (see BuiltInSupport/) is built
+    -- and placed by CSBMO itself too - no Register/ReplacePlaceholder needed from that mod's own hook.
+    CustomScenarioBuilderModOrchestratorApplication.ResolveBuiltInSpecialUnitPlaceholders(game, standing);
 end

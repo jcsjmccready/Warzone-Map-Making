@@ -1,3 +1,8 @@
+-- Pulls in every mod CSBMO can build a special unit for itself (see BuiltInSupport/BuiltInSupport.lua) - required
+-- here, rather than only from Server_StartGame, so PlacementHasBuiltInSupport is accurate everywhere Utilities is
+-- required, including client-side UI icons.
+require("BuiltInSupport.BuiltInSupport");
+
 CURRENT_SETTINGS_VERSION = 1;
 
 -- Custom Scenario Slots display as letters (A, B, ... Z, AA, AB, ...), 0-indexed integers underneath (A=0). "OJ"
@@ -452,7 +457,8 @@ end
 ---@param placement PlaceholderPlacementSetting
 ---@return boolean
 function PlacementHasBuiltInSupport(placement)
-    return false; -- STUB: revisit once ModSupport matching is wired up
+    if (placement.Type ~= "SpecialUnit") then return false; end
+    return BuiltInSupport.Find(placement.PlacementName) ~= nil;
 end
 
 -- Marks a GameOrderCustom payload as a Planning Mode build request - "<prefix>{"StructureName":"...",
