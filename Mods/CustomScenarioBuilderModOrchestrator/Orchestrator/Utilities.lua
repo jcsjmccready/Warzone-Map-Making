@@ -1,19 +1,16 @@
--- Pulls in every mod CSBMO can build a special unit for itself - required here, rather than only from
--- Server_StartGame, so PlacementHasBuiltInSupport is accurate everywhere Utilities is required, including
--- client-side UI icons.
+require("CommonUtils");
 require("BuiltInSupport.BuiltInSupport");
 
+-- General constants
 CURRENT_SETTINGS_VERSION = 1;
 
--- Custom Scenario Slots display as letters (A, B, ... Z, AA, AB, ...), 0-indexed integers underneath (A=0). "OJ"
--- (399) is the highest ever observed in practice, used as the ceiling past which a new Slot risks "InvalidSlot".
+-- Highest Custom Scenario Slot ("OJ") observed not to throw "InvalidSlot".
 MAX_KNOWN_VALID_SLOT = 399;
 
--- The name (and SpecialUnitImages filename) of this mod's stand-in special unit, placed on configured
--- territories at game creation and later swapped out for the real structure/special unit.
 PLACEHOLDER_NAME = "Placeholder";
 PLACEHOLDER_IMAGE_FILENAME = "Placeholder.png";
 
+-- Placement type & UI sizing
 --What a placement row's Type dropdown can be set to. Key is what is stored in Mod.Settings.PlaceholderPlacements
 PLACEMENT_TYPE_OPTIONS = {
     { Key = "Structure", Text = "Structure" },
@@ -21,9 +18,7 @@ PLACEMENT_TYPE_OPTIONS = {
 };
 DEFAULT_PLACEMENT_TYPE = "SpecialUnit";
 
--- Same options/keys as PLACEMENT_TYPE_OPTIONS, just with shorter Text - used only for the Type dropdown button in
--- Client_PresentConfigureUI, which is too narrow to fit "Special Unit". Everywhere else (settings summary, alerts)
--- keeps using PLACEMENT_TYPE_OPTIONS's full text via FormatPlacementLine.
+-- Shorter-Text variant of PLACEMENT_TYPE_OPTIONS for the narrow Type dropdown button.
 PLACEMENT_TYPE_DROPDOWN_OPTIONS = {
     { Key = "Structure", Text = "Struct" },
     { Key = "SpecialUnit", Text = "Unit" },
@@ -32,8 +27,8 @@ PLACEMENT_TYPE_DROPDOWN_OPTIONS = {
 TYPE_FIELD_WIDTH = 80;
 PLACEMENT_NAME_FIELD_WIDTH = 160;
 TERRITORY_NAME_FIELD_WIDTH = 200;
-ICON_SIZE = 28; -- the icons are square, so this is applied to both their width and height
-LIST_VIEW_ICON_SIZE = 20; -- smaller than ICON_SIZE, used for the status icons in the Placement list view's rows
+ICON_SIZE = 28;
+LIST_VIEW_ICON_SIZE = 20;
 
 ---@param key string # one of PLACEMENT_TYPE_OPTIONS's keys
 ---@return string # hex colour string
@@ -46,6 +41,7 @@ function GetPlacementTypeColor(key)
     return BUTTON_COLOURS.DarkGray;
 end
 
+-- Placement formatting & sorting
 ---Formats one placement as "Territory Name: PlacementName [Type]" for display - e.g. in Client_PresentSettingsUI
 ---and Client_GameRefresh's unreplaced-Placeholder warning.
 ---@param placement PlaceholderPlacementSetting
@@ -76,12 +72,8 @@ function SortPlacementsByTerritoryName(placements)
     return sorted;
 end
 
--- Encoded into every placed Placeholder's own ModData field, so any other mod can read what it's standing in for
--- without needing access to this mod's own Settings (Mod.* storages are private per-mod; ModData lives on the
--- unit itself and survives the unit being cloned, e.g. during combat). Uses the same quoted-string, "{key:value}"
--- table format as the IO package's IO.Writer/IO.Reader elsewhere in this codebase, but written out by hand here so
--- neither this mod nor the copy-paste integration file other mods carry to decode it need to carry the IO package.
--- Both sides must stay in sync with this exact format.
+-- ModData encode/decode
+-- Quoted-string, "{key:value}" table format, hand-encoded for the Placeholder's ModData field.
 ---@param s string
 ---@return string
 local function EncodeModDataString(s)
@@ -172,21 +164,8 @@ function DecodePlaceholderModData(modData)
     return fields.Type, fields.PlacementName, fields.StructureID;
 end
 
----@param text string
----@return string[]
-local function SplitLines(text)
-    local lines = {};
-    for line in (text .. "\n"):gmatch("([^\n]*)\n") do
-        table.insert(lines, (string.gsub(line, "\r$", "")));
-    end
-    return lines;
-end
-
--- Planning Mode's exported data groups placements by territory, one line each, e.g.
--- {"TerritoryName":"Meowth","Values":[{"Type":"S","Name":"Arena"}]} - a separate, slightly more general format
--- (adds array-of-object support) from EncodeModDataTable/DecodeModDataTable, kept apart so ModData's own format,
--- which other mods' CustomScenarioBuilder.lua copies already decode, never changes.
-
+-- Planning Mode export/import
+-- Planning Mode's export format - one JSON-like line per territory, e.g. {"TerritoryName":"Meowth","Values":[...]}.
 ---@param value string | table[] # a plain string, or an array of flat string-keyed, string-valued tables
 ---@return string
 local function EncodeExportValue(value)
@@ -307,8 +286,7 @@ function SerializePlacementData(placements)
     return table.concat(lines, "\n");
 end
 
----Parses a raw custom structure EnumStructureType string ("c|<ModID>|<Name>") into its display Name. Returns nil
----if structureID isn't in that format (i.e. it's a vanilla structure name instead, which has no StructureID).
+---Parses a raw custom structure EnumStructureType string ("c|<ModID>|<Name>") into its display Name.
 ---@param structureID string
 ---@return string | nil
 function ParseCustomStructureName(structureID)
@@ -316,10 +294,7 @@ function ParseCustomStructureName(structureID)
 end
 
 ---Parses a string produced by SerializePlacementData back into a list of placements. Returns nil if any
----non-blank line isn't well-formed. A Structure whose Name is a raw custom EnumStructureType string
----("c|<ModID>|<Name>", as GetPlacementsFromMap exports a modded structure) has its Name split back apart - the
----full string goes into StructureID, and just <Name> into PlacementName - so the Edit view shows the two fields
----the same way it would if the row had been filled in by hand.
+---non-blank line isn't well-formed.
 ---@param text string
 ---@return PlaceholderPlacementSetting[] | nil
 function DeserializePlacementData(text)
@@ -368,8 +343,9 @@ function DeserializePlacementData(text)
     return placements;
 end
 
+-- Vanilla structures
 -- The vanilla (non-custom) structures, for Planning Mode's placement menu and build orders. EnumField is the
--- WL.StructureType field name, resolvable only in a server hook.
+-- WL.StructureType field name.
 ---@type { Name: string, EnumField: string }[]
 VANILLA_STRUCTURE_TYPES = {
     { Name = "Arena", EnumField = "Arena" },
@@ -412,6 +388,7 @@ function GetVanillaStructureNames()
     return names;
 end
 
+-- Special unit fields
 -- Every CustomSpecialUnitClass field the Placement Edit view exposes as its own typed input, driving both that
 -- form and (later) resolution logic. ModID/Name/ID excluded - ModID isn't settable, Name is already PlacementName.
 ---@type { Key: string, Type: "integer"|"number"|"boolean"|"string", Label: string }[]
@@ -435,7 +412,8 @@ SPECIAL_UNIT_FIELD_DESCRIPTORS = {
     { Key = "TextOverHeadOpt", Type = "string", Label = "Text Over Head" },
 };
 
--- The Placement Placement list view's status icons - filenames in UIImages. The plain (non-Bg) variant is the
+-- List view status icons & helpers
+-- The Placement list view's status icons - filenames in UIImages. The plain (non-Bg) variant is the
 -- placeholder default; swapping to a Bg variant later is a one-line change here.
 ICON_STRUCTURE = "Structure.png";
 ICON_SPECIAL_UNIT = "SpecialUnit.png";
@@ -459,6 +437,7 @@ function PlacementHasBuiltInSupport(placement)
     return BuiltInSupport.Find(placement.PlacementName) ~= nil;
 end
 
+-- Planning Mode in-game order payloads (Build/Delete/Move/Clone)
 -- Marks a GameOrderCustom payload as a Planning Mode build request - "<prefix>{"StructureName":"...",
 -- "TerritoryID":"..."}" using the same table format as ModData. Lets a game-maker place a vanilla structure
 -- directly via the in-game mod menu, without needing the Custom Scenario distribution.
@@ -639,149 +618,3 @@ function ParseClonePayload(payload)
 
     return placementType, territoryID, identifier;
 end
-
----@param str string
----@return string
-function TrimString(str)
-    return (string.gsub(str, "^%s*(.-)%s*$", "%1"));
-end
-
-
---Finds the TerritoryID of the territory whose name matches territoryName, case-insensitively. Used to resolve the
---free-text territory names stored in Mod.Settings.PlaceholderPlacements against the actual map at game creation
----@param game GameServerHook
----@param territoryName string
----@return TerritoryID | nil
-function FindTerritoryIDByName(game, territoryName)
-    local normalized = string.lower(TrimString(territoryName or ""));
-    if (normalized == "") then return nil; end
-
-    for territoryID, territoryDetails in pairs(game.Map.Territories) do
-        if (string.lower(territoryDetails.Name) == normalized) then
-            return territoryID;
-        end
-    end
-    return nil;
-end
-
---Creates a dropdown-style control (Warzone has no native dropdown): a button showing the current choice which
---opens a list prompt when clicked.
----@param parent UIObject
----@param options { Key: string, Text: string }[]
----@param initialKey string
----@param onChanged fun(key: string) | nil
----@return { GetKey: fun(): string, SetKey: fun(key: string), Button: Button }
-function CreateDropDown(parent, options, initialKey, onChanged)
-    local selectedKey = initialKey;
-    local button; -- forward declared, ApplySelection below needs to close over it before it's created
-
-    ---Only fires onChanged for a real user selection (triggerOnChanged), not for a programmatic SetKey call
-    ---@param key string
-    ---@param triggerOnChanged boolean
-    local function ApplySelection(key, triggerOnChanged)
-        selectedKey = key;
-        button.SetText(GetOptionText(options, key));
-        if (triggerOnChanged and onChanged ~= nil) then
-            onChanged(key);
-        end
-    end
-
-    button = UI.CreateButton(parent).SetText(GetOptionText(options, selectedKey));
-    button.SetOnClick(function()
-        local list = {};
-        for _, option in ipairs(options) do
-            table.insert(list, {
-                text = option.Text,
-                selected = function() ApplySelection(option.Key, true); end,
-            });
-        end
-        UI.PromptFromList("Select an option", list);
-    end);
-
-    return {
-        GetKey = function() return selectedKey; end,
-        SetKey = function(key) ApplySelection(key, false); end,
-        Button = button,
-    };
-end
-
----@param options { Key: string, Text: string }[]
----@param key string
----@return string
-function GetOptionText(options, key)
-    for _, option in ipairs(options) do
-        if (option.Key == key) then
-            return option.Text;
-        end
-    end
-    return key;
-end
-
-function GetButtonColors()
-    return {
-        Blue = "#0000FF";
-        Purple = "#59009D";
-        Orange = "#FF7D00";
-        DarkGray = "#606060";
-        HotPink = "#FF697A";
-        SeaGreen = "#00FF8C";
-        Teal = "#009B9D";
-        DarkMagenta = "#AC0059";
-        Yellow = "#FFFF00";
-        Ivory = "#FEFF9B";
-        ElectricPurple = "#B70AFF";
-        DeepPink = "#FF00B1";
-        Aqua = "#4EFFFF";
-        DarkGreen = "#008000";
-        Red = "#FF0000";
-        Green = "#00FF05";
-        SaddleBrown = "#94652E";
-        OrangeRed = "#FF4700";
-        LightBlue = "#23A0FF";
-        Orchid = "#FF87FF";
-        Brown = "#943E3E";
-        CopperRose = "#AD7E7E";
-        Tan = "#FFAF56";
-        Lime = "#8EBE57";
-        TyrianPurple = "#990024";
-        MardiGras = "#880085";
-        RoyalBlue = "#4169E1";
-        WildStrawberry = "#FF43A4";
-        SmokyBlack = "#100C08";
-        Goldenrod = "#DAA520";
-        Cyan = "#00FFFF";
-        Artichoke = "#8F9779";
-        RainForest = "#00755E";
-        Peach = "#FFE5B4";
-        AppleGreen = "#8DB600";
-        Viridian = "#40826D";
-        Mahogany = "#C04000";
-        PinkLace = "#FFDDF4";
-        Bronze = "#CD7F32";
-        WoodBrown = "#C19A6B";
-        Tuscany = "#C09999";
-        AcidGreen = "#B0BF1A";
-        Amazon = "#3B7A57";
-        ArmyGreen = "#4B5320";
-        DonkeyBrown = "#664C28";
-        Cordovan = "#893F45";
-        Cinnamon = "#D2691E";
-        Charcoal = "#36454F";
-        Fuchsia = "#FF00FF";
-        ScreaminGreen = "#76FF7A";
-    };
-end
-
---given a hex colour string like "#RRGGBB", return a single 24-bit integer, useful for annotations
----@param hexColour string
----@return integer
-function GetColourIntegerFromHex(hexColour)
-    local normalized = string.gsub(hexColour, "#", "");
-    return tonumber(normalized, 16);
-end
-
-TEXT_DEFAULT_COLOUR = "#CCCCCC";
-BUTTON_COLOURS = GetButtonColors();
-ERROR_COLOUR = BUTTON_COLOURS.Red;
-SUBHEADING_COLOUR = BUTTON_COLOURS.Yellow;
-SUBHEADING_COLOUR2 = BUTTON_COLOURS.LightBlue;

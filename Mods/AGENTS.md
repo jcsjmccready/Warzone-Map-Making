@@ -39,3 +39,5 @@ this list only summarizes what's in each file and when it applies.
 - **[.agents/comments.md](.agents/comments.md)** - Read before writing or editing any comment in a
   mod's Lua code. Covers what a comment is allowed to say (a single current fact, not past reasoning
   or cross-references) and how terse function/field doc comments must be.
+- **[.agents/style.md](.agents/style.md)** - Read before writing or editing any `UI.Create*` builder
+  chain. Covers the one-`.Method()`-per-line formatting required once a chain has 3+ links.
