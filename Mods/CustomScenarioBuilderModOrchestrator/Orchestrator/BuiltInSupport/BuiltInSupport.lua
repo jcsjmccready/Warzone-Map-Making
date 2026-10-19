@@ -1,7 +1,7 @@
 BuiltInSupport = {};
 
 ---A special unit CSBMO itself knows how to build - no integration from the other mod needed, since CSBMO already
----holds a copy of its image (see SpecialUnitImages) and knows its exact stats.
+---holds a copy of its image and knows its exact stats.
 ---@class BuiltInSupportUnit
 ---@field Build fun(ownerID: PlayerID): CustomSpecialUnit
 

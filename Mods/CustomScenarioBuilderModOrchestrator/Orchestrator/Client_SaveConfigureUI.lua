@@ -6,8 +6,6 @@ require("Utilities");
 function Client_SaveConfigureUI(alert, addCard)
     Mod.Settings.Version = CURRENT_SETTINGS_VERSION;
 
-    -- Territory/Placement Name are validated (and the plain PlaceholderPlacementSetting struct built) when a row
-    -- is saved in the Edit view - PlaceholderConfigureState.Placements is already in the exact shape to persist
     Mod.Settings.PlaceholderPlacements = PlaceholderConfigureState.Placements;
     Mod.Settings.IsPlanningMode = PlaceholderConfigureState.IsPlanningModeValue;
     Mod.Settings.DisableAIMovements = PlaceholderConfigureState.DisableAIMovementsValue;

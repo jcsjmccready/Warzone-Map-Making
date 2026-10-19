@@ -85,13 +85,7 @@ function Client_PresentMenuUI(rootParent, setMaxSize, setScrollable, game, close
         .SetFlexibleWidth(1);
 end
 
--- Exports one placement per structure/special unit found. A vanilla structure exports by its display name (from
--- VANILLA_STRUCTURE_TYPES); a custom structure exports its full, raw EnumStructureType string
--- ("c|<ModID>|<Name>") rather than just the name parsed out of it, since that whole string can be used to
--- recreate the exact same structure type. Only CustomSpecialUnit special units (proxyType check) are exported,
--- since a vanilla one (Commander, Boss1-4, ...) can't be recreated by another mod anyway - and a custom one
--- exports every CustomSpecialUnitClass field (see SpecialUnitFields), not just its Name, so it can be fully
--- recreated too.
+-- Exports one placement per structure/special unit found
 ---@param game GameClientHook
 ---@return PlaceholderPlacementSetting[]
 function GetPlacementsFromMap(game)
@@ -198,7 +192,7 @@ local function SubmitCustomOrder(message, payload, territoryID)
     MenuGame.HighlightTerritories({ territoryID });
 end
 
----Removes one item (structure/special unit), as picked from the Modify popup
+---Removes one item (structure/special unit)
 ---@param territoryID TerritoryID
 ---@param territoryName string
 ---@param item ModifyPickerItem
@@ -216,8 +210,8 @@ local function DeleteModifyItem(territoryID, territoryName, item)
     end
 end
 
----Duplicates one item (structure/special unit) onto the territory it's already on, as picked from the Modify
----popup. Cloning a vanilla special unit (Commander/Boss1-4) is a no-op server-side - see CloneSpecialUnit.
+---Duplicates one item (structure/special unit) onto the territory it's already on
+---Cloning a vanilla special unit (Commander/Boss1-4) is a no-op server-side.
 ---@param territoryID TerritoryID
 ---@param territoryName string
 ---@param item ModifyPickerItem
@@ -244,8 +238,6 @@ end
 
 ---Shows a custom popup dialog listing every modifiable item on a territory, each with just its icon/name and a
 ---single action button - used instead of UI.PromptFromList so rows can carry an icon (Structure/SpecialUnit),
----which PromptFromList's plain text-only ListOption shape has no room for. The action (Move/Clone/Delete) is
----already decided by which button on the main dialog opened this picker - selecting a row just applies it.
 ---@param territoryName string
 ---@param items ModifyPickerItem[]
 ---@param actionIcon string # icon shown on each row's action button; "" for a text button instead
@@ -253,8 +245,7 @@ end
 ---@param actionColor string
 ---@param onSelect fun(item: ModifyPickerItem)
 local function ShowSelectPicker(territoryName, items, actionIcon, actionText, actionColor, onSelect)
-    -- CreateDialog doesn't auto-close a previously opened dialog - close the last one ourselves so clicking
-    -- another territory while this popup is still open doesn't stack up duplicates
+    -- CreateDialog doesn't auto-close a previously opened dialog - close the last one ourselves
     if (MenuModifyDialogClose ~= nil) then
         MenuModifyDialogClose();
         MenuModifyDialogClose = nil;
@@ -270,13 +261,37 @@ local function ShowSelectPicker(territoryName, items, actionIcon, actionText, ac
 
         for _, item in ipairs(items) do
             local row = UI.CreateHorizontalLayoutGroup(vert).SetFlexibleWidth(1);
-            UI.CreateImage(row).SetSprite(item.icon).SetPreferredWidth(ICON_SIZE).SetMinWidth(0).SetFlexibleWidth(0).SetPreferredHeight(ICON_SIZE).SetMinHeight(0);
-            UI.CreateImage(row).SetSprite(item.originIcon).SetPreferredWidth(ICON_SIZE).SetMinWidth(0).SetFlexibleWidth(0).SetPreferredHeight(ICON_SIZE).SetMinHeight(0);
+            UI.CreateImage(row)
+                .SetSprite(item.icon)
+                .SetPreferredWidth(ICON_SIZE)
+                .SetMinWidth(0)
+                .SetFlexibleWidth(0)
+                .SetPreferredHeight(ICON_SIZE)
+                .SetMinHeight(0);
+            UI.CreateImage(row)
+                .SetSprite(item.originIcon)
+                .SetPreferredWidth(ICON_SIZE)
+                .SetMinWidth(0)
+                .SetFlexibleWidth(0)
+                .SetPreferredHeight(ICON_SIZE)
+                .SetMinHeight(0);
             UI.CreateLabel(row).SetText(item.label).SetFlexibleWidth(1);
 
-            local actionBtn = UI.CreateButton(row).SetColor(actionColor).SetPreferredWidth(40).SetMinWidth(0).SetFlexibleWidth(0).SetPreferredHeight(30).SetMinHeight(0);
+            local actionBtn = UI.CreateButton(row)
+                .SetColor(actionColor)
+                .SetPreferredWidth(40)
+                .SetMinWidth(0)
+                .SetFlexibleWidth(0)
+                .SetPreferredHeight(30)
+                .SetMinHeight(0);
             if (actionIcon ~= "") then
-                actionBtn.SetText("").SetIcon(actionIcon).SetIconMinWidth(20).SetIconPreferredWidth(20).SetIconMinHeight(20).SetIconPreferredHeight(20);
+                actionBtn
+                    .SetText("")
+                    .SetIcon(actionIcon)
+                    .SetIconMinWidth(20)
+                    .SetIconPreferredWidth(20)
+                    .SetIconMinHeight(20)
+                    .SetIconPreferredHeight(20);
             else
                 actionBtn.SetText(actionText);
             end
@@ -296,8 +311,7 @@ end
 ---@param fromTerritoryName string
 ---@param items ModifyPickerItem[]
 local function ShowMovePicker(fromTerritoryID, fromTerritoryName, items)
-    -- CreateDialog doesn't auto-close a previously opened dialog - close the last one ourselves so clicking
-    -- another territory while this popup is still open doesn't stack up duplicates
+    -- CreateDialog doesn't auto-close a previously opened dialog - close the last one ourselves
     if (MenuModifyDialogClose ~= nil) then
         MenuModifyDialogClose();
         MenuModifyDialogClose = nil;
@@ -316,17 +330,35 @@ local function ShowMovePicker(fromTerritoryID, fromTerritoryName, items)
 
         for _, item in ipairs(items) do
             local row = UI.CreateHorizontalLayoutGroup(vert).SetFlexibleWidth(1);
-            UI.CreateImage(row).SetSprite(item.icon).SetPreferredWidth(ICON_SIZE).SetMinWidth(0).SetFlexibleWidth(0).SetPreferredHeight(ICON_SIZE).SetMinHeight(0);
-            UI.CreateImage(row).SetSprite(item.originIcon).SetPreferredWidth(ICON_SIZE).SetMinWidth(0).SetFlexibleWidth(0).SetPreferredHeight(ICON_SIZE).SetMinHeight(0);
+            UI.CreateImage(row)
+                .SetSprite(item.icon)
+                .SetPreferredWidth(ICON_SIZE)
+                .SetMinWidth(0)
+                .SetFlexibleWidth(0)
+                .SetPreferredHeight(ICON_SIZE)
+                .SetMinHeight(0);
+            UI.CreateImage(row)
+                .SetSprite(item.originIcon)
+                .SetPreferredWidth(ICON_SIZE)
+                .SetMinWidth(0)
+                .SetFlexibleWidth(0)
+                .SetPreferredHeight(ICON_SIZE)
+                .SetMinHeight(0);
             UI.CreateLabel(row).SetText(item.label).SetFlexibleWidth(1);
 
             local actionBtn = UI.CreateButton(row)
                 .SetText("")
                 .SetIcon(ICON_MOVE)
-                .SetIconMinWidth(20).SetIconPreferredWidth(20).SetIconMinHeight(20).SetIconPreferredHeight(20)
+                .SetIconMinWidth(20)
+                .SetIconPreferredWidth(20)
+                .SetIconMinHeight(20)
+                .SetIconPreferredHeight(20)
                 .SetColor(BUTTON_COLOURS.RoyalBlue)
-                .SetPreferredWidth(40).SetMinWidth(0).SetFlexibleWidth(0)
-                .SetPreferredHeight(30).SetMinHeight(0);
+                .SetPreferredWidth(40)
+                .SetMinWidth(0)
+                .SetFlexibleWidth(0)
+                .SetPreferredHeight(30)
+                .SetMinHeight(0);
 
             actionBtn.SetOnClick(function()
                 cancelPending(); -- in case a different row was already pending
@@ -378,9 +410,7 @@ local function ShowMovePicker(fromTerritoryID, fromTerritoryName, items)
     end);
 end
 
----Scans the player's already-queued orders for delete orders targeting this territory, and move orders taking
----something away from it, so the picker can hide structures/special units that are already scheduled to leave
----(deleted or moved elsewhere) instead of offering to queue a duplicate removal.
+---Scans the player's already-queued orders for delete/move orders on this terrtitory
 ---@param territoryID TerritoryID
 ---@return table<string, integer> structureCounts # structureName (raw ID/vanilla name) -> how many are already queued to leave
 ---@return table<GUID, boolean> specialUnitIDs # already-queued-to-leave special unit IDs
@@ -415,8 +445,7 @@ local function GetPendingRemovals(territoryID)
     return structureCounts, specialUnitIDs;
 end
 
----Builds the list of every structure/special unit standing on a territory that's still available to modify (not
----already queued to leave via a pending delete/move order). Alerts and returns nil if there's nothing to show.
+---Builds the list of every structure/special unit standing on a territory that's still available to modify
 ---@param terrDetails TerritoryDetailsVM
 ---@return ModifyPickerItem[] | nil
 local function BuildModifyItems(terrDetails)
@@ -428,8 +457,6 @@ local function BuildModifyItems(terrDetails)
     local items = {};
     for structureID, count in pairs((territoryStanding or {}).Structures or {}) do
         local structureName = vanillaStructureNames[structureID] or tostring(structureID);
-        -- The full raw ID ("c|<ModID>|<Name>") still goes into the order so the server can match it against the
-        -- live standing - only the display text here is shortened down to just <Name>, for a custom structure
         local displayName = ParseCustomStructureName(structureName) or structureName;
         local originIcon = (vanillaStructureNames[structureID] ~= nil) and ICON_VANILLA or ICON_MODDED;
         local remainingCount = math.max(0, count - (pendingStructureCounts[structureName] or 0));

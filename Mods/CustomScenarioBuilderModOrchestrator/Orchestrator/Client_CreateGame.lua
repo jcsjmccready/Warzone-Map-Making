@@ -1,6 +1,6 @@
 require("Utilities");
 
----Client_CreateGame hook. Used to check the game settings before actually creating the game
+---Client_CreateGame hook.
 ---@param settings GameSettings # Read-only GameSettings object
 ---@param alert fun(message: string) # When invoked, it will show a pop-up for the client with the message. It will also abort the game creation
 function Client_CreateGame(settings, alert)
@@ -18,6 +18,6 @@ function Client_CreateGame(settings, alert)
     end
 
     if (maxSlot + 1 > MAX_KNOWN_VALID_SLOT) then
-        alert("All possible slots (A-OJ) are used. One unused slot is required for this mod.");
+        alert("All possible slots (A-OJ) are used. One unused slot is required for this mod."); -- we need one for placing on neutral territories
     end
 end

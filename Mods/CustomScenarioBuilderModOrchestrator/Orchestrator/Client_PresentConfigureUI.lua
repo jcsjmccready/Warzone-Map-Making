@@ -13,7 +13,7 @@ require("Templates");
 ---@field EditingIndex integer | nil # which State.Placements entry the Edit view is editing; nil while adding a new one
 ---@field EditExisting PlaceholderPlacementSetting | nil # the placement (or template prefill) the Edit view's fields were seeded from
 ---@field EditIsFromTemplate boolean # true when adding a new placement via "Add from Template" - hides the Structure ID field, since templates are always vanilla structures
----@field EditTypeKey string | nil # "Structure"/"SpecialUnit" - fixed for the lifetime of the Edit view, never changeable by the player (see ShowEditView)
+---@field EditTypeKey string | nil # "Structure"/"SpecialUnit" - fixed for the lifetime of the Edit view, never changeable by the player
 ---@field EditTerritoryField TextInputField | nil
 ---@field EditPlacementNameParent UIObject | nil # stable parent for EditPlacementNameContainer
 ---@field EditPlacementNameContainer UIObject | nil # destroyable, rebuilt whenever Type changes
@@ -60,17 +60,6 @@ local function DestroyIfExists(object)
     end
 end
 
----Thin wrapper around UI.PromptFromList. There used to be a re-entrancy guard here (a flag set before opening
----and cleared once an option was picked), but the dialog's own built-in Cancel button closes it without ever
----calling back into Lua - there's no dismiss/cancel callback for UI.PromptFromList - so that flag could get
----stuck true forever and permanently block every future prompt for the rest of the session. A stray double-open
----from a fast double click is a far smaller problem than that, so the guard was removed rather than patched.
----@param message string
----@param options ListOption[]
-local function ShowPromptFromList(message, options)
-    UI.PromptFromList(message, options);
-end
-
 ---Rebuilds the persistent nav row for whichever page is now showing - on Home, the Placement Mode/Planning Mode
 ---buttons; on either of those pages, just a single Return button back to Home.
 ---@param currentPage "Home" | "Placement" | "Planning"
@@ -92,7 +81,7 @@ local function RenderNav(currentPage)
             .SetOnClick(function() State.ShowPlanningPage(); end);
     else
         UI.CreateButton(State.NavContent)
-            .SetText("Return")
+            .SetText("Return Home")
             .SetColor(BUTTON_COLOURS.TyrianPurple)
             .SetFlexibleWidth(1)
             .SetOnClick(function() State.ShowHomePage(); end);
@@ -103,7 +92,7 @@ end
 ---is matched against VANILLA_STRUCTURE_TYPES/StructureID at game start, so it can't be left free-typeable: a
 ---vanilla structure's name is chosen from a prompt list instead, and a modded structure's name (parsed from its
 ---StructureID on import) is always read-only, matching RenderEditTypeFields' handling of StructureID itself. A
----SpecialUnit's fields (this one included) are all locked for now - see RenderEditTypeFields.
+---SpecialUnit's fields (this one included) are all locked for now.
 local function RenderEditPlacementNameField()
     DestroyIfExists(State.EditPlacementNameContainer);
     State.EditPlacementNameContainer = UI.CreateHorizontalLayoutGroup(State.EditPlacementNameParent).SetFlexibleWidth(1);
@@ -131,7 +120,7 @@ local function RenderEditPlacementNameField()
                         selected = function() State.EditPlacementNameField.SetText(entry.Name); end,
                     });
                 end
-                ShowPromptFromList("Select a vanilla structure", list);
+                UI.PromptFromList("Select a vanilla structure", list);
             end);
     end
 end
@@ -159,7 +148,11 @@ local function RenderEditTypeFields()
             local existingValue = (existing ~= nil and existing.SpecialUnitFields ~= nil) and existing.SpecialUnitFields[descriptor.Key] or nil;
 
             local fieldRow = UI.CreateHorizontalLayoutGroup(State.EditTypeFieldsContainer).SetFlexibleWidth(1);
-            UI.CreateLabel(fieldRow).SetText(descriptor.Label).SetPreferredWidth(PLACEMENT_NAME_FIELD_WIDTH).SetMinWidth(0).SetFlexibleWidth(0);
+            UI.CreateLabel(fieldRow)
+                .SetText(descriptor.Label)
+                .SetPreferredWidth(PLACEMENT_NAME_FIELD_WIDTH)
+                .SetMinWidth(0)
+                .SetFlexibleWidth(0);
 
             if (descriptor.Type == "boolean") then
                 State.EditSpecialUnitFieldControls[descriptor.Key] =
@@ -330,45 +323,93 @@ State.ShowListView = function()
                     end,
                 });
             end
-            ShowPromptFromList("Select a template", list);
+            UI.PromptFromList("Select a template", list);
         end);
 
     local headerHorz = UI.CreateHorizontalLayoutGroup(State.ViewContent).SetFlexibleWidth(1);
-    UI.CreateLabel(headerHorz).SetText("Placement Name").SetColor(BUTTON_COLOURS.Artichoke).SetPreferredWidth(0).SetMinWidth(0).SetFlexibleWidth(1);
-    UI.CreateLabel(headerHorz).SetText("Territory Name").SetColor(BUTTON_COLOURS.Artichoke).SetPreferredWidth(0).SetMinWidth(0).SetFlexibleWidth(1);
-    UI.CreateEmpty(headerHorz).SetPreferredWidth(LIST_VIEW_ICON_SIZE * 3).SetMinWidth(0).SetFlexibleWidth(0);
-    UI.CreateEmpty(headerHorz).SetPreferredWidth(40).SetMinWidth(0).SetFlexibleWidth(0);
+    UI.CreateLabel(headerHorz)
+        .SetText("Placement Name")
+        .SetColor(BUTTON_COLOURS.Artichoke)
+        .SetPreferredWidth(0)
+        .SetMinWidth(0)
+        .SetFlexibleWidth(1);
+    UI.CreateLabel(headerHorz)
+        .SetText("Territory Name")
+        .SetColor(BUTTON_COLOURS.Artichoke)
+        .SetPreferredWidth(0)
+        .SetMinWidth(0)
+        .SetFlexibleWidth(1);
+    UI.CreateEmpty(headerHorz)
+        .SetPreferredWidth(LIST_VIEW_ICON_SIZE * 3)
+        .SetMinWidth(0)
+        .SetFlexibleWidth(0);
+    UI.CreateEmpty(headerHorz)
+        .SetPreferredWidth(40)
+        .SetMinWidth(0)
+        .SetFlexibleWidth(0);
 
     for index, placement in ipairs(State.Placements) do
         local rowHorz = UI.CreateHorizontalLayoutGroup(State.ViewContent).SetFlexibleWidth(1);
 
-        UI.CreateLabel(rowHorz).SetText(placement.PlacementName or "").SetPreferredWidth(0).SetMinWidth(0).SetFlexibleWidth(1);
-        UI.CreateLabel(rowHorz).SetText(placement.TerritoryName or "").SetPreferredWidth(0).SetMinWidth(0).SetFlexibleWidth(1);
+        UI.CreateLabel(rowHorz)
+            .SetText(placement.PlacementName or "")
+            .SetPreferredWidth(0)
+            .SetMinWidth(0)
+            .SetFlexibleWidth(1);
+        UI.CreateLabel(rowHorz)
+            .SetText(placement.TerritoryName or "")
+            .SetPreferredWidth(0)
+            .SetMinWidth(0)
+            .SetFlexibleWidth(1);
 
         UI.CreateImage(rowHorz)
             .SetSprite((placement.Type == "Structure") and ICON_STRUCTURE or ICON_SPECIAL_UNIT)
-            .SetPreferredWidth(LIST_VIEW_ICON_SIZE).SetMinWidth(0).SetFlexibleWidth(0).SetPreferredHeight(LIST_VIEW_ICON_SIZE).SetMinHeight(0);
+            .SetPreferredWidth(LIST_VIEW_ICON_SIZE)
+            .SetMinWidth(0)
+            .SetFlexibleWidth(0)
+            .SetPreferredHeight(LIST_VIEW_ICON_SIZE)
+            .SetMinHeight(0);
 
         local originIcon = ICON_VANILLA;
         if (placement.Type == "SpecialUnit" or IsModdedStructure(placement)) then
             originIcon = ICON_MODDED;
         end
-        UI.CreateImage(rowHorz).SetSprite(originIcon).SetPreferredWidth(LIST_VIEW_ICON_SIZE).SetMinWidth(0).SetFlexibleWidth(0).SetPreferredHeight(LIST_VIEW_ICON_SIZE).SetMinHeight(0);
+        UI.CreateImage(rowHorz)
+            .SetSprite(originIcon)
+            .SetPreferredWidth(LIST_VIEW_ICON_SIZE)
+            .SetMinWidth(0)
+            .SetFlexibleWidth(0)
+            .SetPreferredHeight(LIST_VIEW_ICON_SIZE)
+            .SetMinHeight(0);
 
         if (PlacementHasBuiltInSupport(placement)) then
-            UI.CreateImage(rowHorz).SetSprite(ICON_BUILT_IN_SUPPORT).SetPreferredWidth(LIST_VIEW_ICON_SIZE).SetMinWidth(0).SetFlexibleWidth(0).SetPreferredHeight(LIST_VIEW_ICON_SIZE).SetMinHeight(0);
+            UI.CreateImage(rowHorz)
+                .SetSprite(ICON_BUILT_IN_SUPPORT)
+                .SetPreferredWidth(LIST_VIEW_ICON_SIZE)
+                .SetMinWidth(0)
+                .SetFlexibleWidth(0)
+                .SetPreferredHeight(LIST_VIEW_ICON_SIZE)
+                .SetMinHeight(0);
         else
-            UI.CreateEmpty(rowHorz).SetPreferredWidth(LIST_VIEW_ICON_SIZE).SetMinWidth(LIST_VIEW_ICON_SIZE).SetFlexibleWidth(0);
+            UI.CreateEmpty(rowHorz)
+                .SetPreferredWidth(LIST_VIEW_ICON_SIZE)
+                .SetMinWidth(LIST_VIEW_ICON_SIZE)
+                .SetFlexibleWidth(0);
         end
 
         UI.CreateButton(rowHorz)
             .SetText("")
             .SetIcon(ICON_EDIT)
-            .SetIconPreferredWidth(ICON_SIZE).SetIconMinWidth(0)
-            .SetIconPreferredHeight(ICON_SIZE).SetIconMinHeight(0)
+            .SetIconPreferredWidth(ICON_SIZE)
+            .SetIconMinWidth(0)
+            .SetIconPreferredHeight(ICON_SIZE)
+            .SetIconMinHeight(0)
             .SetColor(BUTTON_COLOURS.RoyalBlue)
-            .SetPreferredWidth(40).SetMinWidth(0).SetFlexibleWidth(0)
-            .SetPreferredHeight(30).SetMinHeight(0)
+            .SetPreferredWidth(40)
+            .SetMinWidth(0)
+            .SetFlexibleWidth(0)
+            .SetPreferredHeight(30)
+            .SetMinHeight(0)
             .SetOnClick(function() State.ShowEditView(index); end);
     end
 end
@@ -392,16 +433,32 @@ State.ShowEditView = function(index, prefill, isFromTemplate)
     local iconRow = UI.CreateHorizontalLayoutGroup(State.ViewContent).SetFlexibleWidth(1);
     UI.CreateImage(iconRow)
         .SetSprite((displayPlacement.Type == "Structure") and ICON_STRUCTURE or ICON_SPECIAL_UNIT)
-        .SetPreferredWidth(ICON_SIZE).SetMinWidth(0).SetFlexibleWidth(0).SetPreferredHeight(ICON_SIZE).SetMinHeight(0);
+        .SetPreferredWidth(ICON_SIZE)
+        .SetMinWidth(0)
+        .SetFlexibleWidth(0)
+        .SetPreferredHeight(ICON_SIZE)
+        .SetMinHeight(0);
 
     local originIcon = ICON_VANILLA;
     if (displayPlacement.Type == "SpecialUnit" or IsModdedStructure(displayPlacement)) then
         originIcon = ICON_MODDED;
     end
-    UI.CreateImage(iconRow).SetSprite(originIcon).SetPreferredWidth(ICON_SIZE).SetMinWidth(0).SetFlexibleWidth(0).SetPreferredHeight(ICON_SIZE).SetMinHeight(0);
+    UI.CreateImage(iconRow)
+        .SetSprite(originIcon)
+        .SetPreferredWidth(ICON_SIZE)
+        .SetMinWidth(0)
+        .SetFlexibleWidth(0)
+        .SetPreferredHeight(ICON_SIZE)
+        .SetMinHeight(0);
 
     if (PlacementHasBuiltInSupport(displayPlacement)) then
-        UI.CreateImage(iconRow).SetSprite(ICON_BUILT_IN_SUPPORT).SetPreferredWidth(ICON_SIZE).SetMinWidth(0).SetFlexibleWidth(0).SetPreferredHeight(ICON_SIZE).SetMinHeight(0);
+        UI.CreateImage(iconRow)
+            .SetSprite(ICON_BUILT_IN_SUPPORT)
+            .SetPreferredWidth(ICON_SIZE)
+            .SetMinWidth(0)
+            .SetFlexibleWidth(0)
+            .SetPreferredHeight(ICON_SIZE)
+            .SetMinHeight(0);
     end
 
     -- Type can never be changed in the Edit view (a template is always Structure, and an existing row can't
@@ -447,7 +504,7 @@ State.ShowEditView = function(index, prefill, isFromTemplate)
             .SetColor(BUTTON_COLOURS.Red)
             .SetFlexibleWidth(1)
             .SetOnClick(function()
-                ShowPromptFromList("Delete this placement?", {
+                UI.PromptFromList("Delete this placement?", {
                     { text = "Delete", selected = function()
                         table.remove(State.Placements, index);
                         State.ShowListView();
@@ -481,18 +538,51 @@ State.ShowHomePage = function()
     UI.CreateLabel(State.PageContent).SetText('Icon Glossary').SetColor(BUTTON_COLOURS.Artichoke);
 
     local typeRow = UI.CreateHorizontalLayoutGroup(State.PageContent).SetFlexibleWidth(1);
-    UI.CreateImage(typeRow).SetSprite(ICON_STRUCTURE).SetPreferredWidth(ICON_SIZE).SetMinWidth(0).SetFlexibleWidth(0).SetPreferredHeight(ICON_SIZE).SetMinHeight(0);
-    UI.CreateImage(typeRow).SetSprite(ICON_SPECIAL_UNIT).SetPreferredWidth(ICON_SIZE).SetMinWidth(0).SetFlexibleWidth(0).SetPreferredHeight(ICON_SIZE).SetMinHeight(0);
+    UI.CreateImage(typeRow)
+        .SetSprite(ICON_STRUCTURE)
+        .SetPreferredWidth(ICON_SIZE)
+        .SetMinWidth(0)
+        .SetFlexibleWidth(0)
+        .SetPreferredHeight(ICON_SIZE)
+        .SetMinHeight(0);
+    UI.CreateImage(typeRow)
+        .SetSprite(ICON_SPECIAL_UNIT)
+        .SetPreferredWidth(ICON_SIZE)
+        .SetMinWidth(0)
+        .SetFlexibleWidth(0)
+        .SetPreferredHeight(ICON_SIZE)
+        .SetMinHeight(0);
     UI.CreateLabel(typeRow).SetText("The row represents a Structure or a Special Unit").SetFlexibleWidth(1);
 
     local originRow = UI.CreateHorizontalLayoutGroup(State.PageContent).SetFlexibleWidth(1);
-    UI.CreateImage(originRow).SetSprite(ICON_VANILLA).SetPreferredWidth(ICON_SIZE).SetMinWidth(0).SetFlexibleWidth(0).SetPreferredHeight(ICON_SIZE).SetMinHeight(0);
-    UI.CreateImage(originRow).SetSprite(ICON_MODDED).SetPreferredWidth(ICON_SIZE).SetMinWidth(0).SetFlexibleWidth(0).SetPreferredHeight(ICON_SIZE).SetMinHeight(0);
+    UI.CreateImage(originRow)
+        .SetSprite(ICON_VANILLA)
+        .SetPreferredWidth(ICON_SIZE)
+        .SetMinWidth(0)
+        .SetFlexibleWidth(0)
+        .SetPreferredHeight(ICON_SIZE)
+        .SetMinHeight(0);
+    UI.CreateImage(originRow)
+        .SetSprite(ICON_MODDED)
+        .SetPreferredWidth(ICON_SIZE)
+        .SetMinWidth(0)
+        .SetFlexibleWidth(0)
+        .SetPreferredHeight(ICON_SIZE)
+        .SetMinHeight(0);
     UI.CreateLabel(originRow).SetText("A built-in vanilla structure, or a modded structure/special unit").SetFlexibleWidth(1);
 
     local supportRow = UI.CreateHorizontalLayoutGroup(State.PageContent).SetFlexibleWidth(1);
-    UI.CreateImage(supportRow).SetSprite(ICON_BUILT_IN_SUPPORT).SetPreferredWidth(ICON_SIZE).SetMinWidth(0).SetFlexibleWidth(0).SetPreferredHeight(ICON_SIZE).SetMinHeight(0);
-    UI.CreateEmpty(supportRow).SetPreferredWidth(44).SetMinWidth(ICON_SIZE).SetFlexibleWidth(0);
+    UI.CreateImage(supportRow)
+        .SetSprite(ICON_BUILT_IN_SUPPORT)
+        .SetPreferredWidth(ICON_SIZE)
+        .SetMinWidth(0)
+        .SetFlexibleWidth(0)
+        .SetPreferredHeight(ICON_SIZE)
+        .SetMinHeight(0);
+    UI.CreateEmpty(supportRow)
+        .SetPreferredWidth(44)
+        .SetMinWidth(ICON_SIZE)
+        .SetFlexibleWidth(0);
     UI.CreateLabel(supportRow).SetText("Built-in Support - guaranteed to place with no issues. Without this, we require other mods to support this mod").SetFlexibleWidth(1);
 end
 

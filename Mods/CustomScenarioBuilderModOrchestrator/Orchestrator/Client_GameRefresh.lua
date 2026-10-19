@@ -1,6 +1,6 @@
 require("Utilities");
 
---Placeholder (see BuildPlaceholder), so this doesn't need to account for fog.
+-- A Placeholder is always IsVisibleToAllPlayers, so this doesn't need to account for fog.
 ---@param game GameClientHook
 ---@return string[] # One "Territory Name: PlacementName [Type]" line per still-unreplaced placement, alphabetical by territory name
 local function GetUnreplacedPlacementLines(game)
@@ -27,7 +27,7 @@ end
 
 ---@param game GameClientHook
 function Client_GameRefresh(game)
-    if (game.Us == nil) then return; end; -- spectators didn't configure anything, nothing to alert them about
+    if (game.Us == nil) then return; end; -- ignore spectators
 
     local playerData = Mod.PlayerGameData --[[@as CustomScenarioBuilderModOrchestratorPlayerGameData]];
     local pub = Mod.PublicGameData --[[@as CustomScenarioBuilderModOrchestratorPublicGameData]];
@@ -47,8 +47,7 @@ function Client_GameRefresh(game)
 
     if (not showPlacementWarnings and not showNotCustomScenarioWarning and not showUnreplacedPlaceholdersWarning and not showPlanningModeWarning and not showNoSpareSlotWarning) then return; end;
 
-    -- UI.Alert only shows the latest call, so every warning that applies has to go in a single call rather than
-    -- separate ones - otherwise whichever fires second silently replaces the first
+    -- UI.Alert only shows the latest call, so every warning that applies has to go in a single call 
     local messageParts = {};
     if (showNotCustomScenarioWarning) then
         table.insert(messageParts, "Custom Scenario Builder (Mod Support): Placeholder Placement is configured, but this game isn't using the Custom Scenario distribution, so nothing will be placed.");

@@ -68,7 +68,7 @@ local MOD_DATA_QUOTE = "\"";
 ---@class CustomScenarioBuilderPlaceholder # A Placeholder special unit found on the map, decoded and ready to be matched/replaced
 ---@field Type CustomScenarioBuilderPlacementType # What the game-maker said this placeholder should eventually become
 ---@field PlacementName string | nil # The free-text name the game-maker typed into CSBMO's configuration screen - check this against this mod's own structure/special unit name to decide whether a given Placeholder is meant for this mod
----@field StructureID string | nil # Type=Structure only. Already resolved by CSBMO itself - not generally needed, see FindStructurePlacements
+---@field StructureID string | nil # Type=Structure only. Already resolved by CSBMO itself - not generally needed
 ---@field TerritoryID TerritoryID
 ---@field SpecialUnit CustomSpecialUnit # The Placeholder unit itself, still on the territory until CustomScenarioBuilder.Replace removes it
 
@@ -108,7 +108,7 @@ local function DecodeModDataString(s, index)
 end
 
 ---Decodes a flat, string-keyed, string-valued table previously produced by
----CustomScenarioBuilderModOrchestrator's EncodePlaceholderModData - see this file's header for the shared format.
+---CustomScenarioBuilderModOrchestrator's EncodePlaceholderModData.
 ---@param s string
 ---@return table<string, string> | nil
 local function DecodeModDataTable(s)

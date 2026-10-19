@@ -4,15 +4,15 @@ CustomScenarioBuilderModOrchestratorApplication = {};
 
 ---@class PlaceholderPlacementSetting # One configured start-of-game placement, from Mod.Settings.PlaceholderPlacements
 ---@field Type string | nil # One of PLACEMENT_TYPE_OPTIONS's keys. Missing/nil means DEFAULT_PLACEMENT_TYPE
----@field TerritoryName string # Matched case-insensitively against the map's territory names - see FindTerritoryIDByName
+---@field TerritoryName string # Matched case-insensitively against the map's territory names
 ---@field PlacementName string | nil
----@field StructureID string | nil # Type=Structure only. Full raw EnumStructureType ("c|<ModID>|<Name>") for a modded structure. nil means vanilla - PlacementName is then matched against VANILLA_STRUCTURE_TYPES
+---@field StructureID string | nil # Type=Structure only. Full raw struct id for a modded structure. nil means vanilla
 ---@field SpecialUnitFields table<string, string> | nil # Type=SpecialUnit only. Every CustomSpecialUnitClass field, stringified
 
 ---@class CustomScenarioBuilderModOrchestratorPublicGameData # State PlacePlaceholders/PublishVanillaStructureNames set server-side for Client_GameRefresh/Client_PresentMenuUI to read
 ---@field PlacementWarnings string[] | nil # Configured TerritoryNames that couldn't be found on the map
 ---@field NotUsingCustomScenario boolean | nil # True if Placeholder Placement is configured but settings.CustomScenario is nil, so nothing can be placed
----@field VanillaStructureNames table<EnumStructureType, string> | nil # WL.StructureType.<field> -> its VANILLA_STRUCTURE_TYPES display name, precomputed since resolving it needs a server hook
+---@field VanillaStructureNames table<EnumStructureType, string> | nil # VANILLA_STRUCTURE_TYPES display name, precomputed since resolving it needs a server hook
 ---@field NoSpareSlotForNeutralPlacements boolean | nil # True if a neutral territory needed a Slot but every slot up to MAX_KNOWN_VALID_SLOT is in use
 
 ---@class CustomScenarioBuilderModOrchestratorPlayerGameData # Per-player "already warned about this" flags, set via Server_GameCustomMessage once Client_GameRefresh has shown each warning once
@@ -23,13 +23,11 @@ CustomScenarioBuilderModOrchestratorApplication = {};
 ---@field SeenNoSpareSlotWarning boolean | nil
 
 ---Builds a Placeholder custom special unit: a stand-in for a structure or special unit from another mod.
----Type/PlacementName are encoded into ModData rather than keyed by the unit's ID, since cloning a special unit
----(e.g. during an attack) keeps its ModData but gives the clone a new ID.
 ---@param ownerID PlayerID
 ---@param placementType string # One of PLACEMENT_TYPE_OPTIONS's keys
 ---@param placementName string | nil
----@param specialUnitFields table<string, string> | nil # Type=SpecialUnit only - every stored CustomSpecialUnitClass field value (see SPECIAL_UNIT_FIELD_DESCRIPTORS), overriding the defaults below wherever a value was actually captured
----@param structureID string | nil # Type=Structure only - the raw custom EnumStructureType string ("c|<ModID>|<Name>"), nil for a vanilla structure
+---@param specialUnitFields table<string, string> | nil # Type=SpecialUnit only - every relevant stored CustomSpecialUnitClass field value
+---@param structureID string | nil # Type=Structure only - the raw struct id, nil for a vanilla structure
 ---@return CustomSpecialUnit
 function CustomScenarioBuilderModOrchestratorApplication.BuildPlaceholder(ownerID, placementType, placementName, specialUnitFields, structureID)
     local builder = WL.CustomSpecialUnitBuilder.Create(ownerID);
@@ -51,12 +49,8 @@ function CustomScenarioBuilderModOrchestratorApplication.BuildPlaceholder(ownerI
         builder.TextOverHeadOpt = string.sub(placementName, 1, 8);
     end
 
-    -- Everything actually captured for this special unit overrides the generic placeholder defaults above, so
-    -- the stand-in on the map reflects it too, not just the (currently unimplemented) eventual real recreation.
-    -- ModData is excluded - that's reserved for the Type/PlacementName encoding ResolveStructurePlaceholders
-    -- and future SpecialUnit resolution logic need, not for the player's stored data. ModID is excluded because,
-    -- despite being documented as a CustomSpecialUnitClass field, it isn't actually writable on the builder
-    -- ("Key ModID is not writable on CustomSpecialUnitBuilder").
+    -- ModData is reserved for the Type/PlacementName/StructureID encoding, not the player's data. ModID isn't
+    -- actually writable on the builder despite being a documented CustomSpecialUnitClass field.
     if (specialUnitFields ~= nil) then
         for _, descriptor in ipairs(SPECIAL_UNIT_FIELD_DESCRIPTORS) do
             local value = specialUnitFields[descriptor.Key];
@@ -163,12 +157,8 @@ function CustomScenarioBuilderModOrchestratorApplication.PublishVanillaStructure
     Mod.PublicGameData = pub;
 end
 
----Resolves a Placeholder configured for a Structure into the real structure it stands in for - a vanilla one
----(matched by name against VANILLA_STRUCTURE_TYPES) or a modded one. A modded structure's EnumStructureType is
----actually just its raw "c|<ModID>|<Name>" string, usable directly as a Structures table key - WL.StructureType.Custom
----can't be used for this, since it only ever resolves within the calling mod's own namespace, not an arbitrary
----other mod's (confirmed by testing: directly assigning the raw string as a key, e.g.
----standing.Territories[id].Structures = {["c|391|Testing"] = 1}, is what actually works).
+---Resolves a Placeholder configured for a Structure into the real structure it stands in for - 
+---a vanilla one matched by name against VANILLA_STRUCTURE_TYPES or a modded one "c|<ModID>|<Name>"
 ---@param game GameServerHook
 ---@param standing GameStanding
 function CustomScenarioBuilderModOrchestratorApplication.ResolveStructurePlaceholders(game, standing)
@@ -211,11 +201,7 @@ function CustomScenarioBuilderModOrchestratorApplication.ResolveStructurePlaceho
     end
 end
 
----Resolves a Placeholder configured for a SpecialUnit into the real unit it stands in for, for every mod CSBMO
----has built-in support for (see BuiltInSupport/) - built the same way that mod would build it itself, so no
----integration/Register call from that mod's own Server_StartGame hook is needed. A SpecialUnit Placeholder whose
----PlacementName isn't a known built-in-support unit is left alone - that's still a consumer mod's own job via
----CustomScenarioBuilder.lua's Register/ReplacePlaceholder.
+---Resolves a Placeholder configured for a SpecialUnit we explicitly support (because the mod no longer receives updates)
 ---@param game GameServerHook
 ---@param standing GameStanding
 function CustomScenarioBuilderModOrchestratorApplication.ResolveBuiltInSpecialUnitPlaceholders(game, standing)
@@ -234,8 +220,6 @@ function CustomScenarioBuilderModOrchestratorApplication.ResolveBuiltInSpecialUn
                         end
                     end
 
-                    -- Owned by the territory's actual controlling player, not the Placeholder's own Neutral
-                    -- owner - the same TankCard bug (an un-ownable, unmovable Neutral unit) applies here too
                     local newUnit = builtInUnit.Build(territoryStanding.OwnerPlayerID);
                     table.insert(remainingSpecialUnits, newUnit);
 
@@ -274,16 +258,11 @@ end
 ---@param addNewOrder fun(order: GameOrder)
 ---@param playerID PlayerID
 ---@param territoryID TerritoryID
----@param structureName string # a VANILLA_STRUCTURE_TYPES Name, or the raw custom EnumStructureType string ("c|<ModID>|<Name>") as GetPlacementsFromMap/MenuDeleteTerritoryTerritoryClicked read it straight off the standing
+---@param structureName string # a VANILLA_STRUCTURE_TYPES Name, or the raw struct id
 function CustomScenarioBuilderModOrchestratorApplication.RemoveStructure(game, addNewOrder, playerID, territoryID, structureName)
     local territoryDetails = game.Map.Territories[territoryID];
     if (territoryDetails == nil) then return; end
 
-    -- Matched against the live standing's own keys (by tostring), rather than reconstructed via
-    -- WL.StructureType.Custom(name) - that rejects the pipe symbol in our "c|<ModID>|<Name>" encoding outright,
-    -- and even with the ModID portion stripped back off there's no guarantee it resolves to the exact same key
-    -- already sitting in Structures. SetStructuresOpt (full replace) is used instead of AddStructuresOpt(-1),
-    -- matching the proven pattern BombShelterApplication.DestroyBombShelter already uses for the same operation.
     local territory = game.ServerGame.LatestTurnStanding.Territories[territoryID];
     if (territory == nil or territory.Structures == nil) then return; end
 
@@ -341,13 +320,12 @@ end
 ---@param playerID PlayerID
 ---@param fromTerritoryID TerritoryID
 ---@param toTerritoryID TerritoryID
----@param structureName string # a VANILLA_STRUCTURE_TYPES Name, or the raw custom EnumStructureType string ("c|<ModID>|<Name>")
+---@param structureName string # a VANILLA_STRUCTURE_TYPES Name, or the raw struct id
 function CustomScenarioBuilderModOrchestratorApplication.MoveStructure(game, addNewOrder, playerID, fromTerritoryID, toTerritoryID, structureName)
     local fromDetails = game.Map.Territories[fromTerritoryID];
     local toDetails = game.Map.Territories[toTerritoryID];
     if (fromDetails == nil or toDetails == nil) then return; end
 
-    -- Matched against the live standing's own keys, same approach RemoveStructure uses
     local territory = game.ServerGame.LatestTurnStanding.Territories[fromTerritoryID];
     if (territory == nil or territory.Structures == nil) then return; end
 

@@ -19,13 +19,22 @@ function Client_PresentSettingsUI(rootParent)
 
         UI.CreateImage(row)
             .SetSprite((placement.Type == "Structure") and ICON_STRUCTURE or ICON_SPECIAL_UNIT)
-            .SetPreferredWidth(LIST_VIEW_ICON_SIZE).SetMinWidth(0).SetFlexibleWidth(0).SetPreferredHeight(LIST_VIEW_ICON_SIZE).SetMinHeight(0);
+            .SetPreferredWidth(LIST_VIEW_ICON_SIZE)
+            .SetMinWidth(0)
+            .SetFlexibleWidth(0)
+            .SetPreferredHeight(LIST_VIEW_ICON_SIZE)
+            .SetMinHeight(0);
 
         local originIcon = ICON_VANILLA;
         if (placement.Type == "SpecialUnit" or IsModdedStructure(placement)) then
             originIcon = ICON_MODDED;
         end
-        UI.CreateImage(row).SetSprite(originIcon).SetPreferredWidth(LIST_VIEW_ICON_SIZE).SetMinWidth(0).SetFlexibleWidth(0).SetPreferredHeight(LIST_VIEW_ICON_SIZE).SetMinHeight(0);
+        UI.CreateImage(row).SetSprite(originIcon)
+            .SetPreferredWidth(LIST_VIEW_ICON_SIZE)
+            .SetMinWidth(0)
+            .SetFlexibleWidth(0)
+            .SetPreferredHeight(LIST_VIEW_ICON_SIZE)
+            .SetMinHeight(0);
 
         UI.CreateLabel(row).SetText(FormatPlacementText(placement)).SetFlexibleWidth(1);
     end

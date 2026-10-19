@@ -1,6 +1,6 @@
--- Pulls in every mod CSBMO can build a special unit for itself (see BuiltInSupport/BuiltInSupport.lua) - required
--- here, rather than only from Server_StartGame, so PlacementHasBuiltInSupport is accurate everywhere Utilities is
--- required, including client-side UI icons.
+-- Pulls in every mod CSBMO can build a special unit for itself - required here, rather than only from
+-- Server_StartGame, so PlacementHasBuiltInSupport is accurate everywhere Utilities is required, including
+-- client-side UI icons.
 require("BuiltInSupport.BuiltInSupport");
 
 CURRENT_SETTINGS_VERSION = 1;
@@ -9,9 +9,8 @@ CURRENT_SETTINGS_VERSION = 1;
 -- (399) is the highest ever observed in practice, used as the ceiling past which a new Slot risks "InvalidSlot".
 MAX_KNOWN_VALID_SLOT = 399;
 
--- The name (and SpecialUnitImages filename) of this mod's stand-in special unit. Placed on configured
--- territories at game creation, to later be swapped out for a structure or special unit from another mod
--- once that cross-mod replacement step is built.
+-- The name (and SpecialUnitImages filename) of this mod's stand-in special unit, placed on configured
+-- territories at game creation and later swapped out for the real structure/special unit.
 PLACEHOLDER_NAME = "Placeholder";
 PLACEHOLDER_IMAGE_FILENAME = "Placeholder.png";
 
@@ -57,7 +56,7 @@ function FormatPlacementLine(placement)
 end
 
 ---Same text as FormatPlacementLine, minus the bracketed "[Structure]"/"[Special Unit]" suffix - for callers that
----show that distinction as an icon instead (see Client_PresentSettingsUI.lua).
+---show that distinction as an icon instead.
 ---@param placement PlaceholderPlacementSetting
 ---@return string
 function FormatPlacementText(placement)
@@ -80,9 +79,9 @@ end
 -- Encoded into every placed Placeholder's own ModData field, so any other mod can read what it's standing in for
 -- without needing access to this mod's own Settings (Mod.* storages are private per-mod; ModData lives on the
 -- unit itself and survives the unit being cloned, e.g. during combat). Uses the same quoted-string, "{key:value}"
--- table format as the IO package's IO.Writer/IO.Reader elsewhere in this codebase, but written out by hand here -
--- see CustomScenarioBuilder.lua, the copy-paste integration file other mods carry to decode this, which must stay
--- in sync with this exact format without requiring either mod to carry the IO package.
+-- table format as the IO package's IO.Writer/IO.Reader elsewhere in this codebase, but written out by hand here so
+-- neither this mod nor the copy-paste integration file other mods carry to decode it need to carry the IO package.
+-- Both sides must stay in sync with this exact format.
 ---@param s string
 ---@return string
 local function EncodeModDataString(s)
@@ -158,7 +157,7 @@ local function DecodeModDataTable(s)
     return fields;
 end
 
----Decodes a Placeholder special unit's own ModData field (see EncodePlaceholderModData). Returns nil if modData
+---Decodes a Placeholder special unit's own ModData field. Returns nil if modData
 ---isn't a well-formed encoding.
 ---@param modData string | nil
 ---@return string | nil placementType
@@ -370,7 +369,7 @@ function DeserializePlacementData(text)
 end
 
 -- The vanilla (non-custom) structures, for Planning Mode's placement menu and build orders. EnumField is the
--- WL.StructureType field name, resolvable only in a server hook (see PublishVanillaStructureNames).
+-- WL.StructureType field name, resolvable only in a server hook.
 ---@type { Name: string, EnumField: string }[]
 VANILLA_STRUCTURE_TYPES = {
     { Name = "Arena", EnumField = "Arena" },
