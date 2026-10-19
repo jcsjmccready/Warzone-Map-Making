@@ -36,3 +36,6 @@ this list only summarizes what's in each file and when it applies.
   receives, what fields a `WL.*` class exposes, or what a hook is allowed to do. Points at
   `Mods/Annotations.lua` as the canonical API reference and clarifies it should never be copied into
   individual mod folders.
+- **[.agents/comments.md](.agents/comments.md)** - Read before writing or editing any comment in a
+  mod's Lua code. Covers what a comment is allowed to say (a single current fact, not past reasoning
+  or cross-references) and how terse function/field doc comments must be.

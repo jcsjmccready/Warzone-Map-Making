@@ -4,8 +4,6 @@ require("Application");
 ---@param game GameServerHook
 ---@param standing GameStanding
 function Server_StartGame(game, standing)
-    CustomScenarioBuilderModOrchestratorApplication.PublishVanillaStructureNames(game);
-
     CustomScenarioBuilderModOrchestratorApplication.ResolveStructurePlaceholders(game, standing);
 
     CustomScenarioBuilderModOrchestratorApplication.ResolveBuiltInSpecialUnitPlaceholders(game, standing);

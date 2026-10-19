@@ -9,10 +9,9 @@ CustomScenarioBuilderModOrchestratorApplication = {};
 ---@field StructureID string | nil # Type=Structure only. Full raw struct id for a modded structure. nil means vanilla
 ---@field SpecialUnitFields table<string, string> | nil # Type=SpecialUnit only. Every CustomSpecialUnitClass field, stringified
 
----@class CustomScenarioBuilderModOrchestratorPublicGameData # State PlacePlaceholders/PublishVanillaStructureNames set server-side for Client_GameRefresh/Client_PresentMenuUI to read
+---@class CustomScenarioBuilderModOrchestratorPublicGameData # State PlacePlaceholders sets server-side for Client_GameRefresh to read
 ---@field PlacementWarnings string[] | nil # Configured TerritoryNames that couldn't be found on the map
 ---@field NotUsingCustomScenario boolean | nil # True if Placeholder Placement is configured but settings.CustomScenario is nil, so nothing can be placed
----@field VanillaStructureNames table<EnumStructureType, string> | nil # VANILLA_STRUCTURE_TYPES display name, precomputed since resolving it needs a server hook
 ---@field NoSpareSlotForNeutralPlacements boolean | nil # True if a neutral territory needed a Slot but every slot up to MAX_KNOWN_VALID_SLOT is in use
 
 ---@class CustomScenarioBuilderModOrchestratorPlayerGameData # Per-player "already warned about this" flags, set via Server_GameCustomMessage once Client_GameRefresh has shown each warning once
@@ -141,23 +140,7 @@ function CustomScenarioBuilderModOrchestratorApplication.PlacePlaceholders(game,
     Mod.PublicGameData = pub;
 end
 
----Publishes every vanilla structure's resolved ID, keyed back to its display name, so Client_PresentMenuUI's
----Planning Mode map scan can name a structure ID it finds without needing to resolve WL.StructureType fields
----itself client-side.
----@param game GameServerHook
-function CustomScenarioBuilderModOrchestratorApplication.PublishVanillaStructureNames(game)
-    local names = {};
-    for _, entry in ipairs(VANILLA_STRUCTURE_TYPES) do
-        local structureID = WL.StructureType[entry.EnumField];
-        names[structureID] = entry.Name;
-    end
-
-    local pub = Mod.PublicGameData or {} --[[@as CustomScenarioBuilderModOrchestratorPublicGameData]];
-    pub.VanillaStructureNames = names;
-    Mod.PublicGameData = pub;
-end
-
----Resolves a Placeholder configured for a Structure into the real structure it stands in for - 
+---Resolves a Placeholder configured for a Structure into the real structure it stands in for -
 ---a vanilla one matched by name against VANILLA_STRUCTURE_TYPES or a modded one "c|<ModID>|<Name>"
 ---@param game GameServerHook
 ---@param standing GameStanding

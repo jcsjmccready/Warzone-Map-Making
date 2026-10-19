@@ -89,7 +89,7 @@ end
 ---@param game GameClientHook
 ---@return PlaceholderPlacementSetting[]
 function GetPlacementsFromMap(game)
-    local vanillaStructureNames = (Mod.PublicGameData or {}).VanillaStructureNames or {};
+    local vanillaStructureNames = GetVanillaStructureNames();
     local placements = {};
 
     for territoryID, territoryStanding in pairs(game.LatestStanding.Territories) do
@@ -449,7 +449,7 @@ end
 ---@param terrDetails TerritoryDetailsVM
 ---@return ModifyPickerItem[] | nil
 local function BuildModifyItems(terrDetails)
-    local vanillaStructureNames = (Mod.PublicGameData or {}).VanillaStructureNames or {};
+    local vanillaStructureNames = GetVanillaStructureNames();
     local territoryStanding = MenuGame.LatestStanding.Territories[terrDetails.ID];
     local pendingStructureCounts, pendingSpecialUnitIDs = GetPendingRemovals(terrDetails.ID);
 

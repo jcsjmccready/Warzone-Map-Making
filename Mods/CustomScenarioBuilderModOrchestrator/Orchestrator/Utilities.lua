@@ -403,6 +403,15 @@ function GetVanillaStructureEnumField(structureName)
     return nil;
 end
 
+---@return table<EnumStructureType, string> # WL.StructureType.<Field> -> its VANILLA_STRUCTURE_TYPES display name
+function GetVanillaStructureNames()
+    local names = {};
+    for _, entry in ipairs(VANILLA_STRUCTURE_TYPES) do
+        names[WL.StructureType[entry.EnumField]] = entry.Name;
+    end
+    return names;
+end
+
 -- Every CustomSpecialUnitClass field the Placement Edit view exposes as its own typed input, driving both that
 -- form and (later) resolution logic. ModID/Name/ID excluded - ModID isn't settable, Name is already PlacementName.
 ---@type { Key: string, Type: "integer"|"number"|"boolean"|"string", Label: string }[]
