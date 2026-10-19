@@ -1,3 +1,11 @@
-Lets game creators choose where custom special units and custom structures are placed in a custom scenario, so they are on the map from the start of the game.
+Lets game creators choose where modded special units and modded custom structures are placed in a custom scenario, so they are on the map from the start of the game.
 
-Work in progress: the mod configuration screen lets you list territories (each with an optional label, and a Structure/Special Unit type for your own tracking) to place this mod's own "Placeholder" special unit on at the start of the game, as a stand-in for a structure or special unit from another mod. Every placement is currently placed as the same Placeholder special unit regardless of the type you pick - that field is tracking data only, for when resolving a placeholder to another mod's actual structure/special unit is implemented.
+Use "Planning Mode" (instructions provided) and enter an initial game to export the data and territory placement of modded structures and special units, then import it in the mod configuration.
+Planning mode also comes with convenience options for deleting, cloning and moving structures/special units.
+
+This is a best-effort approach to facilitate mod support in custom scenarios and *CAN NOT* guarantee full support:
+- Simple custom structure mods have a high chance of success.
+- Special unit mods require the mod in question to support this framework*
+- Complex custom structure mods require the mod in questiont to support this framework
+
+*This mod provides built-in support for some older special unit mods. See the "Home" page of this mod and/or glossary for indication.
