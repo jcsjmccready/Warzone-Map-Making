@@ -4,7 +4,7 @@
 --
 -- No require("Application.BuiltInSupport.BuiltInSupport") here - this file is only ever loaded via that file's own require
 -- (at the bottom, after Register is defined), never required directly by anything else.
-BuiltInSupport.Register("Diplomat", function(ownerID)
+BuiltInSupport.Register("Diplomat", "Diplomat", "UnFairerOrb76", 546, function(ownerID)
     local builder = WL.CustomSpecialUnitBuilder.Create(ownerID);
     builder.Name = 'Diplomat';
     builder.IncludeABeforeName = true;

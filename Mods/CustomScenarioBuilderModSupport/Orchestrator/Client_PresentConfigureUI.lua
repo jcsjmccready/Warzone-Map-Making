@@ -1,6 +1,7 @@
 require("Application.Utilities");
 require("Application.Templates");
 require("Application.PlacementSerialization");
+require("Application.BuiltInSupport.BuiltInSupport");
 
 ---@class PlacementConfigureUIState
 ---@field Placements PlaceholderPlacementSetting[]
@@ -9,6 +10,9 @@ require("Application.PlacementSerialization");
 ---@field NavContent UIObject | nil # destroyable, recreated by RenderNav every page change - the two Placement Mode/Planning Mode buttons, whichever is for the current page reading "Return" instead
 ---@field PageContainer UIObject | nil # stable parent, created once
 ---@field PageContent UIObject | nil # destroyable, recreated every ShowHomePage/ShowPlacementPage/ShowPlanningPage call
+---@field BuiltInSupportShowListCheckBox CheckBox | nil # not persisted, reset every ShowHomePage call
+---@field BuiltInSupportListContainer UIObject | nil # stable parent, created once per ShowHomePage call
+---@field BuiltInSupportListContent UIObject | nil # destroyable, rebuilt whenever Show List toggles - one row per BuiltInSupport.ListUnits() entry, or empty while unchecked
 ---@field ViewContainer UIObject | nil # stable parent (inside the Placement page), created once per ShowPlacementPage call
 ---@field ViewContent UIObject | nil # destroyable, recreated every ShowListView/ShowEditView call
 ---@field EditingIndex integer | nil # which State.Placements entry the Edit view is editing; nil while adding a new one
@@ -522,6 +526,24 @@ State.ShowEditView = function(index, prefill, isFromTemplate)
         .SetOnClick(function() State.ShowListView(); end);
 end
 
+local function RenderBuiltInSupportList()
+    DestroyIfExists(State.BuiltInSupportListContent);
+    State.BuiltInSupportListContent = UI.CreateVerticalLayoutGroup(State.BuiltInSupportListContainer).SetFlexibleWidth(1);
+    if (not State.BuiltInSupportShowListCheckBox.GetIsChecked()) then return; end
+
+    local headerHorz = UI.CreateHorizontalLayoutGroup(State.BuiltInSupportListContent).SetFlexibleWidth(1);
+    UI.CreateLabel(headerHorz).SetText("Unit").SetColor(BUTTON_COLOURS.Artichoke).SetPreferredWidth(0).SetMinWidth(0).SetFlexibleWidth(1);
+    UI.CreateLabel(headerHorz).SetText("Mod").SetColor(BUTTON_COLOURS.Artichoke).SetPreferredWidth(0).SetMinWidth(0).SetFlexibleWidth(1);
+    UI.CreateLabel(headerHorz).SetText("Author").SetColor(BUTTON_COLOURS.Artichoke).SetPreferredWidth(0).SetMinWidth(0).SetFlexibleWidth(1);
+
+    for _, unit in ipairs(BuiltInSupport.ListUnits()) do
+        local rowHorz = UI.CreateHorizontalLayoutGroup(State.BuiltInSupportListContent).SetFlexibleWidth(1);
+        UI.CreateLabel(rowHorz).SetText(unit.Name).SetPreferredWidth(0).SetMinWidth(0).SetFlexibleWidth(1);
+        UI.CreateLabel(rowHorz).SetText(unit.ModName .. " (#" .. unit.ModID .. ")").SetPreferredWidth(0).SetMinWidth(0).SetFlexibleWidth(1);
+        UI.CreateLabel(rowHorz).SetText(unit.ModAuthor).SetPreferredWidth(0).SetMinWidth(0).SetFlexibleWidth(1);
+    end
+end
+
 State.ShowHomePage = function()
     RenderNav("Home");
 
@@ -585,6 +607,16 @@ State.ShowHomePage = function()
         .SetMinWidth(ICON_SIZE)
         .SetFlexibleWidth(0);
     UI.CreateLabel(supportRow).SetText("Built-in Support - guaranteed to place with no issues. Without this, we require other mods to support this mod").SetFlexibleWidth(1);
+
+    UI.CreateEmpty(State.PageContent).SetPreferredHeight(10);
+
+    UI.CreateLabel(State.PageContent).SetText('Built-in Support').SetColor(BUTTON_COLOURS.Artichoke);
+
+    State.BuiltInSupportShowListCheckBox = UI.CreateCheckBox(State.PageContent).SetText('Show List').SetIsChecked(false);
+    State.BuiltInSupportListContainer = UI.CreateVerticalLayoutGroup(State.PageContent).SetFlexibleWidth(1);
+    State.BuiltInSupportListContent = nil;
+    State.BuiltInSupportShowListCheckBox.SetOnValueChanged(RenderBuiltInSupportList);
+    RenderBuiltInSupportList();
 end
 
 State.ShowPlacementPage = function()
