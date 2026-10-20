@@ -17,4 +17,5 @@ when one needs a fix, port the same fix into every mod carrying a copy of it.
   `Utilities.lua`) belongs in a `CommonUtils.lua` file, kept identical across mods by copy-paste, the
   same way `IO/` is. Keep it separate from each mod's own `Utilities.lua`, which should only hold
   logic specific to that mod. When adding something to `CommonUtils.lua`, update it in one mod first,
-  then copy the updated file into every other mod that carries it.
+  then copy the updated file into every other mod that carries it. See
+  `CustomScenarioBuilderModOrchestrator/Orchestrator/Application/CommonUtils.lua` for the current copy.

@@ -1,0 +1,1 @@
+This is a mod menu based mod. It is used for demonstrating to mod developers how to hook into the Custom Scenario Builder Mod Support mod, specifically for Special Units.

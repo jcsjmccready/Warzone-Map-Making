@@ -1,3 +1,0 @@
-Lets game creators choose where custom special units and custom structures are placed in a custom scenario, so they are on the map from the start of the game.
-
-Work in progress: the mod configuration screen lets you list territories (each with an optional label, and a Structure/Special Unit type for your own tracking) to place this mod's own "Placeholder" special unit on at the start of the game, as a stand-in for a structure or special unit from another mod. Every placement is currently placed as the same Placeholder special unit regardless of the type you pick - that field is tracking data only, for when resolving a placeholder to another mod's actual structure/special unit is implemented.
