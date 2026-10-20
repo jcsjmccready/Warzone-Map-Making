@@ -46,13 +46,17 @@ end
 ---logic Application.BuildPlaceholder uses for a mod-supplied SpecialUnit.
 ---@param name string
 ---@param ownerID PlayerID
+---@param originalModData string | nil # a previously-exported live unit's own ModData, restored onto this rebuild
 ---@return CustomSpecialUnit
-function BuiltInSupport.Build(name, ownerID)
+function BuiltInSupport.Build(name, ownerID, originalModData)
     local unit = BuiltInSupport.Units[name];
     local builder = WL.CustomSpecialUnitBuilder.Create(ownerID);
     builder.Name = name;
     builder.ImageFilename = unit.ImageFilename;
     ApplySpecialUnitFields(builder, unit.Fields);
+    if (originalModData ~= nil and originalModData ~= "") then
+        builder.ModData = originalModData;
+    end
     return builder.Build();
 end
 

@@ -44,7 +44,8 @@ function CustomScenarioBuilderModOrchestratorApplication.BuildPlaceholder(ownerI
     builder.CanBeAirliftedToSelf = false;
     builder.CanBeAirliftedToTeammate = false;
     builder.IsVisibleToAllPlayers = true;
-    builder.ModData = EncodePlaceholderModData(placementType, placementName, structureID);
+    local originalModData = (specialUnitFields ~= nil) and specialUnitFields.ModData or nil;
+    builder.ModData = EncodePlaceholderModData(placementType, placementName, structureID, originalModData);
     if (placementName ~= nil and placementName ~= "") then
         builder.TextOverHeadOpt = string.sub(placementName, 1, 8);
     end
@@ -179,7 +180,7 @@ function CustomScenarioBuilderModOrchestratorApplication.ResolveBuiltInSpecialUn
         -- re-read fresh each iteration: resolving a Placeholder below reassigns territoryStanding.NumArmies
         for _, specialUnit in ipairs(territoryStanding.NumArmies.SpecialUnits or {}) do
             if (specialUnit.Name == PLACEHOLDER_NAME) then
-                local placementType, placementName = DecodePlaceholderModData(specialUnit.ModData);
+                local placementType, placementName, _, originalModData = DecodePlaceholderModData(specialUnit.ModData);
                 local builtInUnit = (placementType == "SpecialUnit") and BuiltInSupport.Find(placementName) or nil;
 
                 if (builtInUnit ~= nil) then
@@ -190,7 +191,7 @@ function CustomScenarioBuilderModOrchestratorApplication.ResolveBuiltInSpecialUn
                         end
                     end
 
-                    local newUnit = BuiltInSupport.Build(placementName, territoryStanding.OwnerPlayerID);
+                    local newUnit = BuiltInSupport.Build(placementName, territoryStanding.OwnerPlayerID, originalModData);
                     table.insert(remainingSpecialUnits, newUnit);
 
                     territoryStanding.NumArmies = WL.Armies.Create(territoryStanding.NumArmies.NumArmies, remainingSpecialUnits);

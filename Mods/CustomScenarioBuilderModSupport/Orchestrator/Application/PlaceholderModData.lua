@@ -18,14 +18,18 @@ end
 ---@param placementType string
 ---@param placementName string | nil
 ---@param structureID string | nil # Type=Structure only - the raw custom EnumStructureType string ("c|<ModID>|<Name>"), nil for a vanilla structure or a SpecialUnit
+---@param originalModData string | nil # Type=SpecialUnit only - the exported live unit's own ModData, restored onto a Built-in Support rebuild
 ---@return string
-function EncodePlaceholderModData(placementType, placementName, structureID)
+function EncodePlaceholderModData(placementType, placementName, structureID, originalModData)
     local fields = { Type = placementType };
     if (placementName ~= nil and placementName ~= "") then
         fields.PlacementName = placementName;
     end
     if (structureID ~= nil and structureID ~= "") then
         fields.StructureID = structureID;
+    end
+    if (originalModData ~= nil and originalModData ~= "") then
+        fields.OriginalModData = originalModData;
     end
     return EncodeFlatTable(fields);
 end
@@ -80,11 +84,12 @@ end
 ---@return string | nil placementType
 ---@return string | nil placementName
 ---@return string | nil structureID # Type=Structure only - nil for a vanilla structure or a SpecialUnit
+---@return string | nil originalModData # Type=SpecialUnit only - nil unless captured at export time
 function DecodePlaceholderModData(modData)
-    if (type(modData) ~= "string" or modData == "") then return nil, nil, nil; end
+    if (type(modData) ~= "string" or modData == "") then return nil, nil, nil, nil; end
 
     local fields = DecodeFlatTable(modData);
-    if (fields == nil) then return nil, nil, nil; end
+    if (fields == nil) then return nil, nil, nil, nil; end
 
-    return fields.Type, fields.PlacementName, fields.StructureID;
+    return fields.Type, fields.PlacementName, fields.StructureID, fields.OriginalModData;
 end
