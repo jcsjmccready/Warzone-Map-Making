@@ -1,4 +1,5 @@
-require("Utilities");
+require("Application.Utilities");
+require("Application.PlaceholderModData");
 
 CustomScenarioBuilderModOrchestratorApplication = {};
 

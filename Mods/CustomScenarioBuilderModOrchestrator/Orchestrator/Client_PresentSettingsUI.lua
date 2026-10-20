@@ -1,4 +1,10 @@
-require("Utilities");
+require("Application.Utilities");
+
+---@param placement PlaceholderPlacementSetting
+---@return string
+local function FormatPlacementText(placement)
+    return placement.TerritoryName .. ": " .. (placement.PlacementName or "(no Placement Name)");
+end
 
 ---Client_PresentSettingsUI hook
 ---@param rootParent RootParent

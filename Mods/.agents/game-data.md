@@ -15,7 +15,7 @@
 - **Vanilla structure types are the exception** - they don't need a server hook or
   `Mod.PublicGameData` round-trip at all. `WL.StructureType[entry.EnumField]` resolves a vanilla
   structure directly from client-side code, so a client hook can look one up itself (see
-  `CustomScenarioBuilderModOrchestrator/Orchestrator/Utilities.lua`'s `GetVanillaStructureNames`).
+  `CustomScenarioBuilderModOrchestrator/Orchestrator/Application/Utilities.lua`'s `GetVanillaStructureNames`).
   Only reach for the publish-from-server pattern above for a *modded* (`WL.StructureType.Custom`)
   structure ID.
 

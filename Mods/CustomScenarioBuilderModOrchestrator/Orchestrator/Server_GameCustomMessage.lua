@@ -1,4 +1,4 @@
-require("Application");
+require("Application.Application");
 
 ---Maps a custom message Action to the CustomScenarioBuilderModOrchestratorPlayerGameData flag it sets, once handled
 local SEEN_FLAG_BY_ACTION = {

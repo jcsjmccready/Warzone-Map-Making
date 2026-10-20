@@ -1,4 +1,4 @@
-require("Utilities");
+require("Application.Utilities");
 
 ---Client_CreateGame hook.
 ---@param settings GameSettings # Read-only GameSettings object

@@ -1,4 +1,4 @@
-require("Utilities");
+require("Application.Utilities");
 
 -- Known-case templates for the Placeholder Placement rows
 ---@type { Text: string, Type: string, PlacementName: string }[]

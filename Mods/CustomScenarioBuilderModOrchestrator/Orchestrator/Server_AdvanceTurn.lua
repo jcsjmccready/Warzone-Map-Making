@@ -1,5 +1,6 @@
-require("Utilities");
-require("Application");
+require("Application.Utilities");
+require("Application.Application");
+require("Application.PlanningOrders");
 
 ---@param game GameServerHook
 ---@param order GameOrder

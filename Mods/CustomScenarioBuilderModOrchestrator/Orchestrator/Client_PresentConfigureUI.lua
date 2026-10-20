@@ -1,5 +1,6 @@
-require("Utilities");
-require("Templates");
+require("Application.Utilities");
+require("Application.Templates");
+require("Application.PlacementSerialization");
 
 ---@class PlacementConfigureUIState
 ---@field Placements PlaceholderPlacementSetting[]

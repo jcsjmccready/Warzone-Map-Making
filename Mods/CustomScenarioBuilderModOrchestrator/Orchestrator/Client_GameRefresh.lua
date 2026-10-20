@@ -1,4 +1,12 @@
-require("Utilities");
+require("Application.Utilities");
+require("Application.PlaceholderModData");
+
+---@param placement PlaceholderPlacementSetting
+---@return string
+local function FormatPlacementLine(placement)
+    local placementType = placement.Type or DEFAULT_PLACEMENT_TYPE;
+    return placement.TerritoryName .. ": " .. (placement.PlacementName or "(no Placement Name)") .. " [" .. GetOptionText(PLACEMENT_TYPE_OPTIONS, placementType) .. "]";
+end
 
 -- A Placeholder is always IsVisibleToAllPlayers, so this doesn't need to account for fog.
 ---@param game GameClientHook
@@ -68,18 +76,18 @@ function Client_GameRefresh(game)
 
     -- tells the server to remember this player has seen whichever of these applied, so they aren't shown again
     if (showNotCustomScenarioWarning) then
-        game.SendGameCustomMessage("Custom Scenario Builder Mod Orchestrator", { Action = "MarkNotCustomScenarioWarningSeen" }, function(_) end);
+        game.SendGameCustomMessage("Custom Scenario Builder Mod Support", { Action = "MarkNotCustomScenarioWarningSeen" }, function(_) end);
     end
     if (showPlacementWarnings) then
-        game.SendGameCustomMessage("Custom Scenario Builder Mod Orchestrator", { Action = "MarkPlacementWarningsSeen" }, function(_) end);
+        game.SendGameCustomMessage("Custom Scenario Builder Mod Support", { Action = "MarkPlacementWarningsSeen" }, function(_) end);
     end
     if (showUnreplacedPlaceholdersWarning) then
-        game.SendGameCustomMessage("Custom Scenario Builder Mod Orchestrator", { Action = "MarkUnreplacedPlaceholdersWarningSeen" }, function(_) end);
+        game.SendGameCustomMessage("Custom Scenario Builder Mod Support", { Action = "MarkUnreplacedPlaceholdersWarningSeen" }, function(_) end);
     end
     if (showPlanningModeWarning) then
-        game.SendGameCustomMessage("Custom Scenario Builder Mod Orchestrator", { Action = "MarkPlanningModeWarningSeen" }, function(_) end);
+        game.SendGameCustomMessage("Custom Scenario Builder Mod Support", { Action = "MarkPlanningModeWarningSeen" }, function(_) end);
     end
     if (showNoSpareSlotWarning) then
-        game.SendGameCustomMessage("Custom Scenario Builder Mod Orchestrator", { Action = "MarkNoSpareSlotWarningSeen" }, function(_) end);
+        game.SendGameCustomMessage("Custom Scenario Builder Mod Support", { Action = "MarkNoSpareSlotWarningSeen" }, function(_) end);
     end
 end

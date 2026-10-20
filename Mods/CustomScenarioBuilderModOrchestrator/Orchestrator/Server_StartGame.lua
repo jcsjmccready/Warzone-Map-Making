@@ -1,4 +1,4 @@
-require("Application");
+require("Application.Application");
 
 ---Server_StartGame hook
 ---@param game GameServerHook

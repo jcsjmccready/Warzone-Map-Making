@@ -1,4 +1,6 @@
-require("Utilities");
+require("Application.Utilities");
+require("Application.PlanningOrders");
+require("Application.PlacementSerialization");
 
 ---Client_PresentMenuUI hook
 ---@param rootParent RootParent
@@ -457,7 +459,7 @@ local function BuildModifyItems(terrDetails)
     local items = {};
     for structureID, count in pairs((territoryStanding or {}).Structures or {}) do
         local structureName = vanillaStructureNames[structureID] or tostring(structureID);
-        local displayName = ParseCustomStructureName(structureName) or structureName;
+        local displayName = CustomStructureToDisplayName(structureName) or structureName;
         local originIcon = (vanillaStructureNames[structureID] ~= nil) and ICON_VANILLA or ICON_MODDED;
         local remainingCount = math.max(0, count - (pendingStructureCounts[structureName] or 0));
         for _ = 1, remainingCount do

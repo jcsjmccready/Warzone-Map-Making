@@ -1,30 +1,30 @@
 ----------------------------------------------------------------------------------------------------------------------
 -- CustomScenarioBuilder.lua
 --
--- Generic, copy-paste integration point for the Custom Scenario Builder Mod Orchestrator (CSBMO) mod. Copy this
--- file as-is into any mod that wants its own structures/special units to be placeable through CSBMO's Placeholder
+-- Generic, copy-paste integration point for the Custom Scenario Builder Mod Support (CSBMS) mod. Copy this
+-- file as-is into any mod that wants its own structures/special units to be placeable through CSBMS's Placeholder
 -- Placement configuration screen - nothing in this file should need editing per mod, same convention as IO/ModAuth.lua.
 --
--- CSBMO places a "Placeholder" custom special unit on every territory a game-maker configures there, as a stand-in
+-- CSBMS places a "Placeholder" custom special unit on every territory a game-maker configures there, as a stand-in
 -- for a structure or special unit this mod will supply instead. Mod.* storages (Settings/PrivateGameData/
--- PublicGameData) are private per mod, so CSBMO has no way to hand this mod data directly - instead, each
--- Placeholder's own ModData field (readable by any mod, since it lives on the shared game object, not in CSBMO's
+-- PublicGameData) are private per mod, so CSBMS has no way to hand this mod data directly - instead, each
+-- Placeholder's own ModData field (readable by any mod, since it lives on the shared game object, not in CSBMS's
 -- storage) carries what the game-maker asked for: a Type ("Structure" or "SpecialUnit"), the free-text
--- PlacementName they typed into CSBMO's configuration screen, and (Type=Structure only) the exact StructureID.
+-- PlacementName they typed into CSBMS's configuration screen, and (Type=Structure only) the exact StructureID.
 --
--- Structures: CSBMO now resolves these itself, directly from the StructureID it already has - this mod does NOT
--- need to (and no longer can) Register/ReplacePlaceholder for its own structures, CSBMO's own Server_StartGame
+-- Structures: CSBMS now resolves these itself, directly from the StructureID it already has - this mod does NOT
+-- need to (and no longer can) Register/ReplacePlaceholder for its own structures, CSBMS's own Server_StartGame
 -- hook recreates them on the standing without this mod's help, regardless of hook execution order between mods.
 -- If this mod wants to be aware its structure was placed (e.g. to start tracking it), it can't just check the
--- standing's Structures table and assume CSBMO has already run - use FindStructurePlacements, which checks both
+-- standing's Structures table and assume CSBMS has already run - use FindStructurePlacements, which checks both
 -- the already-resolved structure AND a still-unresolved Placeholder, whichever is there:
 --
 --   local placements = CustomScenarioBuilder.FindStructurePlacements(standing, "Dead Man's Switch");
 --   for territoryID, count in pairs(placements) do
---       -- territoryID now has `count` Dead Man's Switch(es), whether CSBMO already resolved them or not
+--       -- territoryID now has `count` Dead Man's Switch(es), whether CSBMS already resolved them or not
 --   end
 --
--- Special units: CSBMO does not resolve these itself (there's no equivalent WL.CustomSpecialUnitBuilder.Create
+-- Special units: CSBMS does not resolve these itself (there's no equivalent WL.CustomSpecialUnitBuilder.Create
 -- that can be called ahead of time the way a structure's ID can), so Register/ReplacePlaceholder is still how a
 -- mod supplies its own special unit for a Placeholder, from this mod's own Server_StartGame hook (call both of
 -- these there, Register right before Resolve - not at file-load time: this mod's own files only run their
@@ -67,15 +67,15 @@ local MOD_DATA_QUOTE = "\"";
 
 ---@class CustomScenarioBuilderPlaceholder # A Placeholder special unit found on the map, decoded and ready to be matched/replaced
 ---@field Type CustomScenarioBuilderPlacementType # What the game-maker said this placeholder should eventually become
----@field PlacementName string | nil # The free-text name the game-maker typed into CSBMO's configuration screen - check this against this mod's own structure/special unit name to decide whether a given Placeholder is meant for this mod
----@field StructureID string | nil # Type=Structure only. Already resolved by CSBMO itself - not generally needed
+---@field PlacementName string | nil # The free-text name the game-maker typed into CSBMS's configuration screen - check this against this mod's own structure/special unit name to decide whether a given Placeholder is meant for this mod
+---@field StructureID string | nil # Type=Structure only. Already resolved by CSBMS itself - not generally needed
 ---@field TerritoryID TerritoryID
 ---@field SpecialUnit CustomSpecialUnit # The Placeholder unit itself, still on the territory until CustomScenarioBuilder.Replace removes it
 
 ---@class CustomScenarioBuilderReplaceOptions # What to put in a Placeholder's place
 ---@field AddSpecialUnits SpecialUnit[] # Special unit(s) to add to the territory in the Placeholder's place
 
----@class CustomScenarioBuilderRegistration # Always SpecialUnit - a Structure Placeholder is never routed through a registration, CSBMO resolves it itself
+---@class CustomScenarioBuilderRegistration # Always SpecialUnit - a Structure Placeholder is never routed through a registration, CSBMS resolves it itself
 ---@field Name string | nil # nil matches any Placeholder regardless of its PlacementName
 ---@field Callback fun(placeholder: CustomScenarioBuilderPlaceholder, territoryStanding: TerritoryStanding)
 
@@ -89,7 +89,7 @@ local registrations = {};
 ---@param s string
 ---@param index integer
 ---@return string | nil value, integer | nil nextIndex # nextIndex is just past the closing quote. Both nil if malformed
-local function DecodeModDataString(s, index)
+local function DecodeQuotedStringAt(s, index)
     if (string.sub(s, index, index) ~= MOD_DATA_QUOTE) then return nil, nil; end
 
     local chars = {};
@@ -111,16 +111,16 @@ end
 ---CustomScenarioBuilderModOrchestrator's EncodePlaceholderModData.
 ---@param s string
 ---@return table<string, string> | nil
-local function DecodeModDataTable(s)
+local function DecodeFlatTable(s)
     if (string.sub(s, 1, 1) ~= MOD_DATA_START_TABLE or string.sub(s, #s, #s) ~= MOD_DATA_END_TABLE) then return nil; end
 
     local fields = {};
     local index = 2;
     while (index < #s) do
-        local key, afterKey = DecodeModDataString(s, index);
+        local key, afterKey = DecodeQuotedStringAt(s, index);
         if (key == nil or string.sub(s, afterKey, afterKey) ~= MOD_DATA_KEY_VALUE_SEPARATOR) then return nil; end
 
-        local value, afterValue = DecodeModDataString(s, afterKey + 1);
+        local value, afterValue = DecodeQuotedStringAt(s, afterKey + 1);
         if (value == nil) then return nil; end
 
         fields[key] = value;
@@ -139,19 +139,19 @@ end
 local function DecodeModData(modData)
     if (type(modData) ~= "string" or modData == "") then return nil, nil, nil; end
 
-    local fields = DecodeModDataTable(modData);
+    local fields = DecodeFlatTable(modData);
     if (fields == nil) then return nil, nil, nil; end
 
     return fields.Type, fields.PlacementName, fields.StructureID;
 end
 
----Registers a callback to run for every SpecialUnit Placeholder CSBMO placed with the given name - a Structure
----Placeholder is never routed through a registration, CSBMO resolves those itself regardless of hook order (see
+---Registers a callback to run for every SpecialUnit Placeholder CSBMS placed with the given name - a Structure
+---Placeholder is never routed through a registration, CSBMS resolves those itself regardless of hook order (see
 ---FindStructurePlacements if this mod wants to be aware one of its structures was placed). Call this from this
 ---mod's own Server_StartGame hook, right before CustomScenarioBuilder.ResolvePlacements - not at file-load time:
 ---registrations only take effect for hooks that actually require the file doing the registering, which is easy
 ---to get wrong silently (no error, registrations list is just empty).
----@param name string | nil # Matched exactly against the PlacementName the game-maker typed into CSBMO's configuration screen. Pass nil to match every SpecialUnit Placeholder regardless of name
+---@param name string | nil # Matched exactly against the PlacementName the game-maker typed into CSBMS's configuration screen. Pass nil to match every SpecialUnit Placeholder regardless of name
 ---@param callback fun(placeholder: CustomScenarioBuilderPlaceholder, territoryStanding: TerritoryStanding) # Called once per Placeholder found whose name matches - already known to be meant for this mod, call CustomScenarioBuilder.ReplacePlaceholder
 function CustomScenarioBuilder.Register(name, callback)
     table.insert(registrations, { Name = name, Callback = callback });
@@ -177,7 +177,7 @@ function CustomScenarioBuilder.ReplacePlaceholder(placeholder, territoryStanding
 end
 
 ---Scans the game's starting standing for SpecialUnit Placeholder special units and invokes every registered
----callback whose name matches - a Structure Placeholder is skipped entirely here, since CSBMO always resolves
+---callback whose name matches - a Structure Placeholder is skipped entirely here, since CSBMS always resolves
 ---those itself regardless of what this mod does. Call this once, from this mod's own Server_StartGame hook,
 ---before the game's first turn starts.
 ---@param game GameServerHook
@@ -215,8 +215,8 @@ function CustomScenarioBuilder.ResolvePlacements(game, standing)
     Mod.PrivateGameData = priv;
 end
 
----Finds every territory where a structure this mod supplies is present - as CSBMO's own already-resolved real
----structure, or as a still-unresolved Placeholder standing in for it, whichever is there. CSBMO's and this mod's
+---Finds every territory where a structure this mod supplies is present - as CSBMS's own already-resolved real
+---structure, or as a still-unresolved Placeholder standing in for it, whichever is there. CSBMS's and this mod's
 ---own Server_StartGame hooks can run in either order (hook execution order between mods isn't guaranteed), so
 ---both the real structure and the Placeholder have to be checked - relying on only one would silently miss the
 ---other depending on which mod's hook happened to run first.
@@ -227,7 +227,7 @@ function CustomScenarioBuilder.FindStructurePlacements(standing, structureName)
     -- The EnumStructureType for a custom structure is actually just its raw "c|<ModID>|<Name>" string - calling
     -- WL.StructureType.Custom(name) only ever resolves within the calling mod's own namespace, which is exactly
     -- what's wanted here (this mod's own structure), so the result can be compared directly (via tostring, same
-    -- as CSBMO's own matching code does) against both a live Structures key and a Placeholder's stored StructureID.
+    -- as CSBMS's own matching code does) against both a live Structures key and a Placeholder's stored StructureID.
     local structureIDString = tostring(WL.StructureType.Custom(structureName));
 
     local placements = {};
