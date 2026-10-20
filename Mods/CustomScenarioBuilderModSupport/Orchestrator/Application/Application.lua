@@ -49,22 +49,8 @@ function CustomScenarioBuilderModOrchestratorApplication.BuildPlaceholder(ownerI
         builder.TextOverHeadOpt = string.sub(placementName, 1, 8);
     end
 
-    -- ModData is reserved for the Type/PlacementName/StructureID encoding, not the player's data. ModID isn't
-    -- actually writable on the builder despite being a documented CustomSpecialUnitClass field.
     if (specialUnitFields ~= nil) then
-        for _, descriptor in ipairs(SPECIAL_UNIT_FIELD_DESCRIPTORS) do
-            local value = specialUnitFields[descriptor.Key];
-            if (value ~= nil and descriptor.Key ~= "ModData" and descriptor.Key ~= "ModID") then
-                if (descriptor.Type == "boolean") then
-                    builder[descriptor.Key] = (value == "true");
-                elseif (descriptor.Type == "integer" or descriptor.Type == "number") then
-                    local number = tonumber(value);
-                    if (number ~= nil) then builder[descriptor.Key] = number; end
-                else
-                    builder[descriptor.Key] = value;
-                end
-            end
-        end
+        ApplySpecialUnitFields(builder, specialUnitFields);
     end
 
     return builder.Build();
@@ -204,7 +190,7 @@ function CustomScenarioBuilderModOrchestratorApplication.ResolveBuiltInSpecialUn
                         end
                     end
 
-                    local newUnit = builtInUnit.Build(territoryStanding.OwnerPlayerID);
+                    local newUnit = BuiltInSupport.Build(placementName, territoryStanding.OwnerPlayerID);
                     table.insert(remainingSpecialUnits, newUnit);
 
                     territoryStanding.NumArmies = WL.Armies.Create(territoryStanding.NumArmies.NumArmies, remainingSpecialUnits);
@@ -233,7 +219,30 @@ function CustomScenarioBuilderModOrchestratorApplication.AddVanillaStructure(gam
 
     local event = WL.GameOrderEvent.Create(playerID, "Placed a " .. structureName .. " on " .. territoryDetails.Name, {}, { territoryModification });
     event.JumpToActionSpotOpt = WL.RectangleVM.Create(territoryDetails.MiddlePointX, territoryDetails.MiddlePointY, territoryDetails.MiddlePointX, territoryDetails.MiddlePointY);
-    event.TerritoryAnnotationsOpt = { [territoryID] = WL.TerritoryAnnotation.Create(structureName, 8, GetColourIntegerFromHex(BUTTON_COLOURS.DarkGreen)) };
+    event.TerritoryAnnotationsOpt = { [territoryID] = WL.TerritoryAnnotation.Create("Built", 8, GetColourIntegerFromHex(BUTTON_COLOURS.DarkGreen)) };
+    event.Icon = "Build";
+    addNewOrder(event);
+end
+
+---@param game GameServerHook
+---@param addNewOrder fun(order: GameOrder)
+---@param playerID PlayerID
+---@param name string # a BuiltInSupport PlacementName
+---@param territoryID TerritoryID
+function CustomScenarioBuilderModOrchestratorApplication.AddBuiltInSpecialUnit(game, addNewOrder, playerID, name, territoryID)
+    if (BuiltInSupport.Find(name) == nil) then return; end
+
+    local territoryDetails = game.Map.Territories[territoryID];
+    if (territoryDetails == nil) then return; end
+
+    local newUnit = BuiltInSupport.Build(name, playerID);
+
+    local territoryModification = WL.TerritoryModification.Create(territoryID);
+    territoryModification.AddSpecialUnits = { newUnit };
+
+    local event = WL.GameOrderEvent.Create(playerID, "Placed a " .. name .. " on " .. territoryDetails.Name, {}, { territoryModification });
+    event.JumpToActionSpotOpt = WL.RectangleVM.Create(territoryDetails.MiddlePointX, territoryDetails.MiddlePointY, territoryDetails.MiddlePointX, territoryDetails.MiddlePointY);
+    event.TerritoryAnnotationsOpt = { [territoryID] = WL.TerritoryAnnotation.Create("Built", 8, GetColourIntegerFromHex(BUTTON_COLOURS.DarkGreen)) };
     event.Icon = "Build";
     addNewOrder(event);
 end
@@ -268,6 +277,7 @@ function CustomScenarioBuilderModOrchestratorApplication.RemoveStructure(game, a
 
     local event = WL.GameOrderEvent.Create(playerID, "Removed a " .. structureName .. " from " .. territoryDetails.Name, {}, { territoryModification });
     event.JumpToActionSpotOpt = WL.RectangleVM.Create(territoryDetails.MiddlePointX, territoryDetails.MiddlePointY, territoryDetails.MiddlePointX, territoryDetails.MiddlePointY);
+    event.TerritoryAnnotationsOpt = { [territoryID] = WL.TerritoryAnnotation.Create("Removed", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Red)) };
     event.Icon = "Destroyed";
     addNewOrder(event);
 end
@@ -295,6 +305,7 @@ function CustomScenarioBuilderModOrchestratorApplication.RemoveSpecialUnit(game,
 
     local event = WL.GameOrderEvent.Create(playerID, "Removed a " .. specialUnitName .. " from " .. territoryDetails.Name, {}, { territoryModification });
     event.JumpToActionSpotOpt = WL.RectangleVM.Create(territoryDetails.MiddlePointX, territoryDetails.MiddlePointY, territoryDetails.MiddlePointX, territoryDetails.MiddlePointY);
+    event.TerritoryAnnotationsOpt = { [territoryID] = WL.TerritoryAnnotation.Create("Removed", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Red)) };
     event.Icon = "Destroyed";
     addNewOrder(event);
 end
@@ -334,6 +345,7 @@ function CustomScenarioBuilderModOrchestratorApplication.MoveStructure(game, add
 
     local event = WL.GameOrderEvent.Create(playerID, "Moved a " .. structureName .. " from " .. fromDetails.Name .. " to " .. toDetails.Name, {}, { fromModification, toModification });
     event.JumpToActionSpotOpt = WL.RectangleVM.Create(toDetails.MiddlePointX, toDetails.MiddlePointY, toDetails.MiddlePointX, toDetails.MiddlePointY);
+    event.TerritoryAnnotationsOpt = { [toTerritoryID] = WL.TerritoryAnnotation.Create("Moved", 8, GetColourIntegerFromHex(BUTTON_COLOURS.RoyalBlue)) };
     event.Icon = "Build";
     addNewOrder(event);
 end
@@ -367,6 +379,7 @@ function CustomScenarioBuilderModOrchestratorApplication.MoveSpecialUnit(game, a
 
     local event = WL.GameOrderEvent.Create(playerID, "Moved a " .. specialUnitObject.Name .. " from " .. fromDetails.Name .. " to " .. toDetails.Name, {}, { fromModification, toModification });
     event.JumpToActionSpotOpt = WL.RectangleVM.Create(toDetails.MiddlePointX, toDetails.MiddlePointY, toDetails.MiddlePointX, toDetails.MiddlePointY);
+    event.TerritoryAnnotationsOpt = { [toTerritoryID] = WL.TerritoryAnnotation.Create("Moved", 8, GetColourIntegerFromHex(BUTTON_COLOURS.RoyalBlue)) };
     event.Icon = "Build";
     addNewOrder(event);
 end
@@ -398,6 +411,7 @@ function CustomScenarioBuilderModOrchestratorApplication.CloneStructure(game, ad
 
     local event = WL.GameOrderEvent.Create(playerID, "Cloned a " .. structureName .. " on " .. territoryDetails.Name, {}, { territoryModification });
     event.JumpToActionSpotOpt = WL.RectangleVM.Create(territoryDetails.MiddlePointX, territoryDetails.MiddlePointY, territoryDetails.MiddlePointX, territoryDetails.MiddlePointY);
+    event.TerritoryAnnotationsOpt = { [territoryID] = WL.TerritoryAnnotation.Create("Cloned", 8, GetColourIntegerFromHex(BUTTON_COLOURS.DarkGreen)) };
     event.Icon = "Build";
     addNewOrder(event);
 end
@@ -430,6 +444,7 @@ function CustomScenarioBuilderModOrchestratorApplication.CloneSpecialUnit(game, 
 
     local event = WL.GameOrderEvent.Create(playerID, "Cloned a " .. specialUnitObject.Name .. " on " .. territoryDetails.Name, {}, { territoryModification });
     event.JumpToActionSpotOpt = WL.RectangleVM.Create(territoryDetails.MiddlePointX, territoryDetails.MiddlePointY, territoryDetails.MiddlePointX, territoryDetails.MiddlePointY);
+    event.TerritoryAnnotationsOpt = { [territoryID] = WL.TerritoryAnnotation.Create("Cloned", 8, GetColourIntegerFromHex(BUTTON_COLOURS.DarkGreen)) };
     event.Icon = "Build";
     addNewOrder(event);
 end

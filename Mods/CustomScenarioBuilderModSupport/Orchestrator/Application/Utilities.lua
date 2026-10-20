@@ -60,6 +60,26 @@ SPECIAL_UNIT_FIELD_DESCRIPTORS = {
     { Key = "TextOverHeadOpt", Type = "string", Label = "Text Over Head" },
 };
 
+-- Applies every stringified SPECIAL_UNIT_FIELD_DESCRIPTORS value in fields onto a builder, converting each to its
+-- real type. ModData/ModID are skipped - ModData is reserved for the Placeholder's own encoding, ModID isn't writable.
+---@param builder CustomSpecialUnitBuilder
+---@param fields table<string, string>
+function ApplySpecialUnitFields(builder, fields)
+    for _, descriptor in ipairs(SPECIAL_UNIT_FIELD_DESCRIPTORS) do
+        local value = fields[descriptor.Key];
+        if (value ~= nil and descriptor.Key ~= "ModData" and descriptor.Key ~= "ModID") then
+            if (descriptor.Type == "boolean") then
+                builder[descriptor.Key] = (value == "true");
+            elseif (descriptor.Type == "integer" or descriptor.Type == "number") then
+                local number = tonumber(value);
+                if (number ~= nil) then builder[descriptor.Key] = number; end
+            else
+                builder[descriptor.Key] = value;
+            end
+        end
+    end
+end
+
 -- Vanilla structures
 -- The vanilla (non-custom) structures, for Planning Mode's placement menu and build orders. EnumField is the
 -- WL.StructureType field name.

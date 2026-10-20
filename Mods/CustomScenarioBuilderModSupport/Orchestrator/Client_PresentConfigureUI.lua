@@ -149,40 +149,44 @@ local function RenderEditTypeFields()
             .SetInteractable(false)
             .SetFlexibleWidth(1);
     elseif (typeKey ~= "Structure") then
+        local isBuiltIn = existing ~= nil and BuiltInSupport.Find(existing.PlacementName) ~= nil;
+
         for _, descriptor in ipairs(SPECIAL_UNIT_FIELD_DESCRIPTORS) do
-            local existingValue = (existing ~= nil and existing.SpecialUnitFields ~= nil) and existing.SpecialUnitFields[descriptor.Key] or nil;
+            if (not (isBuiltIn and descriptor.Key == "ModID")) then
+                local existingValue = (existing ~= nil and existing.SpecialUnitFields ~= nil) and existing.SpecialUnitFields[descriptor.Key] or nil;
 
-            local fieldRow = UI.CreateHorizontalLayoutGroup(State.EditTypeFieldsContainer).SetFlexibleWidth(1);
-            UI.CreateLabel(fieldRow)
-                .SetText(descriptor.Label)
-                .SetPreferredWidth(PLACEMENT_NAME_FIELD_WIDTH)
-                .SetMinWidth(0)
-                .SetFlexibleWidth(0);
+                local fieldRow = UI.CreateHorizontalLayoutGroup(State.EditTypeFieldsContainer).SetFlexibleWidth(1);
+                UI.CreateLabel(fieldRow)
+                    .SetText(descriptor.Label)
+                    .SetPreferredWidth(PLACEMENT_NAME_FIELD_WIDTH)
+                    .SetMinWidth(0)
+                    .SetFlexibleWidth(0);
 
-            if (descriptor.Type == "boolean") then
-                State.EditSpecialUnitFieldControls[descriptor.Key] =
-                UI.CreateCheckBox(fieldRow)
-                    .SetText("")
-                    .SetIsChecked(existingValue == "true")
-                    .SetInteractable(false);
+                if (descriptor.Type == "boolean") then
+                    State.EditSpecialUnitFieldControls[descriptor.Key] =
+                    UI.CreateCheckBox(fieldRow)
+                        .SetText("")
+                        .SetIsChecked(existingValue == "true")
+                        .SetInteractable(false);
 
-            elseif (descriptor.Type == "integer" or descriptor.Type == "number") then
-                local numberField =
-                UI.CreateNumberInputField(fieldRow)
-                    .SetWholeNumbers(descriptor.Type == "integer")
-                    .SetInteractable(false)
-                    .SetFlexibleWidth(1);
+                elseif (descriptor.Type == "integer" or descriptor.Type == "number") then
+                    local numberField =
+                    UI.CreateNumberInputField(fieldRow)
+                        .SetWholeNumbers(descriptor.Type == "integer")
+                        .SetInteractable(false)
+                        .SetFlexibleWidth(1);
 
-                numberField.SetValue(tonumber(existingValue) or 0);
-                State.EditSpecialUnitFieldControls[descriptor.Key] = numberField;
-            else
-                State.EditSpecialUnitFieldControls[descriptor.Key] =
-                UI.CreateTextInputField(fieldRow)
-                    .SetText(existingValue or "")
-                    .SetMultiLine(descriptor.Key == "ModData")
-                    .SetPreferredHeight((descriptor.Key == "ModData") and 100 or -1)
-                    .SetInteractable(false)
-                    .SetFlexibleWidth(1);
+                    numberField.SetValue(tonumber(existingValue) or 0);
+                    State.EditSpecialUnitFieldControls[descriptor.Key] = numberField;
+                else
+                    State.EditSpecialUnitFieldControls[descriptor.Key] =
+                    UI.CreateTextInputField(fieldRow)
+                        .SetText(existingValue or "")
+                        .SetMultiLine(descriptor.Key == "ModData")
+                        .SetPreferredHeight((descriptor.Key == "ModData") and 100 or -1)
+                        .SetInteractable(false)
+                        .SetFlexibleWidth(1);
+                end
             end
         end
     end
@@ -212,7 +216,9 @@ local function BuildPlacementFromEditState()
         local fields = {};
         for _, descriptor in ipairs(SPECIAL_UNIT_FIELD_DESCRIPTORS) do
             local control = State.EditSpecialUnitFieldControls[descriptor.Key];
-            if (descriptor.Type == "boolean") then
+            if (control == nil) then
+                -- not rendered (e.g. Mod ID, hidden for a Built-in Support unit) - nothing to read back
+            elseif (descriptor.Type == "boolean") then
                 fields[descriptor.Key] = tostring(control.GetIsChecked());
             elseif (descriptor.Type == "integer" or descriptor.Type == "number") then
                 fields[descriptor.Key] = tostring(control.GetValue());
@@ -324,7 +330,7 @@ State.ShowListView = function()
                 table.insert(list, {
                     text = template.Text,
                     selected = function()
-                        State.ShowEditView(nil, { Type = template.Type, PlacementName = template.PlacementName, TerritoryName = "" }, true);
+                        State.ShowEditView(nil, { Type = template.Type, PlacementName = template.PlacementName, TerritoryName = "", SpecialUnitFields = template.SpecialUnitFields }, true);
                     end,
                 });
             end

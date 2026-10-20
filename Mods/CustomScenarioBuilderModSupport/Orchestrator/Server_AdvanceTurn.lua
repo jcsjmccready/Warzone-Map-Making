@@ -19,9 +19,12 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
     if (order.proxyType ~= 'GameOrderCustom') then return; end
     ---@cast order GameOrderCustom
 
-    local structureName, buildTerritoryID = ParsePlanningPayload(order.Payload);
-    if (structureName ~= nil) then
-        CustomScenarioBuilderModOrchestratorApplication.AddVanillaStructure(game, addNewOrder, order.PlayerID, structureName, buildTerritoryID);
+    local buildType, buildIdentifier, buildTerritoryID = ParsePlanningPayload(order.Payload);
+    if (buildType == "Structure") then
+        CustomScenarioBuilderModOrchestratorApplication.AddVanillaStructure(game, addNewOrder, order.PlayerID, buildIdentifier, buildTerritoryID);
+        return;
+    elseif (buildType == "SpecialUnit") then
+        CustomScenarioBuilderModOrchestratorApplication.AddBuiltInSpecialUnit(game, addNewOrder, order.PlayerID, buildIdentifier, buildTerritoryID);
         return;
     end
 

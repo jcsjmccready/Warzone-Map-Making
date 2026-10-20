@@ -4,20 +4,16 @@
 --
 -- No require("Application.BuiltInSupport.BuiltInSupport") here - this file is only ever loaded via that file's own require
 -- (at the bottom, after Register is defined), never required directly by anything else.
-BuiltInSupport.Register("Diplomat", "Diplomat", "UnFairerOrb76", 546, function(ownerID)
-    local builder = WL.CustomSpecialUnitBuilder.Create(ownerID);
-    builder.Name = 'Diplomat';
-    builder.IncludeABeforeName = true;
-    builder.ImageFilename = 'truce.png';
-    builder.AttackPower = 1;
-    builder.DefensePower = 1;
-    builder.CombatOrder = 3415; --defends commanders
-    builder.DamageToKill = 1;
-    builder.DamageAbsorbedWhenAttacked = 1;
-    builder.CanBeGiftedWithGiftCard = true;
-    builder.CanBeTransferredToTeammate = true;
-    builder.CanBeAirliftedToSelf = true;
-    builder.CanBeAirliftedToTeammate = true;
-    builder.IsVisibleToAllPlayers = false;
-    return builder.Build();
-end);
+BuiltInSupport.Register("Diplomat", "Diplomat", "UnFairerOrb76", 546, "truce.png", {
+    IncludeABeforeName = "true",
+    AttackPower = "1",
+    DefensePower = "1",
+    CombatOrder = "3415", -- defends commanders
+    DamageToKill = "1",
+    DamageAbsorbedWhenAttacked = "1",
+    CanBeGiftedWithGiftCard = "true",
+    CanBeTransferredToTeammate = "true",
+    CanBeAirliftedToSelf = "true",
+    CanBeAirliftedToTeammate = "true",
+    IsVisibleToAllPlayers = "false",
+});

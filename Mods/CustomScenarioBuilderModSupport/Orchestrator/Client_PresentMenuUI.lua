@@ -1,6 +1,7 @@
 require("Application.Utilities");
 require("Application.PlanningOrders");
 require("Application.PlacementSerialization");
+require("Application.BuiltInSupport.BuiltInSupport");
 
 ---Client_PresentMenuUI hook
 ---@param rootParent RootParent
@@ -15,7 +16,7 @@ function Client_PresentMenuUI(rootParent, setMaxSize, setScrollable, game, close
     MenuGame = game;
 
     local vert = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
-    UI.CreateLabel(vert).SetText("Add Vanilla Structures").SetColor(SUBHEADING_COLOUR);
+    UI.CreateLabel(vert).SetText("Add Vanilla Structure/Built-in Special Unit").SetColor(SUBHEADING_COLOUR);
 
     if (not Mod.Settings.IsPlanningMode) then
         UI.CreateLabel(vert).SetText("Used for planning mode. Nothing here to see...").SetColor(BUTTON_COLOURS.DarkGray);
@@ -29,8 +30,13 @@ function Client_PresentMenuUI(rootParent, setMaxSize, setScrollable, game, close
 
     local options = {};
     for _, entry in ipairs(VANILLA_STRUCTURE_TYPES) do
-        table.insert(options, { Key = entry.Name, Text = entry.Name });
+        table.insert(options, { Key = entry.Name, Text = entry.Name .. " [Struct]", Type = "Structure" });
     end
+    for _, unit in ipairs(BuiltInSupport.ListUnits()) do
+        table.insert(options, { Key = unit.Name, Text = unit.Name .. " [SU]", Type = "SpecialUnit" });
+    end
+    table.sort(options, function(a, b) return string.lower(a.Key) < string.lower(b.Key); end);
+    MenuStructureOptions = options;
 
     local horz = UI.CreateHorizontalLayoutGroup(vert).SetFlexibleWidth(1);
     MenuStructureDropDown = CreateDropDown(horz, options, options[1].Key, nil);
@@ -161,11 +167,19 @@ function MenuTerritoryClicked(terrDetails)
         return;
     end
 
-    local structureName = MenuStructureDropDown.GetKey();
+    local selectedKey = MenuStructureDropDown.GetKey();
+    local selectedType = "Structure";
+    for _, option in ipairs(MenuStructureOptions) do
+        if (option.Key == selectedKey) then
+            selectedType = option.Type;
+            break;
+        end
+    end
+
     local order = WL.GameOrderCustom.Create(
         MenuGame.Us.ID,
-        "Place " .. structureName .. " on " .. terrDetails.Name,
-        BuildPlanningPayload(structureName, terrDetails.ID),
+        "Place " .. selectedKey .. " on " .. terrDetails.Name,
+        BuildPlanningPayload(selectedType, selectedKey, terrDetails.ID),
         nil,
         WL.TurnPhase.Attacks);
 

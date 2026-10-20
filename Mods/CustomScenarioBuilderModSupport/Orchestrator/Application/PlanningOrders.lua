@@ -2,35 +2,42 @@ require("Application.Utilities");
 require("Application.PlaceholderModData");
 
 -- Planning Mode in-game order payloads (Build/Delete/Move/Clone)
--- Marks a GameOrderCustom payload as a Planning Mode build request - "<prefix>{"StructureName":"...",
--- "TerritoryID":"..."}" using the same table format as ModData. Lets a game-maker place a vanilla structure
--- directly via the in-game mod menu, without needing the Custom Scenario distribution.
+-- Marks a GameOrderCustom payload as a Planning Mode build request - places a brand new vanilla structure or
+-- Built-in Support special unit directly via the in-game mod menu, without needing the Custom Scenario distribution.
 local PLANNING_MODE_PAYLOAD_PREFIX = "CSBMSPlanningBuild~";
 
----@param structureName string # one of VANILLA_STRUCTURE_TYPES's Name values
+---@param placementType "Structure" | "SpecialUnit"
+---@param identifier string # a VANILLA_STRUCTURE_TYPES Name (Structure), or a BuiltInSupport PlacementName (SpecialUnit)
 ---@param territoryID TerritoryID
 ---@return string
-function BuildPlanningPayload(structureName, territoryID)
+function BuildPlanningPayload(placementType, identifier, territoryID)
     return PLANNING_MODE_PAYLOAD_PREFIX .. EncodeFlatTable({
-        StructureName = structureName,
+        Type = placementType,
+        Identifier = identifier,
         TerritoryID = tostring(territoryID),
     });
 end
 
 ---@param payload string | nil
----@return string | nil structureName
+---@return ("Structure" | "SpecialUnit") | nil placementType
+---@return string | nil identifier
 ---@return TerritoryID | nil territoryID
 function ParsePlanningPayload(payload)
     if (type(payload) ~= "string" or string.sub(payload, 1, #PLANNING_MODE_PAYLOAD_PREFIX) ~= PLANNING_MODE_PAYLOAD_PREFIX) then
-        return nil, nil;
+        return nil, nil, nil;
     end
 
     local fields = DecodeFlatTable(string.sub(payload, #PLANNING_MODE_PAYLOAD_PREFIX + 1));
-    if (fields == nil or fields.StructureName == nil or fields.TerritoryID == nil) then
-        return nil, nil;
+    if (fields == nil) then return nil, nil, nil; end
+
+    local placementType = fields.Type;
+    local identifier = fields.Identifier;
+    local territoryID = tonumber(fields.TerritoryID);
+    if ((placementType ~= "Structure" and placementType ~= "SpecialUnit") or type(identifier) ~= "string" or identifier == "" or territoryID == nil) then
+        return nil, nil, nil;
     end
 
-    return fields.StructureName, tonumber(fields.TerritoryID);
+    return placementType, identifier, territoryID;
 end
 
 -- Marks a GameOrderCustom payload as a Planning Mode delete request - removes one structure/special unit

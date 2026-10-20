@@ -6,9 +6,10 @@ BuiltInSupport = {};
 ---@field ModName string # the mod this unit's card/special unit normally comes from
 ---@field ModAuthor string
 ---@field ModID integer # the source mod's Warzone workshop mod ID
----@field Build fun(ownerID: PlayerID): CustomSpecialUnit
+---@field ImageFilename string
+---@field Fields table<string, string> # SPECIAL_UNIT_FIELD_DESCRIPTORS keys, stringified - also previewed (disabled) in the Edit view when added via Add from Template
 
----@type table<string, BuiltInSupportUnit> # PlacementName -> how to build it
+---@type table<string, BuiltInSupportUnit> # PlacementName -> its data
 BuiltInSupport.Units = {};
 
 ---Registers a special unit CSBMS can build and place itself when resolving a SpecialUnit Placeholder with this
@@ -18,9 +19,10 @@ BuiltInSupport.Units = {};
 ---@param modName string
 ---@param modAuthor string
 ---@param modID integer
----@param build fun(ownerID: PlayerID): CustomSpecialUnit
-function BuiltInSupport.Register(name, modName, modAuthor, modID, build)
-    BuiltInSupport.Units[name] = { ModName = modName, ModAuthor = modAuthor, ModID = modID, Build = build };
+---@param imageFilename string
+---@param fields table<string, string> # SPECIAL_UNIT_FIELD_DESCRIPTORS keys, stringified
+function BuiltInSupport.Register(name, modName, modAuthor, modID, imageFilename, fields)
+    BuiltInSupport.Units[name] = { ModName = modName, ModAuthor = modAuthor, ModID = modID, ImageFilename = imageFilename, Fields = fields };
 end
 
 ---@param name string | nil
@@ -38,6 +40,20 @@ function BuiltInSupport.ListUnits()
     end
     table.sort(list, function(a, b) return string.lower(a.Name) < string.lower(b.Name); end);
     return list;
+end
+
+---Builds the actual CustomSpecialUnit for a registered unit, from its stored Fields - the same field-application
+---logic Application.BuildPlaceholder uses for a mod-supplied SpecialUnit.
+---@param name string
+---@param ownerID PlayerID
+---@return CustomSpecialUnit
+function BuiltInSupport.Build(name, ownerID)
+    local unit = BuiltInSupport.Units[name];
+    local builder = WL.CustomSpecialUnitBuilder.Create(ownerID);
+    builder.Name = name;
+    builder.ImageFilename = unit.ImageFilename;
+    ApplySpecialUnitFields(builder, unit.Fields);
+    return builder.Build();
 end
 
 -- Every mod CSBMS has built-in support for is required here, not by each file that calls BuiltInSupport.Find/

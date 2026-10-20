@@ -15,7 +15,7 @@ local function GetUnreplacedPlacementLines(game)
     local unreplaced = {};
     for _, placement in ipairs(SortPlacementsByTerritoryName(Mod.Settings.PlaceholderPlacements or {})) do
         local territoryID = FindTerritoryIDByName(game, placement.TerritoryName);
-        local territoryStanding = territoryID ~= nil and game.LatestStanding.Territories[territoryID];
+        local territoryStanding = territoryID ~= nil and game.LatestStanding.Territories[territoryID] or nil;
         local placementType = placement.Type or DEFAULT_PLACEMENT_TYPE;
 
         if (territoryStanding ~= nil) then
