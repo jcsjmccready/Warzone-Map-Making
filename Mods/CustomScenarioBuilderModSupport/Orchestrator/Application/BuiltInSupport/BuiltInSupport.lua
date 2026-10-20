@@ -1,7 +1,6 @@
 BuiltInSupport = {};
 
----A special unit CSBMS itself knows how to build - no integration from the other mod needed, since CSBMS already
----holds a copy of its image and knows its exact stats.
+---A special unit CSBMS itself knows how to build
 ---@class BuiltInSupportUnit
 ---@field ModName string # the mod this unit's card/special unit normally comes from
 ---@field ModAuthor string
@@ -42,8 +41,7 @@ function BuiltInSupport.ListUnits()
     return list;
 end
 
----Builds the actual CustomSpecialUnit for a registered unit, from its stored Fields - the same field-application
----logic Application.BuildPlaceholder uses for a mod-supplied SpecialUnit.
+---Builds the actual CustomSpecialUnit for a registered unit, from its stored Fields
 ---@param name string
 ---@param ownerID PlayerID
 ---@param originalModData string | nil # a previously-exported live unit's own ModData, restored onto this rebuild
@@ -60,7 +58,10 @@ function BuiltInSupport.Build(name, ownerID, originalModData)
     return builder.Build();
 end
 
--- Every mod CSBMS has built-in support for is required here, not by each file that calls BuiltInSupport.Find/
--- PlacementHasBuiltInSupport - so adding a new one is a single line added to this file, not a new require
--- sprinkled across every consumer. Must come after Register is defined above - each of these calls it immediately.
+-- Every mod CSBMS has built-in support for is required here
 require("Application.BuiltInSupport.Diplomat");
+require("Application.BuiltInSupport.ArmyRecruiter");
+require("Application.BuiltInSupport.Capitalist");
+require("Application.BuiltInSupport.ConstructionWorker");
+require("Application.BuiltInSupport.Tank");
+require("Application.BuiltInSupport.CaptureTheFlag");
