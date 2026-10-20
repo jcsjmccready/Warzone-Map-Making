@@ -319,14 +319,14 @@ State.ShowListView = function()
 
     local addRowHorz = UI.CreateHorizontalLayoutGroup(State.ViewContent).SetFlexibleWidth(1);
     UI.CreateButton(addRowHorz)
-        .SetText("Add from Template")
+        .SetText("Add Vanilla Structure")
         .SetColor(BUTTON_COLOURS.DarkGreen)
         .SetPreferredWidth(0)
         .SetMinWidth(0)
         .SetFlexibleWidth(1)
         .SetOnClick(function()
             local list = {};
-            for _, template in ipairs(PLACEMENT_TEMPLATES) do
+            for _, template in ipairs(VANILLA_STRUCTURE_TEMPLATES) do
                 table.insert(list, {
                     text = template.Text,
                     selected = function()
@@ -334,7 +334,25 @@ State.ShowListView = function()
                     end,
                 });
             end
-            UI.PromptFromList("Select a template", list);
+            UI.PromptFromList("Select a vanilla structure", list);
+        end);
+    UI.CreateButton(addRowHorz)
+        .SetText("Add Built-In Special Unit")
+        .SetColor(BUTTON_COLOURS.DarkGreen)
+        .SetPreferredWidth(0)
+        .SetMinWidth(0)
+        .SetFlexibleWidth(1)
+        .SetOnClick(function()
+            local list = {};
+            for _, template in ipairs(BUILT_IN_SPECIAL_UNIT_TEMPLATES) do
+                table.insert(list, {
+                    text = template.Text,
+                    selected = function()
+                        State.ShowEditView(nil, { Type = template.Type, PlacementName = template.PlacementName, TerritoryName = "", SpecialUnitFields = template.SpecialUnitFields }, true);
+                    end,
+                });
+            end
+            UI.PromptFromList("Select a built-in special unit", list);
         end);
 
     local headerHorz = UI.CreateHorizontalLayoutGroup(State.ViewContent).SetFlexibleWidth(1);

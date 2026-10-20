@@ -16,7 +16,7 @@ function Client_PresentMenuUI(rootParent, setMaxSize, setScrollable, game, close
     MenuGame = game;
 
     local vert = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
-    UI.CreateLabel(vert).SetText("Add Vanilla Structure/Built-in Special Unit").SetColor(SUBHEADING_COLOUR);
+    UI.CreateLabel(vert).SetText("Add Vanilla Structure/Built-in Special Unit on Map").SetColor(SUBHEADING_COLOUR);
 
     if (not Mod.Settings.IsPlanningMode) then
         UI.CreateLabel(vert).SetText("Used for planning mode. Nothing here to see...").SetColor(BUTTON_COLOURS.DarkGray);
@@ -28,23 +28,11 @@ function Client_PresentMenuUI(rootParent, setMaxSize, setScrollable, game, close
         return;
     end
 
-    local options = {};
-    for _, entry in ipairs(VANILLA_STRUCTURE_TYPES) do
-        table.insert(options, { Key = entry.Name, Text = entry.Name .. " [Struct]", Type = "Structure" });
-    end
-    for _, unit in ipairs(BuiltInSupport.ListUnits()) do
-        table.insert(options, { Key = unit.Name, Text = unit.Name .. " [SU]", Type = "SpecialUnit" });
-    end
-    table.sort(options, function(a, b) return string.lower(a.Key) < string.lower(b.Key); end);
-    MenuStructureOptions = options;
-
-    local horz = UI.CreateHorizontalLayoutGroup(vert).SetFlexibleWidth(1);
-    MenuStructureDropDown = CreateDropDown(horz, options, options[1].Key, nil);
-    MenuTargetTerritoryBtn = UI.CreateButton(horz)
-        .SetText("Create Build Order")
-        .SetOnClick(MenuTargetTerritoryClicked)
+    MenuAddTerritoryBtn = UI.CreateButton(vert)
+        .SetText("+ Structure/Built-In Special Unit")
+        .SetColor(BUTTON_COLOURS.DarkGreen)
         .SetFlexibleWidth(1)
-        .SetColor(BUTTON_COLOURS.DarkGreen);
+        .SetOnClick(MenuAddTerritoryClicked);
 
     UI.CreateLabel(vert).SetText('Modify Structure/SU on Map').SetColor(SUBHEADING_COLOUR);
 
@@ -146,52 +134,6 @@ function GetPlacementsFromMap(game)
     return placements;
 end
 
---- Initiate territory selection for building the selected vanilla structure
-function MenuTargetTerritoryClicked()
-    MenuTargetTerritoryBtn.SetInteractable(false);
-    UI.InterceptNextTerritoryClick(MenuTerritoryClicked);
-end
-
--- Territory on click callback. Any territory is valid: ownership and visibility don't matter for planning markers
----@param terrDetails TerritoryDetailsVM | nil
-function MenuTerritoryClicked(terrDetails)
-    if UI.IsDestroyed(MenuTargetTerritoryBtn) then
-        -- Dialog was destroyed, so we don't need to intercept the click anymore
-        return WL.CancelClickIntercept;
-    end
-
-    MenuTargetTerritoryBtn.SetInteractable(true);
-
-    if (terrDetails == nil) then
-        --The click request was cancelled. Let the player try again.
-        return;
-    end
-
-    local selectedKey = MenuStructureDropDown.GetKey();
-    local selectedType = "Structure";
-    for _, option in ipairs(MenuStructureOptions) do
-        if (option.Key == selectedKey) then
-            selectedType = option.Type;
-            break;
-        end
-    end
-
-    local order = WL.GameOrderCustom.Create(
-        MenuGame.Us.ID,
-        "Place " .. selectedKey .. " on " .. terrDetails.Name,
-        BuildPlanningPayload(selectedType, selectedKey, terrDetails.ID),
-        nil,
-        WL.TurnPhase.Attacks);
-
-    -- Re-assign rather than mutate in place: Orders is a snapshot, so table.insert on the value returned by
-    -- MenuGame.Orders alone wouldn't persist the new order back to the game.
-    local orders = MenuGame.Orders;
-    table.insert(orders, order);
-    MenuGame.Orders = orders;
-
-    MenuGame.HighlightTerritories({ terrDetails.ID });
-end
-
 ---Queues a GameOrderCustom carrying payload, to be processed into the actual effect by Server_AdvanceTurn_Order
 ---@param message string
 ---@param payload string
@@ -206,6 +148,25 @@ local function SubmitCustomOrder(message, payload, territoryID)
     MenuGame.Orders = orders;
 
     MenuGame.HighlightTerritories({ territoryID });
+end
+
+---Disables btn, hides its icon (if it has one) and shows "Select Territory" while awaiting the next territory
+---click, restoring its original text/icon/interactable state once the click resolves 
+---@param btn Button
+---@param originalText string
+---@param onPicked fun(terrDetails: TerritoryDetailsVM)
+local function BeginTerritoryPick(btn, originalText, onPicked)
+    btn.SetInteractable(false).SetText("Select Territory")
+        .SetIconMinWidth(0).SetIconPreferredWidth(0).SetIconMinHeight(0).SetIconPreferredHeight(0);
+    UI.InterceptNextTerritoryClick(function(terrDetails)
+        if UI.IsDestroyed(btn) then
+            return WL.CancelClickIntercept;
+        end
+        btn.SetInteractable(true).SetText(originalText)
+            .SetIconMinWidth(20).SetIconPreferredWidth(20).SetIconMinHeight(20).SetIconPreferredHeight(20);
+        if (terrDetails == nil) then return; end
+        onPicked(terrDetails);
+    end);
 end
 
 ---Removes one item (structure/special unit)
@@ -316,6 +277,34 @@ local function ShowSelectPicker(territoryName, items, actionIcon, actionText, ac
                 onSelect(item);
             end);
         end
+    end);
+end
+
+---@param territoryID TerritoryID
+---@param territoryName string
+local function ShowAddPicker(territoryID, territoryName)
+    ---@type ModifyPickerItem[]
+    local items = {};
+    for _, entry in ipairs(VANILLA_STRUCTURE_TYPES) do
+        table.insert(items, { label = entry.Name, icon = ICON_STRUCTURE, originIcon = ICON_VANILLA, type = "Structure", identifier = entry.Name });
+    end
+    for _, unit in ipairs(BuiltInSupport.ListUnits()) do
+        table.insert(items, { label = unit.Name, icon = ICON_SPECIAL_UNIT, originIcon = ICON_MODDED, type = "SpecialUnit", identifier = unit.Name });
+    end
+    table.sort(items, function(a, b) return string.lower(a.label) < string.lower(b.label); end);
+
+    ShowSelectPicker(territoryName, items, "", "+", BUTTON_COLOURS.DarkGreen, function(item)
+        SubmitCustomOrder(
+            "Place " .. item.identifier .. " on " .. territoryName,
+            BuildPlanningPayload(item.type, item.identifier, territoryID),
+            territoryID);
+    end);
+end
+
+--- Initiate territory selection for adding a vanilla structure/Built-in Support special unit
+function MenuAddTerritoryClicked()
+    BeginTerritoryPick(MenuAddTerritoryBtn, "+ Structure/Built-In Special Unit", function(terrDetails)
+        ShowAddPicker(terrDetails.ID, terrDetails.Name);
     end);
 end
 
@@ -509,14 +498,7 @@ end
 
 --- Initiate territory selection for moving a structure/special unit already standing on the map
 function MenuMoveTerritoryClicked()
-    MenuMoveTerritoryBtn.SetInteractable(false);
-    UI.InterceptNextTerritoryClick(function(terrDetails)
-        if UI.IsDestroyed(MenuMoveTerritoryBtn) then
-            return WL.CancelClickIntercept;
-        end
-        MenuMoveTerritoryBtn.SetInteractable(true);
-        if (terrDetails == nil) then return; end
-
+    BeginTerritoryPick(MenuMoveTerritoryBtn, "Move", function(terrDetails)
         local items = BuildModifyItems(terrDetails);
         if (items == nil) then return; end
 
@@ -526,14 +508,7 @@ end
 
 --- Initiate territory selection for cloning a structure/special unit already standing on the map
 function MenuCloneTerritoryClicked()
-    MenuCloneTerritoryBtn.SetInteractable(false);
-    UI.InterceptNextTerritoryClick(function(terrDetails)
-        if UI.IsDestroyed(MenuCloneTerritoryBtn) then
-            return WL.CancelClickIntercept;
-        end
-        MenuCloneTerritoryBtn.SetInteractable(true);
-        if (terrDetails == nil) then return; end
-
+    BeginTerritoryPick(MenuCloneTerritoryBtn, "Clone", function(terrDetails)
         local items = BuildModifyItems(terrDetails);
         if (items == nil) then return; end
 
@@ -545,14 +520,7 @@ end
 
 --- Initiate territory selection for deleting a structure/special unit already standing on the map
 function MenuDeleteTerritoryClicked()
-    MenuDeleteTerritoryBtn.SetInteractable(false);
-    UI.InterceptNextTerritoryClick(function(terrDetails)
-        if UI.IsDestroyed(MenuDeleteTerritoryBtn) then
-            return WL.CancelClickIntercept;
-        end
-        MenuDeleteTerritoryBtn.SetInteractable(true);
-        if (terrDetails == nil) then return; end
-
+    BeginTerritoryPick(MenuDeleteTerritoryBtn, "X Delete", function(terrDetails)
         local items = BuildModifyItems(terrDetails);
         if (items == nil) then return; end
 
