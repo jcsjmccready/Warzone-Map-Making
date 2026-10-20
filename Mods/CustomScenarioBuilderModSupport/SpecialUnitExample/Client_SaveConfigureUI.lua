@@ -14,10 +14,10 @@ function Client_SaveConfigureUI(alert, addCard)
 	Mod.Settings.MinPieces = minPieces;
 	Mod.Settings.InitialPieces = initialPieces;
 
-	Mod.Settings.TankCardID = addCard(
-		"Tank Card",
-		"Play this card to build a Tank on any territory you control (at the end of the turn).",
-		"TankCard.png",
+	Mod.Settings.SpecialUnitExampleCardID = addCard(
+		"SpecialUnitExample Card",
+		"Play this card to build a SpecialUnitExample on any territory you control (at the end of the turn).",
+		"SpecialUnitExampleCard.png",
 		numPieces,
 		minPieces,
 		initialPieces,

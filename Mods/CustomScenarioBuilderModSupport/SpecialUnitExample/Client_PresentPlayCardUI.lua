@@ -16,7 +16,7 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
 
 		SelectTerritoryBtn = UI.CreateButton(vert).SetText("Select Territory").SetOnClick(SelectTerritoryClicked);
 		TargetTerritoryInstructionLabel = UI.CreateLabel(vert).SetText("");
-		PlayCardBtn = UI.CreateButton(vert).SetText("Play Tank").SetInteractable(false).SetOnClick(function()
+		PlayCardBtn = UI.CreateButton(vert).SetText("Play SpecialUnitExample").SetInteractable(false).SetOnClick(function()
 			if (TargetTerritoryID == nil) then
 				TargetTerritoryInstructionLabel.SetText("You must select a territory first");
 				return;
@@ -25,7 +25,7 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
 			local td = game.Map.Territories[TargetTerritoryID];
 			local jumpToSpot = WL.RectangleVM.Create(td.MiddlePointX, td.MiddlePointY, td.MiddlePointX, td.MiddlePointY);
 
-			if (playCard("Build a Tank on " .. TargetTerritoryName, "CreateTank_" .. TargetTerritoryID, WL.TurnPhase.Attacks, {}, jumpToSpot)) then
+			if (playCard("Build a SpecialUnitExample on " .. TargetTerritoryName, "CreateSpecialUnitExample_" .. TargetTerritoryID, WL.TurnPhase.Attacks, {}, jumpToSpot)) then
 				close();
 			end
 		end);
@@ -34,7 +34,7 @@ end
 
 function SelectTerritoryClicked()
 	UI.InterceptNextTerritoryClick(TerritoryClicked);
-	TargetTerritoryInstructionLabel.SetText("Please click on the territory you wish to build a Tank on.");
+	TargetTerritoryInstructionLabel.SetText("Please click on the territory you wish to build a SpecialUnitExample on.");
 	SelectTerritoryBtn.SetInteractable(false);
 end
 
