@@ -41,17 +41,29 @@ function BuiltInSupport.ListUnits()
     return list;
 end
 
----Builds the actual CustomSpecialUnit for a registered unit, from its stored Fields
+---Builds the actual CustomSpecialUnit for a registered unit, from its stored Fields - if sourceSpecialUnit (the
+---live Placeholder being replaced) is given, its current field values take precedence over the registered
+---defaults, so an edit made to the Placeholder's own stats carries through to the real unit.
 ---@param name string
 ---@param ownerID PlayerID
 ---@param originalModData string | nil # a previously-exported live unit's own ModData, restored onto this rebuild
+---@param sourceSpecialUnit CustomSpecialUnit | nil # the live Placeholder being replaced, if there is one
 ---@return CustomSpecialUnit
-function BuiltInSupport.Build(name, ownerID, originalModData)
+function BuiltInSupport.Build(name, ownerID, originalModData, sourceSpecialUnit)
     local unit = BuiltInSupport.Units[name];
     local builder = WL.CustomSpecialUnitBuilder.Create(ownerID);
     builder.Name = name;
     builder.ImageFilename = unit.ImageFilename;
     ApplySpecialUnitFields(builder, unit.Fields);
+
+    if (sourceSpecialUnit ~= nil) then
+        for _, descriptor in ipairs(SPECIAL_UNIT_FIELD_DESCRIPTORS) do
+            if (descriptor.Key ~= "ModData" and descriptor.Key ~= "ModID") then
+                builder[descriptor.Key] = sourceSpecialUnit[descriptor.Key];
+            end
+        end
+    end
+
     if (originalModData ~= nil and originalModData ~= "") then
         builder.ModData = originalModData;
     end

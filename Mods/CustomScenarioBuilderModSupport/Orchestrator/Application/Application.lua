@@ -180,6 +180,7 @@ function CustomScenarioBuilderModOrchestratorApplication.ResolveBuiltInSpecialUn
         -- re-read fresh each iteration: resolving a Placeholder below reassigns territoryStanding.NumArmies
         for _, specialUnit in ipairs(territoryStanding.NumArmies.SpecialUnits or {}) do
             if (specialUnit.Name == PLACEHOLDER_NAME) then
+                ---@cast specialUnit CustomSpecialUnit
                 local placementType, placementName, _, originalModData = DecodePlaceholderModData(specialUnit.ModData);
                 local builtInUnit = (placementType == "SpecialUnit") and BuiltInSupport.Find(placementName) or nil;
 
@@ -191,7 +192,7 @@ function CustomScenarioBuilderModOrchestratorApplication.ResolveBuiltInSpecialUn
                         end
                     end
 
-                    local newUnit = BuiltInSupport.Build(placementName, territoryStanding.OwnerPlayerID, originalModData);
+                    local newUnit = BuiltInSupport.Build(placementName, territoryStanding.OwnerPlayerID, originalModData, specialUnit);
                     table.insert(remainingSpecialUnits, newUnit);
 
                     territoryStanding.NumArmies = WL.Armies.Create(territoryStanding.NumArmies.NumArmies, remainingSpecialUnits);
