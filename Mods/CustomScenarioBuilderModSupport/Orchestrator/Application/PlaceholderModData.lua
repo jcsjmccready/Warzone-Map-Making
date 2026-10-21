@@ -2,7 +2,11 @@
 ---@param s string
 ---@return string
 function EncodeQuotedString(s)
-    return "\"" .. string.gsub(string.gsub(s, "\\", "\\\\"), "\"", "\\\"") .. "\"";
+    local escaped = string.gsub(s, "\\", "\\\\");
+    escaped = string.gsub(escaped, "\"", "\\\"");
+    escaped = string.gsub(escaped, "\r", "\\r");
+    escaped = string.gsub(escaped, "\n", "\\n");
+    return "\"" .. escaped .. "\"";
 end
 
 ---@param fields table<string, string>
@@ -42,16 +46,25 @@ function DecodeQuotedStringAt(s, index)
     if (string.sub(s, index, index) ~= "\"") then return nil, nil; end
 
     local chars = {};
-    local escaped = false;
     index = index + 1;
     while (index <= #s) do
         local c = string.sub(s, index, index);
-        if (c == "\"" and not escaped) then
+        if (c == "\"") then
             return table.concat(chars), index + 1;
+        elseif (c == "\\") then
+            local escapedChar = string.sub(s, index + 1, index + 1);
+            if (escapedChar == "n") then
+                table.insert(chars, "\n");
+            elseif (escapedChar == "r") then
+                table.insert(chars, "\r");
+            else
+                table.insert(chars, escapedChar); -- \\ -> \, \" -> "
+            end
+            index = index + 2;
+        else
+            table.insert(chars, c);
+            index = index + 1;
         end
-        escaped = (c == "\\") and not escaped;
-        table.insert(chars, c);
-        index = index + 1;
     end
     return nil, nil; -- ran off the end without a closing quote
 end
