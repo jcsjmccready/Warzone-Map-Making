@@ -28,6 +28,7 @@ ICON_SPECIAL_UNIT = "SpecialUnit.png";
 ICON_VANILLA = "Vanilla.png";
 ICON_MODDED = "Modded.png";
 ICON_BUILT_IN_SUPPORT = "BuiltInSupport.png";
+ICON_PLACEHOLDER = "Placeholder.png";
 ICON_EDIT = "Edit.png";
 ICON_MOVE = "Move.png";
 ICON_COPY = "Copy.png";

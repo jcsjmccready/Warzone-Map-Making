@@ -1,13 +1,9 @@
 Lets game creators choose where modded special units and modded custom structures are placed in a custom scenario, so they are on the map from the start of the game.
 
-Use "Planning Mode" (instructions provided) and enter an initial game to export the data and territory placement of modded structures and special units, then import it in the mod configuration.
-Planning mode also comes with convenience options for deleting, cloning and moving structures/special units. As well as placing vanilla structures.
+Use "Planning Mode" (instructions provided) and enter an initial game to export the data and territory placement of structures and special units, then import it in the mod configuration.
+Planning mode also comes with convenience options for deleting, cloning and moving structures/special units. As well as placing vanilla structures/built in support special units.
 
-This is a best-effort approach to facilitate mod support in custom scenarios and *CAN NOT* guarantee full support:
-- Simple custom structure mods have full-support (structures can always be placed but may have internal tracking data)
-- Special unit mods require the mod in question to support this framework*
-- Complex custom structure mods require the mod in question to support this framework
+This is a best-effort approach to facilitate mod support in custom scenarios and *CAN NOT* guarantee full support with other mods. 
+See the "Mod Support" section in this mod for guidance on levels of support offered.
 
-*This mod provides built-in support for some older special unit mods. See the "Home" page of this mod and/or glossary for indication.
-
-Testing games to determine mod-compatability is highly encouraged.
+Testing games to determine mod-compatability is HIGHLY encouraged.

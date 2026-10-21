@@ -36,9 +36,6 @@ require("Application.BuiltInSupport.BuiltInSupport");
 ---@field PlanningDataField TextInputField | nil
 ---@field OverwriteStatusLabel Label | nil
 ---@field OverwriteConfigBtn Button | nil
----@field ConfirmContainer UIObject | nil
----@field ConfirmHeading UIObject | nil # the destroyable Yes/No prompt, nil while not confirming
----@field IsConfirmPending boolean # blocks re-triggering the button while ConfirmHeading is already showing
 ---@field ShowHomePage fun() | nil
 ---@field ShowPlacementPage fun() | nil
 ---@field ShowPlanningPage fun() | nil
@@ -52,7 +49,6 @@ local State = {
     DisableAIMovementsValue = false,
     EditIsFromTemplate = false,
     EditSpecialUnitFieldControls = {},
-    IsConfirmPending = false,
 };
 
 ---UI.Destroy's signature doesn't accept nil (unlike UI.IsDestroyed, which explicitly does) - calling it with a
@@ -233,17 +229,17 @@ local function BuildPlacementFromEditState()
     return placement, nil;
 end
 
----Re-applies whether the overwrite button should be interactable - text-driven, but never while a confirm is pending
+---Re-applies whether the overwrite button should be interactable - text-driven
 local function UpdateOverwriteButtonInteractable()
     local text = State.PlanningDataField.GetText();
-    State.OverwriteConfigBtn.SetInteractable(not State.IsConfirmPending and text ~= nil and text ~= "");
+    State.OverwriteConfigBtn.SetInteractable(text ~= nil and text ~= "");
 end
 
 ---Actually overwrites the placement list from the pasted data - only called once the player confirms
 local function DoOverwritePlacementConfiguration()
     local placements = DeserializePlacementData(State.PlanningDataField.GetText());
     if (placements == nil) then
-        State.OverwriteStatusLabel.SetText("Couldn't read that data").SetColor(ERROR_COLOUR);
+        State.OverwriteStatusLabel.SetText("Invalid data, was this copied from the mod-menu unchanged?").SetColor(ERROR_COLOUR);
         return;
     end
 
@@ -276,40 +272,13 @@ local function Create_PlanningModeUI()
         .SetFlexibleWidth(1)
         .SetInteractable(false);
 
-    -- No dialog/modal API is available in this hook, so the confirmation is an inline Yes/No row that replaces
-    -- itself with the result, instead of a floating popup
-    State.ConfirmContainer = UI.CreateVerticalLayoutGroup(State.PlanningModeHeading).SetFlexibleWidth(1);
-    State.IsConfirmPending = false;
-
     State.PlanningDataField.SetOnValueChanged(UpdateOverwriteButtonInteractable);
 
     State.OverwriteConfigBtn.SetOnClick(function()
-        State.IsConfirmPending = true;
-        UpdateOverwriteButtonInteractable();
-
-        State.ConfirmHeading = UI.CreateVerticalLayoutGroup(State.ConfirmContainer).SetFlexibleWidth(1);
-        UI.CreateLabel(State.ConfirmHeading).SetText("This will overwrite the current placement configuration. Are you sure?");
-
-        local confirmHorz = UI.CreateHorizontalLayoutGroup(State.ConfirmHeading).SetFlexibleWidth(1);
-        UI.CreateButton(confirmHorz)
-            .SetText("Yes")
-            .SetColor(BUTTON_COLOURS.DarkGreen)
-            .SetFlexibleWidth(1)
-            .SetOnClick(function()
-                DestroyIfExists(State.ConfirmHeading);
-                State.IsConfirmPending = false;
-                UpdateOverwriteButtonInteractable();
-                DoOverwritePlacementConfiguration();
-            end);
-        UI.CreateButton(confirmHorz)
-            .SetText("No")
-            .SetColor(BUTTON_COLOURS.TyrianPurple)
-            .SetFlexibleWidth(1)
-            .SetOnClick(function()
-                DestroyIfExists(State.ConfirmHeading);
-                State.IsConfirmPending = false;
-                UpdateOverwriteButtonInteractable();
-            end);
+        UI.PromptFromList("This will overwrite the current placement configuration. Are you sure?", {
+            { text = "Overwrite", selected = function() DoOverwritePlacementConfiguration(); end },
+            { text = "Cancel", selected = function() end },
+        });
     end);
 end
 
@@ -574,7 +543,9 @@ State.ShowHomePage = function()
     DestroyIfExists(State.PageContent);
     State.PageContent = UI.CreateVerticalLayoutGroup(State.PageContainer).SetFlexibleWidth(1);
 
-    UI.CreateLabel(State.PageContent).SetText('Configure structures/special units to place on the map at the start of the game, or use Planning Mode to lay them out visually in a test game first.');
+    UI.CreateLabel(State.PageContent).SetText('Add vanilla structures/built-in support special units in placement mode.');
+    UI.CreateLabel(State.PageContent).SetText('Edit any existing placements for structures or special units in placement mode.');
+    UI.CreateLabel(State.PageContent).SetText('Export all placements for structures and special units via planning mode.');
 
     UI.CreateEmpty(State.PageContent).SetPreferredHeight(10);
 
@@ -621,22 +592,48 @@ State.ShowHomePage = function()
     local supportRow = UI.CreateHorizontalLayoutGroup(State.PageContent).SetFlexibleWidth(1);
     UI.CreateImage(supportRow)
         .SetSprite(ICON_BUILT_IN_SUPPORT)
-        .SetPreferredWidth(ICON_SIZE)
+        .SetPreferredWidth(46)
         .SetMinWidth(0)
         .SetFlexibleWidth(0)
         .SetPreferredHeight(ICON_SIZE)
         .SetMinHeight(0);
     UI.CreateEmpty(supportRow)
-        .SetPreferredWidth(44)
+        .SetPreferredWidth(30)
         .SetMinWidth(ICON_SIZE)
         .SetFlexibleWidth(0);
     UI.CreateLabel(supportRow).SetText("Built-in Support - guaranteed to place with no issues. Without this, we require other mods to support this mod").SetFlexibleWidth(1);
 
+    local placeholderRow = UI.CreateHorizontalLayoutGroup(State.PageContent).SetFlexibleWidth(1);
+    UI.CreateImage(placeholderRow)
+        .SetSprite(ICON_PLACEHOLDER)
+        .SetPreferredWidth(46)
+        .SetMinWidth(0)
+        .SetFlexibleWidth(0)
+        .SetPreferredHeight(ICON_SIZE)
+        .SetMinHeight(0);
+    UI.CreateEmpty(placeholderRow)
+        .SetPreferredWidth(30)
+        .SetMinWidth(ICON_SIZE)
+        .SetFlexibleWidth(0);
+    UI.CreateLabel(placeholderRow).SetText("If seen on the map, this Structure/Special Unit was not replaced. Is it enabled? Does it support this mod?").SetFlexibleWidth(1);
+
     UI.CreateEmpty(State.PageContent).SetPreferredHeight(10);
 
-    UI.CreateLabel(State.PageContent).SetText('Built-in Support').SetColor(BUTTON_COLOURS.Artichoke);
+    UI.CreateLabel(State.PageContent).SetText('Mod Developer Guide').SetColor(BUTTON_COLOURS.Artichoke);
+    UI.CreateLabel(State.PageContent).SetText('Please see the README.md in the mods repository for guidance on supporting this framework. Accessible via: Mod Info>View Source Code');
 
-    State.BuiltInSupportShowListCheckBox = UI.CreateCheckBox(State.PageContent).SetText('Show List').SetIsChecked(false);
+    UI.CreateEmpty(State.PageContent).SetPreferredHeight(10);
+
+    UI.CreateLabel(State.PageContent).SetText('Mod Support').SetColor(BUTTON_COLOURS.Artichoke);
+    UI.CreateLabel(State.PageContent).SetText('- Simple custom structure mods have full-support');
+    UI.CreateLabel(State.PageContent).SetText('- Complex custom structure mods (incl. data a mod must track internally) requires the mod to support this framework');
+    UI.CreateLabel(State.PageContent).SetText('*Custom structures can always be placed, if the mod is enabled. A successful placement does\'nt guarantee full support').SetColor(BUTTON_COLOURS.DarkGray);
+    UI.CreateEmpty(State.PageContent).SetPreferredHeight(5);
+    UI.CreateLabel(State.PageContent).SetText('- Special unit mods require the mod in question to support this framework.');
+    UI.CreateLabel(State.PageContent).SetText('- Some special unit mods are simple enough this framework can place them without the mod\'s support. These are listed below as "Built-in Support"');
+    UI.CreateEmpty(State.PageContent).SetPreferredHeight(5);
+    
+    State.BuiltInSupportShowListCheckBox = UI.CreateCheckBox(State.PageContent).SetText('Built-in Support Special Units').SetIsChecked(false);
     State.BuiltInSupportListContainer = UI.CreateVerticalLayoutGroup(State.PageContent).SetFlexibleWidth(1);
     State.BuiltInSupportListContent = nil;
     State.BuiltInSupportShowListCheckBox.SetOnValueChanged(RenderBuiltInSupportList);
@@ -667,10 +664,11 @@ State.ShowPlanningPage = function()
     State.PageContent = UI.CreateVerticalLayoutGroup(State.PageContainer).SetFlexibleWidth(1);
 
     UI.CreateLabel(State.PageContent).SetText('Planning Mode').SetColor(BUTTON_COLOURS.Artichoke);
-    UI.CreateLabel(State.PageContent).SetText('Planning mode is a convenience option, providing an alternative method of entering where to place structures/special units on the map.');
-    UI.CreateLabel(State.PageContent).SetText('When enabled, launch into a game and using the mod-menu in the bottom left, export the placement data. Then return to this config and paste the data into the text box below.');
-    UI.CreateLabel(State.PageContent).SetText('Additionally, using the mod-menu you can place vanilla structures on the map.');
-    UI.CreateLabel(State.PageContent).SetText('Clicking the overwrite button will replace your existing placement configuration.');
+    UI.CreateLabel(State.PageContent).SetText('Planning mode is a convenience option, providing a means of exporting the placement data of structures and special units on the map.');
+    UI.CreateEmpty(State.PageContent).SetPreferredHeight(5);
+    UI.CreateLabel(State.PageContent).SetText('When enabled, launch into a game, create special units and structures by normal means and then using the mod-menu in the bottom left, export the placement data. Return to this config and paste the data into the text box below.');
+    UI.CreateEmpty(State.PageContent).SetPreferredHeight(5);
+    UI.CreateLabel(State.PageContent).SetText('Additionally, the mod-menu provides buttons for modifying existing structures/special units on the map.');
 
     State.IsPlanningModeCheckBox = UI.CreateCheckBox(State.PageContent).SetText('Is Planning Mode').SetIsChecked(State.IsPlanningModeValue);
     State.PlanningModeContainer = UI.CreateVerticalLayoutGroup(State.PageContent).SetFlexibleWidth(1);
@@ -715,9 +713,6 @@ function Client_PresentConfigureUI(rootParent)
     State.PlanningDataField = nil;
     State.OverwriteStatusLabel = nil;
     State.OverwriteConfigBtn = nil;
-    State.ConfirmContainer = nil;
-    State.ConfirmHeading = nil;
-    State.IsConfirmPending = false;
 
     local mainModUI = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1);
     UI.CreateEmpty(mainModUI).SetPreferredHeight(10);
