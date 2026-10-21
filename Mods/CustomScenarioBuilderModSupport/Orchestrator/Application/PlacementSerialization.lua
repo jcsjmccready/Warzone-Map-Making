@@ -125,23 +125,26 @@ end
 ---Parses a string produced by SerializePlacementData back into a list of placements. Returns nil if any
 ---non-blank line isn't well-formed.
 ---@param text string
----@return PlaceholderPlacementSetting[] | nil
+---@return PlaceholderPlacementSetting[] | nil placements
+---@return PlaceholderPlacementSetting[] | nil unresolvedPlacements # the subset of placements still an unresolved Placeholder when exported, re-extrapolated from its own ModData
 function DeserializePlacementData(text)
     local placements = {};
+    local unresolvedPlacements = {};
     for _, line in ipairs(SplitLines(text or "")) do
         if (line ~= "") then
             local object, nextIndex = DecodeExportObjectAt(line, 1);
-            if (object == nil or nextIndex ~= #line + 1) then return nil; end
+            if (object == nil or nextIndex ~= #line + 1) then return nil, nil; end
 
             local territoryName = object.TerritoryName;
             local values = object.Values;
-            if (type(territoryName) ~= "string" or territoryName == "" or type(values) ~= "table") then return nil; end
+            if (type(territoryName) ~= "string" or territoryName == "" or type(values) ~= "table") then return nil, nil; end
 
             for _, value in ipairs(values) do
                 local typeChar = value.Type;
                 local name = value.Name;
-                if ((typeChar ~= "S" and typeChar ~= "U") or type(name) ~= "string") then return nil; end
+                if ((typeChar ~= "S" and typeChar ~= "U") or type(name) ~= "string") then return nil, nil; end
 
+                local placementType = (typeChar == "S") and "Structure" or "SpecialUnit";
                 local placementName = name;
                 local structureID = nil;
                 local specialUnitFields = nil;
@@ -159,15 +162,30 @@ function DeserializePlacementData(text)
                     end
                 end
 
-                table.insert(placements, {
-                    Type = (typeChar == "S") and "Structure" or "SpecialUnit",
+                local placement = {
+                    Type = placementType,
                     TerritoryName = territoryName,
                     PlacementName = (placementName ~= "") and placementName or nil,
                     StructureID = structureID,
                     SpecialUnitFields = specialUnitFields,
-                });
+                };
+
+                -- A special unit still literally named "Placeholder" when exported means CSBMS (or the mod it
+                -- belongs to) never replaced it - extrapolate what it was meant to be from its own ModData.
+                if (placementType == "SpecialUnit" and placementName == PLACEHOLDER_NAME) then
+                    local realType, realPlacementName, realStructureID = DecodePlaceholderModData((specialUnitFields or {}).ModData);
+                    if (realType ~= nil) then
+                        placement.Type = realType;
+                        placement.PlacementName = realPlacementName;
+                        placement.StructureID = (realType == "Structure") and realStructureID or nil;
+                        placement.SpecialUnitFields = (realType == "SpecialUnit") and {} or nil;
+                        table.insert(unresolvedPlacements, placement);
+                    end
+                end
+
+                table.insert(placements, placement);
             end
         end
     end
-    return placements;
+    return placements, unresolvedPlacements;
 end

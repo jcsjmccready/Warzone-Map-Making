@@ -5,6 +5,7 @@ require("Application.BuiltInSupport.BuiltInSupport");
 
 ---@class PlacementConfigureUIState
 ---@field Placements PlaceholderPlacementSetting[]
+---@field UnresolvedPlacements table<PlaceholderPlacementSetting, boolean> # keyed by identity - never persisted, lost whenever this hook re-reads Mod.Settings.PlaceholderPlacements fresh
 ---@field IsPlanningModeValue boolean # cached from the checkbox on change, since the checkbox itself may be destroyed (page navigated away) by the time Client_SaveConfigureUI reads this back
 ---@field NavContainer UIObject | nil # stable parent, created once
 ---@field NavContent UIObject | nil # destroyable, recreated by RenderNav every page change - the two Placement Mode/Planning Mode buttons, whichever is for the current page reading "Return" instead
@@ -45,6 +46,7 @@ require("Application.BuiltInSupport.BuiltInSupport");
 ---@type PlacementConfigureUIState
 local State = {
     Placements = {},
+    UnresolvedPlacements = {},
     IsPlanningModeValue = false,
     DisableAIMovementsValue = false,
     EditIsFromTemplate = false,
@@ -237,13 +239,17 @@ end
 
 ---Actually overwrites the placement list from the pasted data - only called once the player confirms
 local function DoOverwritePlacementConfiguration()
-    local placements = DeserializePlacementData(State.PlanningDataField.GetText());
+    local placements, unresolvedPlacements = DeserializePlacementData(State.PlanningDataField.GetText());
     if (placements == nil) then
         State.OverwriteStatusLabel.SetText("Invalid data, was this copied from the mod-menu unchanged?").SetColor(ERROR_COLOUR);
         return;
     end
 
     State.Placements = placements;
+    State.UnresolvedPlacements = {};
+    for _, placement in ipairs(unresolvedPlacements or {}) do
+        State.UnresolvedPlacements[placement] = true;
+    end
     State.ShowPlacementPage();
 end
 
@@ -348,14 +354,17 @@ State.ShowListView = function()
 
     for index, placement in ipairs(State.Placements) do
         local rowHorz = UI.CreateHorizontalLayoutGroup(State.ViewContent).SetFlexibleWidth(1);
+        local isUnresolved = State.UnresolvedPlacements[placement] == true;
 
         UI.CreateLabel(rowHorz)
             .SetText(placement.PlacementName or "")
+            .SetColor(isUnresolved and ERROR_COLOUR or TEXT_DEFAULT_COLOUR)
             .SetPreferredWidth(0)
             .SetMinWidth(0)
             .SetFlexibleWidth(1);
         UI.CreateLabel(rowHorz)
             .SetText(placement.TerritoryName or "")
+            .SetColor(isUnresolved and ERROR_COLOUR or TEXT_DEFAULT_COLOUR)
             .SetPreferredWidth(0)
             .SetMinWidth(0)
             .SetFlexibleWidth(1);
@@ -424,6 +433,12 @@ State.ShowEditView = function(index, prefill, isFromTemplate)
     State.ViewContent = UI.CreateVerticalLayoutGroup(State.ViewContainer).SetFlexibleWidth(1);
 
     UI.CreateLabel(State.ViewContent).SetText((index ~= nil) and "Edit Placement" or "Add Placement").SetColor(BUTTON_COLOURS.Artichoke);
+
+    if (State.EditExisting ~= nil and State.UnresolvedPlacements[State.EditExisting] == true) then
+        UI.CreateLabel(State.ViewContent)
+            .SetText("This failed to place properly in the game it was exported from. Is the mod enabled? Does it support this mod?")
+            .SetColor(ERROR_COLOUR);
+    end
 
     -- Same status icons ShowListView shows per row - Type never changes in this view, so these stay accurate
     -- for its whole lifetime without needing to be re-rendered
@@ -693,6 +708,7 @@ end
 ---@param rootParent RootParent
 function Client_PresentConfigureUI(rootParent)
     State.Placements = {};
+    State.UnresolvedPlacements = {};
     for _, placement in ipairs(Mod.Settings.PlaceholderPlacements or {}) do
         table.insert(State.Placements, placement);
     end
