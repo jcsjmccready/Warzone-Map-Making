@@ -7,6 +7,10 @@ Warzone's Custom Scenario builder lets lobby creators specify a start of game se
 territory/placement pairs (vanilla structure, modded structure, or modded special unit) in this mod's settings,
 and CSBMS places them at the start of the game if using a Custom Scenario distribution.
 
+**Only works with automatic territory distribution.** For a manual-distribution Custom Scenario game (where
+players pick their own starting slot), the engine never carries CSBMS's placements through to the actual game -
+nothing gets placed.
+
 ## How it works
 
 At lobby creation, CSBMS places a `Placeholder` special unit on each configured territory - a stand-in for whatever was actually requested, since there's no way to create a modded special unit for a different mod. The Placeholder encodes what it's meant to become (`Type`, `PlacementName`, and for a modded structure its `StructureID`) in its own `ModData` field.
