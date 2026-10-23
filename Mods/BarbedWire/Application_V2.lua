@@ -58,6 +58,30 @@ V2.CaltropTrapType = {
 
 V2.AllTrapTypes = { V2.BarbedWireTrapType, V2.CaltropTrapType };
 
+---@param key string
+---@return V2_TrapType | nil
+function V2.GetTrapTypeByKey(key)
+	for _, trapType in ipairs(V2.AllTrapTypes) do
+		if (trapType.Key == key) then
+			return trapType;
+		end
+	end
+	return nil;
+end
+
+---Whether this trap type is enabled in the mod's own configuration (Mod.Settings.Include<Key>, set via
+---Client_PresentConfigureUI). Barbed Wire defaults to enabled when unset (older saves predate the setting);
+---Caltrop defaults to disabled - mirrors the checks in Client_PresentCommercePurchaseUI/Client_PresentConfigureUI.
+---@param trapType V2_TrapType
+---@return boolean
+function V2.IsTrapTypeEnabled(trapType)
+	local setting = Mod.Settings["Include" .. trapType.Key];
+	if (setting == nil) then
+		return trapType.Key == "BarbedWire";
+	end
+	return setting;
+end
+
 ---@param game GameServerHook
 ---@param order GameOrder
 ---@param result GameOrderResult
@@ -848,6 +872,161 @@ function V2.QueuePendingTrap(trapType, playerID, targetTerritoryID, message, isC
 
 	local privateGameData = Mod.PrivateGameData --[[@as V2_PrivateGameData]];
 	table.insert(V2.GetPendingTraps(privateGameData, trapType), pendingTrap);
+
+	Mod.PrivateGameData = privateGameData;
+end
+
+---Builds a trap on a territory right away instead of queueing it for end of turn. Used by the Api's
+---IsImmediate=true path. Bypasses <Prefix>MaxPerPlayer - that cap only applies to queued Commerce purchases
+---(see V2.BuildTrapStructures), and an immediate build isn't one.
+---@param trapType V2_TrapType
+---@param game GameServerHook
+---@param addNewOrder fun(order: GameOrder) # Adds a game order, will be processed before any of the rest of the orders
+---@param playerID PlayerID
+---@param targetTerritoryID TerritoryID
+---@param message string
+function V2.AddTrapImmediately(trapType, game, addNewOrder, playerID, targetTerritoryID, message)
+	local territory = game.ServerGame.LatestTurnStanding.Territories[targetTerritoryID];
+	if (territory == nil or territory.OwnerPlayerID ~= playerID) then
+		local event = WL.GameOrderEvent.Create(playerID, "Unable to build " .. trapType.DisplayName .. ": you don't control that territory", {}, {});
+		event.Icon = "BuildFailed";
+		addNewOrder(event);
+		return;
+	end
+
+	local primedStructId = V2.GetStructureIds(trapType);
+
+	local copiedStructures = {};
+	for key, value in pairs(territory.Structures or {}) do
+		copiedStructures[key] = value;
+	end
+	copiedStructures[primedStructId] = (copiedStructures[primedStructId] or 0) + 1;
+
+	local trapSettings = V2.GetTrapSettings(trapType);
+	local privateGameData = Mod.PrivateGameData --[[@as V2_PrivateGameData]];
+	table.insert(V2.GetTrapPieces(privateGameData, trapType), {
+		TerritoryID = targetTerritoryID,
+		Triggered = false,
+		FinalTurnTriggered = nil,
+		FinalTurnExpires = trapSettings.HasLimitedLifespan and (game.ServerGame.Game.TurnNumber + (trapSettings.Lifespan or 2)) or nil,
+	});
+	Mod.PrivateGameData = privateGameData;
+
+	local territoryModification = WL.TerritoryModification.Create(targetTerritoryID);
+	territoryModification.SetStructuresOpt = copiedStructures;
+
+	local td = game.Map.Territories[targetTerritoryID];
+	local event = WL.GameOrderEvent.Create(playerID, message, {}, { territoryModification });
+	event.JumpToActionSpotOpt = WL.RectangleVM.Create(td.MiddlePointX, td.MiddlePointY, td.MiddlePointX, td.MiddlePointY);
+	event.TerritoryAnnotationsOpt = { [targetTerritoryID] = WL.TerritoryAnnotation.Create("Build " .. trapType.DisplayName, 8, GetColourIntegerFromHex(BUTTON_COLOURS.DarkGreen)) };
+	event.Icon = "Build";
+	addNewOrder(event);
+end
+
+---Manually triggers a trap on a territory: converts any primed pieces there into triggered ones, independent of the
+---normal attack/transfer flow (no ally/trappable-unit checks - those only make sense against an actual incoming
+---attack). Used by the Api, and callable from other mods via ModAuth.
+---@param trapType V2_TrapType
+---@param game GameServerHook
+---@param addNewOrder fun(order: GameOrder) # Adds a game order, will be processed before any of the rest of the orders
+---@param territoryID TerritoryID
+---@param playerID PlayerID # Attributed as the resulting event's player
+function V2.TriggerTrap(trapType, game, addNewOrder, territoryID, playerID)
+	local primedStructId, triggeredStructId = V2.GetStructureIds(trapType);
+
+	local existingStructures = game.ServerGame.LatestTurnStanding.Territories[territoryID].Structures;
+	if (existingStructures == nil) then return; end;
+
+	local numberOfPrimed = existingStructures[primedStructId] or 0;
+	if (numberOfPrimed == 0) then return; end;
+
+	local privateGameData = Mod.PrivateGameData --[[@as V2_PrivateGameData]];
+	local trapSettings = V2.GetTrapSettings(trapType);
+	local finalTurnTriggered = game.ServerGame.Game.TurnNumber + trapSettings.TriggerDuration;
+
+	for _, piece in pairs(V2.GetTrapPieces(privateGameData, trapType)) do
+		if (piece.TerritoryID == territoryID and not piece.Triggered) then
+			piece.Triggered = true;
+			piece.FinalTurnTriggered = finalTurnTriggered;
+		end
+	end
+
+	local structures = {};
+	for key, value in pairs(existingStructures) do
+		structures[key] = value;
+	end
+	structures[primedStructId] = 0;
+	structures[triggeredStructId] = numberOfPrimed;
+
+	local territoryModification = WL.TerritoryModification.Create(territoryID);
+	territoryModification.SetStructuresOpt = structures;
+
+	local message = "Triggered " .. trapType.DisplayName;
+	local event = WL.GameOrderEvent.Create(playerID, message, {}, {territoryModification});
+	event.TerritoryAnnotationsOpt = { [territoryID] = WL.TerritoryAnnotation.Create(message, 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany)) };
+	event.Icon = "Triggered";
+	addNewOrder(event, true);
+
+	Mod.PrivateGameData = privateGameData;
+end
+
+---Manually resets any triggered trap of the given type on a territory back to primed (or destroys it if
+---<Prefix>SingleUse), independent of its normal trigger-duration expiry (V2.ResetTriggeredTrap). Used by the Api,
+---and callable from other mods via ModAuth.
+---@param trapType V2_TrapType
+---@param game GameServerHook
+---@param addNewOrder fun(order: GameOrder) # Adds a game order, will be processed before any of the rest of the orders
+---@param territoryID TerritoryID
+---@param playerID PlayerID # Attributed as the resulting event's player
+function V2.ResetTrap(trapType, game, addNewOrder, territoryID, playerID)
+	local primedStructId, triggeredStructId = V2.GetStructureIds(trapType);
+	local trapSettings = V2.GetTrapSettings(trapType);
+
+	local existingStructures = game.ServerGame.LatestTurnStanding.Territories[territoryID].Structures;
+	if (existingStructures == nil) then return; end;
+
+	local existingTriggered = existingStructures[triggeredStructId] or 0;
+	if (existingTriggered == 0) then return; end;
+
+	local privateGameData = Mod.PrivateGameData --[[@as V2_PrivateGameData]];
+	local pieces = V2.GetTrapPieces(privateGameData, trapType);
+
+	local resetCount = 0;
+	for _, piece in pairs(pieces) do
+		if (piece.TerritoryID == territoryID and piece.Triggered) then
+			resetCount = resetCount + 1;
+		end
+	end
+
+	if (resetCount == 0) then return; end;
+
+	if (trapSettings.SingleUse) then
+		removeWhere(pieces, function(piece) return piece.TerritoryID == territoryID and piece.Triggered; end);
+	else
+		for _, piece in pairs(pieces) do
+			if (piece.TerritoryID == territoryID and piece.Triggered) then
+				piece.Triggered = false;
+				piece.FinalTurnTriggered = nil;
+			end
+		end
+	end
+
+	-- clamp in case the structure count and tracked pieces ever disagree, so we never go negative
+	local resettingCount = math.min(resetCount, existingTriggered);
+
+	local structureDeltas = { [triggeredStructId] = -resettingCount };
+	if (not trapSettings.SingleUse) then
+		structureDeltas[primedStructId] = resettingCount;
+	end
+
+	local territoryModification = WL.TerritoryModification.Create(territoryID);
+	territoryModification.AddStructuresOpt = structureDeltas;
+
+	local message = trapSettings.SingleUse and (trapType.DisplayName .. " expires") or ("Reset " .. trapType.DisplayName);
+	local event = WL.GameOrderEvent.Create(playerID, message, {}, {territoryModification});
+	event.TerritoryAnnotationsOpt = { [territoryID] = WL.TerritoryAnnotation.Create(message, 8, GetColourIntegerFromHex(BUTTON_COLOURS.Mahogany)) };
+	event.Icon = trapSettings.SingleUse and "Destroyed" or "Reset";
+	addNewOrder(event);
 
 	Mod.PrivateGameData = privateGameData;
 end
