@@ -145,14 +145,23 @@ function GetAllSlotOptions()
     return options;
 end
 
---Finds the PlayerID occupying slot at game start, or nil if that slot wasn't filled.
+--Finds the PlayerID who owns a territory assigned to slot, or nil if no such territory is owned by a player yet.
+--GamePlayer.Slot is unreliable (observed nil for every player, even after distribution), so this resolves slots
+--via the scenario's own territory->slot map and the standing's actual territory ownership instead.
 ---@param game GameServerHook
+---@param standing GameStanding
 ---@param slot integer
 ---@return PlayerID | nil
-function FindPlayerIDForSlot(game, slot)
-    for playerID, player in pairs(game.Game.Players) do
-        if (player.Slot == slot) then
-            return playerID;
+function FindPlayerIDForSlot(game, standing, slot)
+    local scenario = game.Settings.CustomScenario;
+    if (scenario == nil) then return nil; end
+
+    for territoryID, scenarioTerritory in pairs(scenario.Territories) do
+        if (scenarioTerritory.Slot == slot) then
+            local territoryStanding = standing.Territories[territoryID];
+            if (territoryStanding ~= nil and not territoryStanding.IsNeutral) then
+                return territoryStanding.OwnerPlayerID;
+            end
         end
     end
     return nil;
