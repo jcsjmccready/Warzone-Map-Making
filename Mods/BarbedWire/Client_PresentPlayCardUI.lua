@@ -89,6 +89,8 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
             UI.CreateImage(iconColumn).SetSprite(trapPrefix .. ".png").SetPreferredWidth(60).SetPreferredHeight(60);
             UI.CreateLabel(iconColumn).SetText("(" .. trapDisplayName .. ")").SetAlignment(WL.TextAlignmentOptions.Center); --also mirrors the territory name label so both columns are the same height
         end
+
+        TargetTerritoryClicked(); --start straight in territory select mode instead of waiting for the button to be clicked
     end);
 end
 

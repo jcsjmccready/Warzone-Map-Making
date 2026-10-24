@@ -1,3 +1,4 @@
+require("Application");
 
 ---@param game GameServerHook
 ---@param standing GameStanding

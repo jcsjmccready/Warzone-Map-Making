@@ -1,0 +1,5 @@
+This mod lets the game-maker, in a custom scenario game, give designated slots a ONE-TIME starting income boost or penalty.
+
+In a Commerce game, the slot's gold is adjusted once at the start of the game.
+In a non-Commerce game, the slot's income is adjusted for turn 0 only; later turns are unaffected.
+If a slot isn't filled, then no change is applied.

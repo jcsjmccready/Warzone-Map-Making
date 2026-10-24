@@ -1,7 +1,7 @@
 require("Utilities");
 require("ModConstants");
 require("IO.Writer");
-require("Templates"); -- ROW_TEMPLATES lives there, kept separate so it's easy to find and update
+require("Templates"); -- TEMPLATE_GROUPS lives there, kept separate so it's easy to find and update
 
 ---Client_PresentMenuUI hook
 ---@param rootParent RootParent
@@ -180,11 +180,17 @@ function Client_PresentMenuUI(rootParent, setMaxSize, setScrollable, game, close
         .SetText("Load template...")
         .SetColor(BUTTON_COLOURS.Purple)
         .SetOnClick(function()
-            local options = {};
-            for _, template in ipairs(ROW_TEMPLATES) do
-                table.insert(options, { text = template.Name, selected = function() LoadTemplate(template); end });
+            local groupOptions = {};
+            for _, group in ipairs(TEMPLATE_GROUPS) do
+                table.insert(groupOptions, { text = group.Name, selected = function()
+                    local templateOptions = {};
+                    for _, template in ipairs(group.Templates) do
+                        table.insert(templateOptions, { text = template.Name, selected = function() LoadTemplate(template); end });
+                    end
+                    UI.PromptFromList(group.Name .. ": choose a template", templateOptions);
+                end });
             end
-            UI.PromptFromList("Choose a template", options);
+            UI.PromptFromList("Choose a template group", groupOptions);
         end);
 
     rowsContainer = UI.CreateVerticalLayoutGroup(vert).SetFlexibleWidth(1);

@@ -180,7 +180,11 @@ function PointsOfInterestApplication.PlaceInitialPointsOfInterest(game, standing
         for _, name in ipairs(NATO_NAMES) do
             local missingForPoi = missingTerritoryNamesByPoi[name];
             if (missingForPoi ~= nil) then
-                table.insert(warnings, name .. ": " .. table.concat(missingForPoi, ", "));
+                local quotedNames = {};
+                for i, territoryName in ipairs(missingForPoi) do
+                    quotedNames[i] = "'" .. territoryName .. "'";
+                end
+                table.insert(warnings, name .. ": " .. table.concat(quotedNames, ", "));
             end
         end
     end

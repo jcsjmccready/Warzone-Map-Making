@@ -229,6 +229,7 @@ function Client_PresentConfigureUI(rootParent)
         -- itself with the result, instead of a floating popup
         local confirmContainer = UI.CreateVerticalLayoutGroup(planningModeHeading).SetFlexibleWidth(1);
         local confirmHeading; -- the destroyable Yes/No prompt, nil while not confirming
+        local isConfirming = false; -- true while confirmHeading is shown, so the paste box can't spawn another prompt
 
         ---Actually overwrites the placement rows from the pasted data - only called once the player confirms
         local function DoOverwritePlacementConfiguration()
@@ -256,12 +257,16 @@ function Client_PresentConfigureUI(rootParent)
         end
 
         planningDataField.SetOnValueChanged(function()
+            if (isConfirming) then
+                return;
+            end
             local text = planningDataField.GetText();
             overwriteConfigBtn.SetInteractable(text ~= nil and text ~= "");
         end);
 
         overwriteConfigBtn.SetOnClick(function()
             overwriteConfigBtn.SetInteractable(false);
+            isConfirming = true;
 
             confirmHeading = UI.CreateVerticalLayoutGroup(confirmContainer).SetFlexibleWidth(1);
             UI.CreateLabel(confirmHeading).SetText("This will overwrite the current placement configuration. Are you sure?");
@@ -273,6 +278,7 @@ function Client_PresentConfigureUI(rootParent)
                 .SetFlexibleWidth(1)
                 .SetOnClick(function()
                     UI.Destroy(confirmHeading);
+                    isConfirming = false;
                     overwriteConfigBtn.SetInteractable(true);
                     DoOverwritePlacementConfiguration();
                 end);
@@ -282,6 +288,7 @@ function Client_PresentConfigureUI(rootParent)
                 .SetFlexibleWidth(1)
                 .SetOnClick(function()
                     UI.Destroy(confirmHeading);
+                    isConfirming = false;
                     overwriteConfigBtn.SetInteractable(true);
                 end);
         end);
