@@ -8,8 +8,7 @@ function Client_CreateGame(settings, alert)
         alert("You must include the Airlift card for the Flak Gun card mod to work.");
     end
 
-    if (not Mod.Settings.FlakGunTargetingAirliftSourceCancels
-        and not Mod.Settings.FlakGunTargetingAirliftDestinationHurts) then
-        alert("The Flak Gun card must have at least one of its damage options enabled.");
+    if (not Mod.Settings.FlakGunAirliftInteractionEnabled) then
+        alert("The Flak Gun card must have Airlift Interaction enabled.");
     end
 end

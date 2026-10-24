@@ -1,1 +1,2 @@
-The Flak Gun Card allows a player to shoot at airlifts targeting your chosen location, dealing damage or cancelling them dependant on configuration.
+The Flak Gun Card allows a player to interact with "airborne" mechanics.
+Examples include shooting down an airlift, cancelling it, or damaging the armies inside.

@@ -1,3 +1,5 @@
+require("Utilities");
+
 ---Joins a list of strings into a natural-language list, e.g. {"a"} -> "a", {"a", "b"} -> "a and b",
 ---{"a", "b", "c"} -> "a, b, and c"
 ---@param items string[]
@@ -13,6 +15,8 @@ end
 ---@param alert fun(message: string) # Alert the player that something is wrong, for example, when a setting is not configured correctly. When invoked, cancels the player from saving and returning
 ---@param addCard fun(name: string, description: string, filename: string, piecesForWholeCard: integer, piecesPerTurn: integer, initialPieces: integer, cardWeight: number, duration: integer | nil, expireBehaviour: ActiveCardExpireBehaviorOptions): CardID # Creates a custom card. Can be invoked multiple times to create multiple cards. Every invokation will return the CardID of the just created card, make sure to save this in the settings of your mod
 function Client_SaveConfigureUI(alert, addCard)
+    Mod.Settings.Version = LATEST_SETTINGS_VERSION;
+
     Mod.Settings.FlakGunNumPieces = flakGunNumPieces.GetValue();
     Mod.Settings.FlakGunCardWeight = flakGunCardWeight.GetValue();
     Mod.Settings.FlakGunMinPieces = flakGunMinPieces.GetValue();
@@ -46,29 +50,59 @@ function Client_SaveConfigureUI(alert, addCard)
     end
 
     Mod.Settings.FlakGunFriendlyFire = flakGunFriendlyFire.GetIsChecked();
-    Mod.Settings.FlakGunTargetingAirliftSourceCancels = flakGunTargetingAirliftSourceCancels.GetIsChecked();
-    Mod.Settings.FlakGunTargetingAirliftDestinationHurts = flakGunTargetingAirliftDestinationHurts.GetIsChecked();
-    if(Mod.Settings.FlakGunTargetingAirliftDestinationHurts) then
-        Mod.Settings.FlakGunAirliftDamagePercent = flakGunAirliftDamagePercent.GetValue();
-        Mod.Settings.FlakGunAirliftMinDamage = flakGunAirliftMinDamage.GetValue();
 
-        if (Mod.Settings.FlakGunAirliftDamagePercent < 0) then
-            alert("Flak Gun airlift damage percent cannot be less than 0");
+    Mod.Settings.FlakGunAirliftInteractionEnabled = flakGunAirliftInteractionEnabled.GetIsChecked();
+
+    if (Mod.Settings.FlakGunAirliftInteractionEnabled) then
+        Mod.Settings.FlakGunSourceCancelsAirlift = flakGunSourceCancelsAirlift.GetIsChecked();
+        Mod.Settings.FlakGunSourceDamagesArmies = flakGunSourceDamagesArmies.GetIsChecked();
+        Mod.Settings.FlakGunDestinationCancelsAirlift = flakGunDestinationCancelsAirlift.GetIsChecked();
+        Mod.Settings.FlakGunDestinationDamagesArmies = flakGunDestinationDamagesArmies.GetIsChecked();
+    else
+        Mod.Settings.FlakGunSourceCancelsAirlift = nil;
+        Mod.Settings.FlakGunSourceDamagesArmies = nil;
+        Mod.Settings.FlakGunDestinationCancelsAirlift = nil;
+        Mod.Settings.FlakGunDestinationDamagesArmies = nil;
+    end
+
+    if (Mod.Settings.FlakGunSourceDamagesArmies) then
+        Mod.Settings.FlakGunSourceDamagePercent = flakGunSourceDamagePercent.GetValue();
+        Mod.Settings.FlakGunSourceMinDamage = flakGunSourceMinDamage.GetValue();
+
+        if (Mod.Settings.FlakGunSourceDamagePercent < 0) then
+            alert("Flak Gun source damage percent cannot be less than 0");
             return;
         end
-        if (Mod.Settings.FlakGunAirliftMinDamage < 0) then
-            alert("Flak Gun airlift minimum damage cannot be less than 0");
+        if (Mod.Settings.FlakGunSourceMinDamage < 0) then
+            alert("Flak Gun source minimum damage cannot be less than 0");
             return;
         end
+    else
+        Mod.Settings.FlakGunSourceDamagePercent = nil;
+        Mod.Settings.FlakGunSourceMinDamage = nil;
     end
 
-    local flakGunEffects = {};
-    if (Mod.Settings.FlakGunTargetingAirliftDestinationHurts) then
-        table.insert(flakGunEffects, "deal damage to armies in arriving airlifts");
+    if (Mod.Settings.FlakGunDestinationDamagesArmies) then
+        Mod.Settings.FlakGunDestinationDamagePercent = flakGunDestinationDamagePercent.GetValue();
+        Mod.Settings.FlakGunDestinationMinDamage = flakGunDestinationMinDamage.GetValue();
+
+        if (Mod.Settings.FlakGunDestinationDamagePercent < 0) then
+            alert("Flak Gun destination damage percent cannot be less than 0");
+            return;
+        end
+        if (Mod.Settings.FlakGunDestinationMinDamage < 0) then
+            alert("Flak Gun destination minimum damage cannot be less than 0");
+            return;
+        end
+    else
+        Mod.Settings.FlakGunDestinationDamagePercent = nil;
+        Mod.Settings.FlakGunDestinationMinDamage = nil;
     end
-    if (Mod.Settings.FlakGunTargetingAirliftSourceCancels) then
-        table.insert(flakGunEffects, "destroy departing airlifts");
-    end
+
+    local flakGunEffects = {
+        Mod.Settings.FlakGunDestinationDamagesArmies and "deal damage to armies in arriving airlifts" or "cancel arriving airlifts",
+        Mod.Settings.FlakGunSourceDamagesArmies and "deal damage to armies in departing airlifts" or "cancel departing airlifts",
+    };
 
     local flakGunBaseDescription = "Shoot a flak gun at a chosen territory.";
     if (#flakGunEffects > 0) then
