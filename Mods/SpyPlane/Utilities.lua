@@ -103,3 +103,4 @@ TEXT_DEFAULT_COLOUR = GRAY_COLOURS.TextDefault;
 ERROR_COLOUR = "#FF0000";
 BUTTON_COLOURS = GetButtonColors();
 SUBHEADING_COLOUR = BUTTON_COLOURS.Artichoke;
+SNAPSHOT_AND_ICON_MIN_VERSION = "6.06"; --UI.CreateSnapshot/UI.CreateImage don't exist below this app version
