@@ -1,4 +1,7 @@
 require('Utilities')
+require('Flight.Flight')
+require('Flight.Path')
+require('Flight.Territory')
 
 ---Client_PresentPlayCardUI hook
 ---@param game GameClientHook
@@ -83,6 +86,8 @@ function Present_SpyPlanePlayCardUI(game, playCard, closeCardsDialog)
                     close();
                 end
             end);
+
+        SpyPlaneStartTerritoryClicked();
     end);
 end
 
@@ -92,6 +97,17 @@ function SpyPlaneStartTerritoryClicked()
     SpyPlaneStartTerritoryBtn.SetInteractable(false);
     SpyPlaneEndTerritoryBtn.SetInteractable(false);
     SpyPlanePlayCardBtn.SetInteractable(false);
+
+    --picking a new start invalidates whatever start/end territory (and its distance checks) was already selected,
+    --so clear the old highlight immediately rather than leaving the previous selection's highlight showing while
+    --we wait for the new start territory to be clicked
+    SpyPlaneStartTerritoryID = nil;
+    SpyPlaneStartTerritoryName = nil;
+    SpyPlaneEndTerritoryID = nil;
+    SpyPlaneEndTerritoryName = nil;
+    SpyPlaneEndTerritoryInstructionLabel.SetText("");
+    UpdateSpyPlaneHighlight();
+    UpdateSpyPlanePlayCardButtonText();
 end
 
 function SpyPlaneStartTerritoryHandleClick(terrDetails)
@@ -187,10 +203,25 @@ function UpdateSpyPlaneFlightDistanceLabel()
     end
 end
 
+---Builds the (already max-distance-clamped) FlightPath between two territories' centerpoints.
+---@param startTerritoryID TerritoryID
+---@param endTerritoryID TerritoryID
+---@param maxFlightDistance number
+---@return FlightPath
+function BuildSpyPlanePath(startTerritoryID, endTerritoryID, maxFlightDistance)
+    local startTd = Game.Map.Territories[startTerritoryID];
+    local endTd = Game.Map.Territories[endTerritoryID];
+    local path = Flight.NewPolylinePath({
+        { X = startTd.MiddlePointX, Y = startTd.MiddlePointY },
+        { X = endTd.MiddlePointX, Y = endTd.MiddlePointY },
+    });
+    return Flight.Clamp(path, maxFlightDistance);
+end
+
 ---Returns " (N steps)" describing how many turns a Distance-based Steps flight between the given territories will
 ---take, or "" if Steps/Distance mode isn't the configured flight style (Instant and Segment-based Steps don't have
----a meaningful "number of steps" to report here). Always at least 2, matching HandleFlySpyPlane's server-side step
----count so the start and end territories are never collapsed into a single step.
+---a meaningful "number of steps" to report here). Always at least 2, matching SpyPlaneApplication.FlySpyPlane's
+---server-side step count so the start and end territories are never collapsed into a single step.
 ---@param startTerritoryID TerritoryID
 ---@param endTerritoryID TerritoryID
 function GetSpyPlaneStepCountSuffix(startTerritoryID, endTerritoryID)
@@ -200,8 +231,8 @@ function GetSpyPlaneStepCountSuffix(startTerritoryID, endTerritoryID)
 
     local maxFlightDistance = Mod.Settings.SpyPlaneMaxFlightDistance or 300;
     local maxDistancePerStep = Mod.Settings.SpyPlaneMaxDistancePerStep or 200;
-    local _, _, _, _, totalDistance = GetClampedLineSegment(Game, startTerritoryID, endTerritoryID, maxFlightDistance);
-    local stepCount = math.max(2, math.ceil(totalDistance / maxDistancePerStep));
+    local path = BuildSpyPlanePath(startTerritoryID, endTerritoryID, maxFlightDistance);
+    local stepCount = math.max(2, math.ceil(path.TotalLength / maxDistancePerStep));
 
     return " (" .. stepCount .. " steps)";
 end
@@ -223,17 +254,29 @@ function GetSpyPlanePercentOverMaxFlightDistance(startTerritoryID, endTerritoryI
     return math.floor(((flightDistance / maxFlightDistance) - 1) * 100 + 0.5);
 end
 
----Highlights the territories that fall within the Spy Plane's line of flight (its Inclusion Generosity used as the
----"thickness" of the line, and its Maximum Flight Distance capping how far along the line is covered), once both
----a start and end territory have been picked. Clears highlighting otherwise.
+---Highlights the territories within the Spy Plane's reach: once both a start and end territory have been picked,
+---the territories that fall within its line of flight (its Inclusion Generosity used as the "thickness" of the
+---line, and its Maximum Flight Distance capping how far along the line is covered); once only a start territory
+---has been picked, every territory within Maximum Flight Distance of it (the valid range for an end territory).
+---Clears highlighting if neither is picked yet.
 function UpdateSpyPlaneHighlight()
-    if (SpyPlaneStartTerritoryID == nil or SpyPlaneEndTerritoryID == nil) then
+    local maxFlightDistance = Mod.Settings.SpyPlaneMaxFlightDistance or 300;
+
+    if (SpyPlaneStartTerritoryID == nil) then
         Game.HighlightTerritories({});
         return;
     end
 
+    if (SpyPlaneEndTerritoryID == nil) then
+        local startTd = Game.Map.Territories[SpyPlaneStartTerritoryID];
+        local startPoint = { X = startTd.MiddlePointX, Y = startTd.MiddlePointY };
+        local territoriesWithinRange = Flight.GetTerritoriesNearPoints(Game, { startPoint, startPoint }, maxFlightDistance);
+        Game.HighlightTerritories(territoriesWithinRange);
+        return;
+    end
+
     local inclusionGenerosity = Mod.Settings.SpyPlaneInclusionGenerosity or 50;
-    local maxFlightDistance = Mod.Settings.SpyPlaneMaxFlightDistance or 300;
-    local coveredTerritories = GetTerritoriesNearLine(Game, SpyPlaneStartTerritoryID, SpyPlaneEndTerritoryID, inclusionGenerosity, maxFlightDistance);
+    local path = BuildSpyPlanePath(SpyPlaneStartTerritoryID, SpyPlaneEndTerritoryID, maxFlightDistance);
+    local coveredTerritories = Flight.GetTerritoriesAlongPath(Game, path, inclusionGenerosity);
     Game.HighlightTerritories(coveredTerritories);
 end
