@@ -595,7 +595,16 @@ function RefreshSpyPlaneStepsPreview()
 
     if (not SpyPlaneStepsRowShown) then return; end
 
-    SpyPlaneStepsPreview = ComputeSpyPlaneStepsPreview();
+    local preview = ComputeSpyPlaneStepsPreview();
+    if (#preview == 0) then
+        --nothing to preview (e.g. a degenerate 0-length path) - close the row rather than show an empty one
+        SpyPlaneStepsRowShown = false;
+        RebuildSpyPlaneStepsRow();
+        UpdateSpyPlaneSelectedModeHighlight();
+        return;
+    end
+
+    SpyPlaneStepsPreview = preview;
     SpyPlaneStepsPreviewIndex = 1;
     UpdateSpyPlaneStepsPreviewDisplay();
 end
