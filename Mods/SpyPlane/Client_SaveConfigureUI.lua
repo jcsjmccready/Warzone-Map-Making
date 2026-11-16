@@ -24,6 +24,14 @@ function Client_SaveConfigureUI(alert, addCard)
         return;
     end
 
+    Mod.Settings.SpyPlaneEnableLineFlight = spyPlaneEnableLineFlight.GetIsChecked();
+    Mod.Settings.SpyPlaneEnableCircleFlight = spyPlaneEnableCircleFlight.GetIsChecked();
+
+    if (not Mod.Settings.SpyPlaneEnableLineFlight and not Mod.Settings.SpyPlaneEnableCircleFlight) then
+        alert("You must enable at least one flight type (Line or Circle) for the Spy Plane card");
+        return;
+    end
+
     Mod.Settings.SpyPlaneInclusionGenerosity = spyPlaneInclusionGenerosity.GetValue();
     Mod.Settings.SpyPlaneMaxFlightDistance = spyPlaneMaxFlightDistance.GetValue();
     Mod.Settings.SpyPlaneFlightStyleInstant = spyPlaneFlightStyleInstant.GetIsChecked();

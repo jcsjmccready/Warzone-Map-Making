@@ -13,7 +13,7 @@ end
 
 function Create_SpyPlaneCard_SubOptions_UI(rootParent)
     spyPlaneCardVHeading = UI.CreateVerticalLayoutGroup(rootParent);
-    UI.CreateLabel(spyPlaneCardVHeading).SetText("Card Settings:").SetColor(BUTTON_COLOURS.LightBlue);
+    UI.CreateLabel(spyPlaneCardVHeading).SetText("Card Settings:").SetColor(SUBHEADING_COLOUR);
 
     local horz = UI.CreateHorizontalLayoutGroup(spyPlaneCardVHeading);
     UI.CreateLabel(horz).SetText('Number of pieces to divide the card into').SetPreferredWidth(290);
@@ -45,6 +45,14 @@ function Create_SpyPlaneCard_SubOptions_UI(rootParent)
         .SetValue(Mod.Settings.SpyPlaneInitialPieces or 0);
 
     UI.CreateLabel(spyPlaneCardVHeading).SetText('Mod Behaviour:').SetColor(SUBHEADING_COLOUR);
+
+    spyPlaneEnableLineFlight = UI.CreateCheckBox(spyPlaneCardVHeading)
+        .SetText('Enable Line flight')
+        .SetIsChecked(Mod.Settings.SpyPlaneEnableLineFlight ~= false);
+
+    spyPlaneEnableCircleFlight = UI.CreateCheckBox(spyPlaneCardVHeading)
+        .SetText('Enable Circle flight')
+        .SetIsChecked(Mod.Settings.SpyPlaneEnableCircleFlight or false);
 
     local horz = UI.CreateHorizontalLayoutGroup(spyPlaneCardVHeading);
     UI.CreateLabel(horz).SetText('Inclusion generosity').SetPreferredWidth(290);

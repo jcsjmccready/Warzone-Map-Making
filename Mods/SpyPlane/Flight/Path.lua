@@ -26,6 +26,7 @@ Flight.PathType = {
 ---@field CenterY number | nil # Loop only
 ---@field Radius number | nil # Loop only
 ---@field StartAngleRadians number | nil # Loop only - the angle (from CenterX/CenterY) the loop starts and ends at
+---@field Direction number | nil # Loop only - +1 or -1, which way increasing distance travels around the loop
 
 ---Max angular step used when a Loop path is approximated as a sequence of straight points (for territory distance
 ---checks, which treat consecutive points as a straight sub-segment). Small enough to keep that approximation close
@@ -65,7 +66,7 @@ end
 ---@return FlightPoint
 local function LoopPointAt(path, distance)
 	distance = ClampDistance(path, distance);
-	local angle = (path.StartAngleRadians or 0) + (distance / (path.Radius --[[@as number]]));
+	local angle = (path.StartAngleRadians or 0) + (path.Direction or 1) * (distance / (path.Radius --[[@as number]]));
 	return {
 		X = (path.CenterX --[[@as number]]) + (path.Radius --[[@as number]]) * math.cos(angle),
 		Y = (path.CenterY --[[@as number]]) + (path.Radius --[[@as number]]) * math.sin(angle),
@@ -135,8 +136,9 @@ end
 ---@param centerY number
 ---@param radius number
 ---@param startAngleRadiansOpt number | nil # Defaults to 0
+---@param directionOpt number | nil # +1 or -1, which way increasing distance travels around the loop. Defaults to 1
 ---@return FlightPath
-function Flight.NewLoopPath(centerX, centerY, radius, startAngleRadiansOpt)
+function Flight.NewLoopPath(centerX, centerY, radius, startAngleRadiansOpt, directionOpt)
 	---@type FlightPath
 	return {
 		Type = Flight.PathType.Loop,
@@ -145,6 +147,7 @@ function Flight.NewLoopPath(centerX, centerY, radius, startAngleRadiansOpt)
 		CenterY = centerY,
 		Radius = radius,
 		StartAngleRadians = startAngleRadiansOpt or 0,
+		Direction = directionOpt or 1,
 	};
 end
 
@@ -167,6 +170,7 @@ function Flight.Clamp(path, maxLength)
 			CenterY = path.CenterY,
 			Radius = path.Radius,
 			StartAngleRadians = path.StartAngleRadians,
+			Direction = path.Direction,
 		};
 	end
 

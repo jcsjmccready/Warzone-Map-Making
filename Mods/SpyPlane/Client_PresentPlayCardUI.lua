@@ -17,7 +17,7 @@ function Client_PresentPlayCardUI(game, cardInstance, playCard, closeCardsDialog
     end
 end
 
----Presents the Spy Plane's start/end territory selection dialog.
+---Presents the Spy Plane's flight-shape (Line/Circle) and territory selection dialog.
 ---@param game GameClientHook
 ---@param playCard fun(orderListMessage: string, modData: string, turnPhase: EnumTurnPhase, annotations: table<TerritoryID, TerritoryAnnotation>, viewSpot: RectangleVM)
 ---@param closeCardsDialog fun()
@@ -29,109 +29,217 @@ function Present_SpyPlanePlayCardUI(game, playCard, closeCardsDialog)
 
     closeCardsDialog();
 
-    --reset selection state each time the dialog is (re)opened
+    local lineEnabled = IsSpyPlaneLineFlightEnabled();
+    local circleEnabled = IsSpyPlaneCircleFlightEnabled();
+
+    --reset selection state each time the dialog is (re)opened - default to Line unless only Circle is enabled
+    --(Client_CreateGame.lua guarantees at least one of the two is enabled)
+    SpyPlaneSelectedPathType = (not lineEnabled and circleEnabled) and Flight.PathType.Loop or Flight.PathType.Polyline;
     SpyPlaneStartTerritoryID = nil;
     SpyPlaneStartTerritoryName = nil;
     SpyPlaneEndTerritoryID = nil;
     SpyPlaneEndTerritoryName = nil;
+    SpyPlaneCircleTerritoryID = nil;
+    SpyPlaneCircleTerritoryName = nil;
+    SpyPlaneStepsRowShown = false;
+    SpyPlaneStepsPreviewRow = nil;
 
     game.CreateDialog(function(rootParent, setMaxSize, setScrollable, game, close)
         Close = close;
-        setMaxSize(400, 330);
+        SpyPlanePlayCard = playCard;
+        setMaxSize(400, 360);
         local vert = UI.CreateVerticalLayoutGroup(rootParent).SetFlexibleWidth(1); --set flexible width so things don't jump around while we change InstructionLabel
+        local mainRow = UI.CreateHorizontalLayoutGroup(vert).SetFlexibleWidth(1);
+        SpyPlaneDialogVert = mainRow;
 
-        local territoryButtonsHGroup = UI.CreateHorizontalLayoutGroup(vert).SetFlexibleWidth(1);
-        SpyPlaneStartTerritoryBtn = UI.CreateButton(territoryButtonsHGroup)
-            .SetText("Select Source")
-            .SetColor(BUTTON_COLOURS.LightBlue)
-            .SetOnClick(SpyPlaneStartTerritoryClicked)
-            .SetFlexibleWidth(0.5);
+        --only offer a Line/Circle choice when both are enabled - with only one enabled, skip straight to it.
+        --the column itself is still needed for the Steps button alone, so it's shown whenever either applies.
+        local stepsEnabled = Mod.Settings.SpyPlaneFlightStyleSteps == true;
+        SpyPlaneLineModeBtn = nil;
+        SpyPlaneCircleModeBtn = nil;
+        SpyPlaneStepsModeBtn = nil;
+        if ((lineEnabled and circleEnabled) or stepsEnabled) then
+            local modeColumn = UI.CreateVerticalLayoutGroup(mainRow).SetFlexibleWidth(0).SetFlexibleHeight(1);
 
-        SpyPlaneEndTerritoryBtn = UI.CreateButton(territoryButtonsHGroup)
-            .SetText("Select Target")
-            .SetColor(BUTTON_COLOURS.LightBlue)
-            .SetOnClick(SpyPlaneEndTerritoryClicked)
-            .SetFlexibleWidth(0.5);
+            if (lineEnabled and circleEnabled) then
+                SpyPlaneLineModeBtn = UI.CreateButton(modeColumn)
+                    .SetIcon("Line.png")
+                    .SetText("")
+                    .SetInteractable(false)
+                    .SetOnClick(SpyPlaneLineModeClicked)
+                    .SetPreferredWidth(40)
+                    .SetPreferredHeight(40)
+                    .SetFlexibleWidth(0);
 
-        SpyPlaneStartTerritoryInstructionLabel = UI.CreateLabel(vert).SetText("");
-        SpyPlaneEndTerritoryInstructionLabel = UI.CreateLabel(vert).SetText("");
+                SpyPlaneCircleModeBtn = UI.CreateButton(modeColumn)
+                    .SetIcon("Circle.png")
+                    .SetText("")
+                    .SetOnClick(SpyPlaneCircleModeClicked)
+                    .SetPreferredWidth(40)
+                    .SetPreferredHeight(40)
+                    .SetFlexibleWidth(0);
+            end
 
-        --Territory snapshots (the actual shape of the selected territory) don't exist in app versions below
-        --SNAPSHOT_AND_ICON_MIN_VERSION, so only the name labels still work there
-        local displayRow = UI.CreateHorizontalLayoutGroup(vert).SetFlexibleWidth(1);
-        local startColumn = UI.CreateVerticalLayoutGroup(displayRow).SetPreferredWidth(120).SetFlexibleWidth(1).SetCenter(true);
-        SpyPlaneStartTerritorySnapshot = nil;
-        SpyPlaneStartTerritorySnapshotVert = nil;
-        if (WL.IsVersionOrHigher(SNAPSHOT_AND_ICON_MIN_VERSION)) then
-            SpyPlaneStartTerritorySnapshotVert = UI.CreateVerticalLayoutGroup(startColumn).SetCenter(true).SetPreferredHeight(60); --fixed height so the row doesn't resize when the snapshot appears
+            --absorbs the remaining column height so the buttons above stay pinned to the top instead of centering
+            UI.CreateEmpty(modeColumn).SetFlexibleHeight(1);
+
+            if (stepsEnabled) then
+                SpyPlaneStepsModeBtn = UI.CreateButton(modeColumn)
+                    .SetIcon("Steps.png")
+                    .SetText("")
+                    .SetOnClick(SpyPlaneStepsModeClicked)
+                    .SetPreferredWidth(40)
+                    .SetPreferredHeight(40)
+                    .SetFlexibleWidth(0);
+            end
         end
-        SpyPlaneStartTerritoryNameLabel = UI.CreateLabel(startColumn).SetText(" ").SetAlignment(WL.TextAlignmentOptions.Center);
 
-        local endColumn = UI.CreateVerticalLayoutGroup(displayRow).SetPreferredWidth(120).SetFlexibleWidth(1).SetCenter(true);
-        SpyPlaneEndTerritorySnapshot = nil;
-        SpyPlaneEndTerritorySnapshotVert = nil;
-        if (WL.IsVersionOrHigher(SNAPSHOT_AND_ICON_MIN_VERSION)) then
-            SpyPlaneEndTerritorySnapshotVert = UI.CreateVerticalLayoutGroup(endColumn).SetCenter(true).SetPreferredHeight(60); --fixed height so the row doesn't resize when the snapshot appears
+        SpyPlaneModeContentHeading = UI.CreateVerticalLayoutGroup(mainRow).SetFlexibleWidth(1);
+        if (SpyPlaneSelectedPathType == Flight.PathType.Loop) then
+            Create_SpyPlaneCircleMode_UI(SpyPlaneModeContentHeading, playCard);
+        else
+            Create_SpyPlaneLineMode_UI(SpyPlaneModeContentHeading, playCard);
         end
-        SpyPlaneEndTerritoryNameLabel = UI.CreateLabel(endColumn).SetText(" ").SetAlignment(WL.TextAlignmentOptions.Center);
-
-        SpyPlanePlayCardBtn = UI.CreateButton(vert)
-            .SetText("Send Spy Plane")
-            .SetInteractable(false)
-            .SetColor(BUTTON_COLOURS.DarkGreen)
-            .SetFlexibleWidth(1)
-            .SetOnClick(function()
-                if (SpyPlaneStartTerritoryID == nil) then
-                    SpyPlaneStartTerritoryInstructionLabel.SetText("You must select a start territory first").SetColor(ERROR_COLOUR);
-                    return;
-                end
-
-                if (SpyPlaneEndTerritoryID == nil) then
-                    SpyPlaneEndTerritoryInstructionLabel.SetText("You must select an end territory first").SetColor(ERROR_COLOUR);
-                    return;
-                end
-
-                local startTd = game.Map.Territories[SpyPlaneStartTerritoryID];
-                local endTd = game.Map.Territories[SpyPlaneEndTerritoryID];
-                local percentOverMaxFlightDistance = GetSpyPlanePercentOverMaxFlightDistance(SpyPlaneStartTerritoryID, SpyPlaneEndTerritoryID);
-
-                if (percentOverMaxFlightDistance ~= nil) then
-                    SpyPlaneEndTerritoryInstructionLabel.SetText("That flight is " .. percentOverMaxFlightDistance .. "% past the maximum flight distance - select an end territory closer to " .. SpyPlaneStartTerritoryName).SetColor(ERROR_COLOUR);
-                    return;
-                end
-
-                local jumpToSpot = WL.RectangleVM.Create(startTd.MiddlePointX, startTd.MiddlePointY, endTd.MiddlePointX, endTd.MiddlePointY);
-                local modData = "FlySpyPlane_" .. SpyPlaneStartTerritoryID .. "_" .. SpyPlaneEndTerritoryID;
-                local message = "Flies a Spy Plane from " .. SpyPlaneStartTerritoryName .. " to " .. SpyPlaneEndTerritoryName;
-
-                if (playCard(message, modData, WL.TurnPhase.Deploys, {}, jumpToSpot)) then
-                    close();
-                end
-            end);
-
-        local stepsPreviewRow = UI.CreateHorizontalLayoutGroup(vert).SetFlexibleWidth(1);
-        SpyPlaneStepsPreviousBtn = UI.CreateButton(stepsPreviewRow)
-            .SetText("<-")
-            .SetInteractable(false)
-            .SetOnClick(SpyPlaneStepsPreviousClicked)
-            .SetPreferredWidth(50)
-            .SetFlexibleWidth(0);
-
-        SpyPlaneShowStepsBtn = UI.CreateButton(stepsPreviewRow)
-            .SetText("Show Steps")
-            .SetInteractable(false)
-            .SetOnClick(SpyPlaneShowStepsClicked)
-            .SetFlexibleWidth(1);
-
-        SpyPlaneStepsNextBtn = UI.CreateButton(stepsPreviewRow)
-            .SetText("->")
-            .SetInteractable(false)
-            .SetOnClick(SpyPlaneStepsNextClicked)
-            .SetPreferredWidth(50)
-            .SetFlexibleWidth(0);
-
-        SpyPlaneStartTerritoryClicked();
     end);
+end
+
+---Whether Line flight is enabled per the mod's settings. Defaults to true if unset.
+function IsSpyPlaneLineFlightEnabled()
+    return Mod.Settings.SpyPlaneEnableLineFlight ~= false;
+end
+
+---Whether Circle flight is enabled per the mod's settings. Defaults to false if unset.
+function IsSpyPlaneCircleFlightEnabled()
+    return Mod.Settings.SpyPlaneEnableCircleFlight == true;
+end
+
+---Destroys whichever mode's content is currently built and rebuilds the other one in its place - the same
+---destroy-and-recreate-in-a-stable-parent pattern Client_PresentConfigureUI.lua uses for its own radio-driven
+---sub-options.
+function RebuildSpyPlaneModeContent()
+    Game.HighlightTerritories({});
+    UI.Destroy(SpyPlaneModeContentHeading);
+    SpyPlaneModeContentHeading = UI.CreateVerticalLayoutGroup(SpyPlaneDialogVert).SetFlexibleWidth(1);
+
+    --reset all selection state back to the same defaults as when the play card dialog was first opened, rather
+    --than carrying anything over between modes (the steps row, if shown, was just destroyed along with the rest
+    --of the old mode's content anyway)
+    SpyPlaneStartTerritoryID = nil;
+    SpyPlaneStartTerritoryName = nil;
+    SpyPlaneEndTerritoryID = nil;
+    SpyPlaneEndTerritoryName = nil;
+    SpyPlaneCircleTerritoryID = nil;
+    SpyPlaneCircleTerritoryName = nil;
+    SpyPlaneStepsRowShown = false;
+    SpyPlaneStepsPreviewRow = nil;
+
+    if (SpyPlaneSelectedPathType == Flight.PathType.Loop) then
+        Create_SpyPlaneCircleMode_UI(SpyPlaneModeContentHeading, SpyPlanePlayCard);
+    else
+        Create_SpyPlaneLineMode_UI(SpyPlaneModeContentHeading, SpyPlanePlayCard);
+    end
+end
+
+function SpyPlaneLineModeClicked()
+    if (SpyPlaneSelectedPathType == Flight.PathType.Polyline) then return; end
+    SpyPlaneSelectedPathType = Flight.PathType.Polyline;
+    SpyPlaneLineModeBtn.SetInteractable(false);
+    SpyPlaneCircleModeBtn.SetInteractable(true);
+    RebuildSpyPlaneModeContent();
+end
+
+function SpyPlaneCircleModeClicked()
+    if (SpyPlaneSelectedPathType == Flight.PathType.Loop) then return; end
+    SpyPlaneSelectedPathType = Flight.PathType.Loop;
+    SpyPlaneCircleModeBtn.SetInteractable(false);
+    SpyPlaneLineModeBtn.SetInteractable(true);
+    RebuildSpyPlaneModeContent();
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Line mode: pick a source and target territory, flies in a straight (clamped) line between them. Supports
+-- whichever flight style (Instant, Distance-based Steps, Segment-based Steps) is configured in the mod's settings.
+----------------------------------------------------------------------------------------------------------------------
+
+---@param parent UIObject
+---@param playCard fun(orderListMessage: string, modData: string, turnPhase: EnumTurnPhase, annotations: table<TerritoryID, TerritoryAnnotation>, viewSpot: RectangleVM)
+function Create_SpyPlaneLineMode_UI(parent, playCard)
+    local territoryButtonsHGroup = UI.CreateHorizontalLayoutGroup(parent).SetFlexibleWidth(1);
+    SpyPlaneStartTerritoryBtn = UI.CreateButton(territoryButtonsHGroup)
+        .SetText("Select Source")
+        .SetColor(BUTTON_COLOURS.LightBlue)
+        .SetOnClick(SpyPlaneStartTerritoryClicked)
+        .SetFlexibleWidth(0.5);
+
+    SpyPlaneEndTerritoryBtn = UI.CreateButton(territoryButtonsHGroup)
+        .SetText("Select Target")
+        .SetColor(BUTTON_COLOURS.LightBlue)
+        .SetOnClick(SpyPlaneEndTerritoryClicked)
+        .SetFlexibleWidth(0.5);
+
+    SpyPlaneStartTerritoryInstructionLabel = UI.CreateLabel(parent).SetText("");
+    SpyPlaneEndTerritoryInstructionLabel = UI.CreateLabel(parent).SetText("");
+
+    --Territory snapshots (the actual shape of the selected territory) don't exist in app versions below
+    --SNAPSHOT_AND_ICON_MIN_VERSION, so only the name labels still work there
+    local displayRow = UI.CreateHorizontalLayoutGroup(parent).SetFlexibleWidth(1);
+    local startColumn = UI.CreateVerticalLayoutGroup(displayRow).SetPreferredWidth(120).SetFlexibleWidth(1).SetCenter(true);
+    SpyPlaneStartTerritorySnapshot = nil;
+    SpyPlaneStartTerritorySnapshotVert = nil;
+    if (WL.IsVersionOrHigher(SNAPSHOT_AND_ICON_MIN_VERSION)) then
+        SpyPlaneStartTerritorySnapshotVert = UI.CreateVerticalLayoutGroup(startColumn).SetCenter(true).SetPreferredHeight(60); --fixed height so the row doesn't resize when the snapshot appears
+    end
+    SpyPlaneStartTerritoryNameLabel = UI.CreateLabel(startColumn).SetText(" ").SetAlignment(WL.TextAlignmentOptions.Center);
+
+    local endColumn = UI.CreateVerticalLayoutGroup(displayRow).SetPreferredWidth(120).SetFlexibleWidth(1).SetCenter(true);
+    SpyPlaneEndTerritorySnapshot = nil;
+    SpyPlaneEndTerritorySnapshotVert = nil;
+    if (WL.IsVersionOrHigher(SNAPSHOT_AND_ICON_MIN_VERSION)) then
+        SpyPlaneEndTerritorySnapshotVert = UI.CreateVerticalLayoutGroup(endColumn).SetCenter(true).SetPreferredHeight(60); --fixed height so the row doesn't resize when the snapshot appears
+    end
+    SpyPlaneEndTerritoryNameLabel = UI.CreateLabel(endColumn).SetText(" ").SetAlignment(WL.TextAlignmentOptions.Center);
+
+    SpyPlanePlayCardBtn = UI.CreateButton(parent)
+        .SetText("Send Spy Plane")
+        .SetInteractable(false)
+        .SetColor(BUTTON_COLOURS.DarkGreen)
+        .SetFlexibleWidth(1)
+        .SetOnClick(function() SpyPlaneSendLineModeClicked(playCard); end);
+
+    SpyPlaneStepsRowParent = parent;
+    RebuildSpyPlaneStepsRow();
+
+    SpyPlaneStartTerritoryClicked();
+end
+
+---@param playCard fun(orderListMessage: string, modData: string, turnPhase: EnumTurnPhase, annotations: table<TerritoryID, TerritoryAnnotation>, viewSpot: RectangleVM)
+function SpyPlaneSendLineModeClicked(playCard)
+    if (SpyPlaneStartTerritoryID == nil) then
+        SpyPlaneStartTerritoryInstructionLabel.SetText("You must select a start territory first").SetColor(ERROR_COLOUR);
+        return;
+    end
+
+    if (SpyPlaneEndTerritoryID == nil) then
+        SpyPlaneEndTerritoryInstructionLabel.SetText("You must select an end territory first").SetColor(ERROR_COLOUR);
+        return;
+    end
+
+    local startTd = Game.Map.Territories[SpyPlaneStartTerritoryID];
+    local endTd = Game.Map.Territories[SpyPlaneEndTerritoryID];
+    local percentOverMaxFlightDistance = GetSpyPlanePercentOverMaxFlightDistance(SpyPlaneStartTerritoryID, SpyPlaneEndTerritoryID);
+
+    if (percentOverMaxFlightDistance ~= nil) then
+        SpyPlaneEndTerritoryInstructionLabel.SetText("That flight is " .. percentOverMaxFlightDistance .. "% past the maximum flight distance - select an end territory closer to " .. SpyPlaneStartTerritoryName).SetColor(ERROR_COLOUR);
+        return;
+    end
+
+    local jumpToSpot = WL.RectangleVM.Create(startTd.MiddlePointX, startTd.MiddlePointY, endTd.MiddlePointX, endTd.MiddlePointY);
+    local modData = "FlySpyPlane_" .. SpyPlaneStartTerritoryID .. "_" .. SpyPlaneEndTerritoryID;
+    local message = "Flies a Spy Plane from " .. SpyPlaneStartTerritoryName .. " to " .. SpyPlaneEndTerritoryName;
+
+    if (playCard(message, modData, WL.TurnPhase.Deploys, {}, jumpToSpot)) then
+        Close();
+    end
 end
 
 --SetTerritoryIDs rejects an empty list, so the snapshot is destroyed to clear it and recreated on the next selection
@@ -235,6 +343,15 @@ function SpyPlaneEndTerritoryClicked()
     SpyPlaneStartTerritoryBtn.SetInteractable(false);
     SpyPlaneEndTerritoryBtn.SetColor(BUTTON_COLOURS.DarkGreen).SetInteractable(false);
     SpyPlanePlayCardBtn.SetInteractable(false);
+
+    --picking a new target invalidates whatever target was already selected, so clear it and show the valid-range
+    --highlight around the current source immediately rather than leaving a stale corridor/target highlight showing
+    SpyPlaneEndTerritoryID = nil;
+    SpyPlaneEndTerritoryName = nil;
+    ClearSpyPlaneEndSnapshot();
+    UpdateSpyPlaneHighlight();
+    UpdateSpyPlanePlayCardButtonText();
+    UpdateSpyPlaneStepsPreviewAvailability();
 end
 
 function SpyPlaneEndTerritoryHandleClick(terrDetails)
@@ -345,7 +462,7 @@ function GetSpyPlanePercentOverMaxFlightDistance(startTerritoryID, endTerritoryI
         return nil;
     end
 
-    return math.floor(((flightDistance / maxFlightDistance) - 1) * 100 + 0.5);
+    return math.max(1, math.floor(((flightDistance / maxFlightDistance) - 1) * 100 + 0.5));
 end
 
 ---Whether a source and target are both selected and the flight between them is within the maximum flight distance.
@@ -382,20 +499,37 @@ function UpdateSpyPlaneHighlight()
     Game.HighlightTerritories(coveredTerritories);
 end
 
----Computes, for the current source/target selection, the covered territories of every step a Steps flight (either
+---Highlights whichever mode (Line or Circle) is currently active, delegating to that mode's own highlight logic.
+---Used to restore the normal highlight once a step preview is dismissed.
+function UpdateSpyPlaneSelectedModeHighlight()
+    if (SpyPlaneSelectedPathType == Flight.PathType.Loop) then
+        UpdateSpyPlaneCircleHighlight();
+    else
+        UpdateSpyPlaneHighlight();
+    end
+end
+
+---@class SpyPlaneStepPreview
+---@field Territories TerritoryID[] # territories covered by the flight during this step
+---@field PlaneLocationTerritoryID TerritoryID # territory nearest the leading edge of this step - matches the "Spy Plane" position annotation
+
+---Computes, for whichever mode (Line or Circle) is currently active, every step a Steps flight (either
 ---Distance-based or Segment-based) will take - a client-side replay of the same Flight.NewProgress/Flight.Advance
----stepping SpyPlaneApplication.FlySpyPlane/AdvanceActiveSpyPlaneFlights use server-side, against a throwaway
----FlightProgress so nothing here touches Mod.PrivateGameData.
----@return TerritoryID[][]
+---stepping SpyPlaneApplication.FlySpyPlane/FlySpyPlaneCircle use server-side, against a throwaway FlightProgress so
+---nothing here touches Mod.PrivateGameData.
+---@return SpyPlaneStepPreview[]
 function ComputeSpyPlaneStepsPreview()
-    if (SpyPlaneStartTerritoryID == nil or SpyPlaneEndTerritoryID == nil) then
-        return {};
+    local path;
+    if (SpyPlaneSelectedPathType == Flight.PathType.Loop) then
+        if (SpyPlaneCircleTerritoryID == nil) then return {}; end
+        path = BuildSpyPlaneCirclePath(SpyPlaneCircleTerritoryID, SpyPlaneCircleRadiusInput.GetValue(), SpyPlaneCircleDirection);
+    else
+        if (SpyPlaneStartTerritoryID == nil or SpyPlaneEndTerritoryID == nil) then return {}; end
+        local maxFlightDistance = Mod.Settings.SpyPlaneMaxFlightDistance or 300;
+        path = BuildSpyPlanePath(SpyPlaneStartTerritoryID, SpyPlaneEndTerritoryID, maxFlightDistance);
     end
 
-    local maxFlightDistance = Mod.Settings.SpyPlaneMaxFlightDistance or 300;
     local inclusionGenerosity = Mod.Settings.SpyPlaneInclusionGenerosity or 50;
-    local path = BuildSpyPlanePath(SpyPlaneStartTerritoryID, SpyPlaneEndTerritoryID, maxFlightDistance);
-
     local stepDistance;
     if (Mod.Settings.SpyPlaneStepModeSegment) then
         local flightSteps = Mod.Settings.SpyPlaneFlightSteps or 5;
@@ -409,53 +543,344 @@ function ComputeSpyPlaneStepsPreview()
     local steps = {};
     while (progress.DistanceCovered < progress.Path.TotalLength) do
         local result = Flight.Advance(progress);
-        table.insert(steps, Flight.GetTerritoriesNearPoints(Game, result.Points, inclusionGenerosity));
+        local lastPoint = result.Points[#result.Points];
+        table.insert(steps, {
+            Territories = Flight.GetTerritoriesNearPoints(Game, result.Points, inclusionGenerosity),
+            PlaneLocationTerritoryID = Flight.FindNearestTerritory(Game, lastPoint.X, lastPoint.Y),
+        });
     end
 
     return steps;
 end
 
----Resets any step preview in progress (it's now stale) whenever the source/target selection changes, and enables
----"Show Steps" only when a Steps flight (Distance-based or Segment-based) is configured and the current selection
----is valid.
-function UpdateSpyPlaneStepsPreviewAvailability()
+---(Re)builds the <-/Show Plane/-> row in SpyPlaneStepsRowParent, or destroys it if SpyPlaneStepsRowShown
+---is false. There's no show/hide primitive in the mod UI library, so toggling this row's visibility means
+---destroying and recreating it.
+function RebuildSpyPlaneStepsRow()
+    if (SpyPlaneStepsPreviewRow ~= nil) then
+        UI.Destroy(SpyPlaneStepsPreviewRow);
+        SpyPlaneStepsPreviewRow = nil;
+    end
+
+    if (not SpyPlaneStepsRowShown) then return; end
+
+    SpyPlaneStepsPreviewRow = UI.CreateHorizontalLayoutGroup(SpyPlaneStepsRowParent).SetFlexibleWidth(1);
+    SpyPlaneStepsPreviousBtn = UI.CreateButton(SpyPlaneStepsPreviewRow)
+        .SetText("<-")
+        .SetInteractable(false)
+        .SetOnClick(SpyPlaneStepsPreviousClicked)
+        .SetPreferredWidth(50)
+        .SetFlexibleWidth(0);
+
+    SpyPlaneShowPlaneLocationBtn = UI.CreateButton(SpyPlaneStepsPreviewRow)
+        .SetText("Show Plane")
+        .SetOnClick(SpyPlaneShowPlaneLocationClicked)
+        .SetFlexibleWidth(1);
+
+    SpyPlaneStepsNextBtn = UI.CreateButton(SpyPlaneStepsPreviewRow)
+        .SetText("->")
+        .SetInteractable(false)
+        .SetOnClick(SpyPlaneStepsNextClicked)
+        .SetPreferredWidth(50)
+        .SetFlexibleWidth(0);
+end
+
+---Recomputes the step preview (if the steps row is currently shown) or clears it (if not), and refreshes the
+---highlight to match. Called whenever the current mode's selection changes, so a stale preview is never left
+---showing after something that would change it.
+function RefreshSpyPlaneStepsPreview()
     SpyPlaneStepsPreview = nil;
     SpyPlaneStepsPreviewIndex = nil;
-    SpyPlaneShowStepsBtn.SetText("Show Steps");
-    SpyPlaneStepsPreviousBtn.SetInteractable(false);
-    SpyPlaneStepsNextBtn.SetInteractable(false);
-    SpyPlaneShowStepsBtn.SetInteractable(IsSpyPlaneSelectionValid() and Mod.Settings.SpyPlaneFlightStyleSteps == true);
-end
+    SpyPlaneShowPlaneLocation = false;
 
----Highlights the currently-selected preview step and updates the "Show Steps"/arrow buttons to match.
-function UpdateSpyPlaneStepsPreviewDisplay()
-    Game.HighlightTerritories(SpyPlaneStepsPreview[SpyPlaneStepsPreviewIndex]);
-    SpyPlaneShowStepsBtn.SetText("Step " .. SpyPlaneStepsPreviewIndex .. " / " .. #SpyPlaneStepsPreview);
-    SpyPlaneStepsPreviousBtn.SetInteractable(SpyPlaneStepsPreviewIndex > 1);
-    SpyPlaneStepsNextBtn.SetInteractable(SpyPlaneStepsPreviewIndex < #SpyPlaneStepsPreview);
-end
-
-function SpyPlaneShowStepsClicked()
-    if (SpyPlaneStepsPreview ~= nil) then
-        --already showing a preview - clicking again reverts back to the default "Show Steps" state
-        UpdateSpyPlaneStepsPreviewAvailability();
-        UpdateSpyPlaneHighlight();
-        return;
-    end
+    if (not SpyPlaneStepsRowShown) then return; end
 
     SpyPlaneStepsPreview = ComputeSpyPlaneStepsPreview();
     SpyPlaneStepsPreviewIndex = 1;
     UpdateSpyPlaneStepsPreviewDisplay();
 end
 
+---Enables the Steps icon button only when the current mode has a valid selection (both a source and target for
+---Line, or a center territory for Circle), and closes the steps row if the selection just became invalid.
+function UpdateSpyPlaneStepsPreviewAvailability()
+    local selectionValid;
+    if (SpyPlaneSelectedPathType == Flight.PathType.Loop) then
+        selectionValid = SpyPlaneCircleTerritoryID ~= nil;
+    else
+        selectionValid = IsSpyPlaneSelectionValid();
+    end
+
+    if (SpyPlaneStepsModeBtn ~= nil) then
+        SpyPlaneStepsModeBtn.SetInteractable(selectionValid);
+    end
+
+    if (not selectionValid and SpyPlaneStepsRowShown) then
+        SpyPlaneStepsRowShown = false;
+        RebuildSpyPlaneStepsRow();
+    end
+
+    RefreshSpyPlaneStepsPreview();
+end
+
+---Toggles the steps row (and the step-preview mode it drives) on/off.
+function SpyPlaneStepsModeClicked()
+    SpyPlaneStepsRowShown = not SpyPlaneStepsRowShown;
+    RebuildSpyPlaneStepsRow();
+    RefreshSpyPlaneStepsPreview();
+
+    if (not SpyPlaneStepsRowShown) then
+        UpdateSpyPlaneSelectedModeHighlight();
+    end
+end
+
+---Highlights the currently-selected preview step - either the full corridor of territories it covers, or just the
+---single territory the "Spy Plane" position annotation would land on, depending on SpyPlaneShowPlaneLocation.
+function UpdateSpyPlaneStepsPreviewDisplay()
+    local step = SpyPlaneStepsPreview[SpyPlaneStepsPreviewIndex];
+    if (SpyPlaneShowPlaneLocation) then
+        Game.HighlightTerritories({ step.PlaneLocationTerritoryID });
+    else
+        Game.HighlightTerritories(step.Territories);
+    end
+
+    SpyPlaneShowPlaneLocationBtn.SetText(SpyPlaneShowPlaneLocation and "Show Flight Path" or "Show Plane");
+    SpyPlaneStepsPreviousBtn.SetInteractable(SpyPlaneStepsPreviewIndex > 1);
+    SpyPlaneStepsNextBtn.SetInteractable(SpyPlaneStepsPreviewIndex < #SpyPlaneStepsPreview);
+end
+
+function SpyPlaneShowPlaneLocationClicked()
+    SpyPlaneShowPlaneLocation = not SpyPlaneShowPlaneLocation;
+    UpdateSpyPlaneStepsPreviewDisplay();
+end
+
 function SpyPlaneStepsPreviousClicked()
-    if (SpyPlaneStepsPreview == nil or SpyPlaneStepsPreviewIndex <= 1) then return; end
+    if (SpyPlaneStepsPreviewIndex <= 1) then return; end
     SpyPlaneStepsPreviewIndex = SpyPlaneStepsPreviewIndex - 1;
     UpdateSpyPlaneStepsPreviewDisplay();
 end
 
 function SpyPlaneStepsNextClicked()
-    if (SpyPlaneStepsPreview == nil or SpyPlaneStepsPreviewIndex >= #SpyPlaneStepsPreview) then return; end
+    if (SpyPlaneStepsPreviewIndex >= #SpyPlaneStepsPreview) then return; end
     SpyPlaneStepsPreviewIndex = SpyPlaneStepsPreviewIndex + 1;
     UpdateSpyPlaneStepsPreviewDisplay();
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Circle mode: pick a single center territory, flies a full loop around it - always starting at the top of the
+-- loop. Supports whichever flight style (Instant, Distance-based Steps, Segment-based Steps) is configured in the
+-- mod's settings, same as Line mode.
+----------------------------------------------------------------------------------------------------------------------
+
+---@param parent UIObject
+---@param playCard fun(orderListMessage: string, modData: string, turnPhase: EnumTurnPhase, annotations: table<TerritoryID, TerritoryAnnotation>, viewSpot: RectangleVM)
+function Create_SpyPlaneCircleMode_UI(parent, playCard)
+    --reset to the default direction every time Circle mode's content is (re)built
+    SpyPlaneCircleDirection = 1;
+
+    local topRow = UI.CreateHorizontalLayoutGroup(parent).SetFlexibleWidth(1);
+
+    --direction only affects a Steps flight (which territory gets revealed on which turn) - an Instant flight
+    --highlights the full loop regardless of direction, so there's nothing for this button to control there
+    SpyPlaneCircleDirectionBtn = nil;
+    if (Mod.Settings.SpyPlaneFlightStyleInstant ~= true) then
+        SpyPlaneCircleDirectionBtn = UI.CreateButton(topRow)
+            .SetText("Clockwise")
+            .SetColor(BUTTON_COLOURS.LightBlue)
+            .SetOnClick(SpyPlaneCircleDirectionClicked)
+            .SetFlexibleWidth(0.5);
+    end
+
+    SpyPlaneCircleTerritoryBtn = UI.CreateButton(topRow)
+        .SetText("Select Territory")
+        .SetOnClick(SpyPlaneCircleTerritoryClicked)
+        .SetFlexibleWidth(SpyPlaneCircleDirectionBtn ~= nil and 0.5 or 1);
+
+    SpyPlaneCircleInstructionLabel = UI.CreateLabel(parent).SetText("");
+
+    --Territory snapshots (the actual shape of the selected territory) don't exist in app versions below
+    --SNAPSHOT_AND_ICON_MIN_VERSION, so only the name label still works there
+    local displayRow = UI.CreateHorizontalLayoutGroup(parent).SetFlexibleWidth(1);
+    local circleColumn = UI.CreateVerticalLayoutGroup(displayRow).SetPreferredWidth(120).SetFlexibleWidth(1).SetCenter(true);
+    SpyPlaneCircleTerritorySnapshot = nil;
+    SpyPlaneCircleTerritorySnapshotVert = nil;
+    if (WL.IsVersionOrHigher(SNAPSHOT_AND_ICON_MIN_VERSION)) then
+        SpyPlaneCircleTerritorySnapshotVert = UI.CreateVerticalLayoutGroup(circleColumn).SetCenter(true).SetPreferredHeight(60); --fixed height so the row doesn't resize when the snapshot appears
+    end
+    SpyPlaneCircleTerritoryNameLabel = UI.CreateLabel(circleColumn).SetText(" ").SetAlignment(WL.TextAlignmentOptions.Center);
+
+    local radiusRow = UI.CreateHorizontalLayoutGroup(parent).SetFlexibleWidth(1);
+    UI.CreateLabel(radiusRow).SetText("Radius").SetPreferredWidth(80);
+    local maxRadius = math.floor(GetSpyPlaneMaxCircleRadius());
+    SpyPlaneCircleRadiusInput = UI.CreateNumberInputField(radiusRow)
+        .SetSliderMinValue(1)
+        .SetSliderMaxValue(maxRadius)
+        .SetValue(maxRadius)
+        .SetFlexibleWidth(1);
+
+    SpyPlaneCircleRefreshBtn = UI.CreateButton(radiusRow)
+        .SetIcon("Refresh.png")
+        .SetText("")
+        .SetIconPreferredWidth(30)
+        .SetIconPreferredHeight(30)
+        .SetOnClick(SpyPlaneCircleRefreshClicked)
+        .SetPreferredWidth(40)
+        .SetFlexibleWidth(0);
+
+    SpyPlaneCirclePlayCardBtn = UI.CreateButton(parent)
+        .SetText("Send Spy Plane")
+        .SetInteractable(false)
+        .SetColor(BUTTON_COLOURS.DarkGreen)
+        .SetFlexibleWidth(1)
+        .SetOnClick(function() SpyPlaneSendCircleModeClicked(playCard); end);
+
+    SpyPlaneStepsRowParent = parent;
+    RebuildSpyPlaneStepsRow();
+
+    SpyPlaneCircleTerritoryClicked();
+end
+
+---@param playCard fun(orderListMessage: string, modData: string, turnPhase: EnumTurnPhase, annotations: table<TerritoryID, TerritoryAnnotation>, viewSpot: RectangleVM)
+function SpyPlaneSendCircleModeClicked(playCard)
+    if (SpyPlaneCircleTerritoryID == nil) then
+        SpyPlaneCircleInstructionLabel.SetText("You must select a territory first").SetColor(ERROR_COLOUR);
+        return;
+    end
+
+    local centerTd = Game.Map.Territories[SpyPlaneCircleTerritoryID];
+    local radius = SpyPlaneCircleRadiusInput.GetValue();
+    local jumpToSpot = WL.RectangleVM.Create(centerTd.MiddlePointX - radius, centerTd.MiddlePointY - radius, centerTd.MiddlePointX + radius, centerTd.MiddlePointY + radius);
+    local modData = "FlySpyPlaneCircle_" .. SpyPlaneCircleTerritoryID .. "_" .. radius .. "_" .. SpyPlaneCircleDirection;
+    local message = "Flies a Spy Plane in a circle around " .. SpyPlaneCircleTerritoryName;
+
+    if (playCard(message, modData, WL.TurnPhase.Deploys, {}, jumpToSpot)) then
+        Close();
+    end
+end
+
+--SetTerritoryIDs rejects an empty list, so the snapshot is destroyed to clear it and recreated on the next selection
+function ClearSpyPlaneCircleSnapshot()
+    SpyPlaneCircleTerritoryNameLabel.SetText(" ");
+    if (SpyPlaneCircleTerritorySnapshot == nil) then return; end
+    UI.Destroy(SpyPlaneCircleTerritorySnapshot);
+    SpyPlaneCircleTerritorySnapshot = nil;
+end
+
+function ShowSpyPlaneCircleSnapshot(terrID, name)
+    SpyPlaneCircleTerritoryNameLabel.SetText(name);
+    if (SpyPlaneCircleTerritorySnapshotVert == nil) then return; end
+    if (SpyPlaneCircleTerritorySnapshot == nil) then
+        SpyPlaneCircleTerritorySnapshot = UI.CreateSnapshot(SpyPlaneCircleTerritorySnapshotVert).SetPreferredWidth(60).SetPreferredHeight(60);
+    end
+    SpyPlaneCircleTerritorySnapshot.SetTerritoryIDs({ terrID });
+end
+
+---Starts waiting for the player to click a territory. Unlike the start/end territory pickers in Line mode, the
+---previous selection (if any) is left untouched - its name/snapshot/highlight keep showing - until the player
+---actually picks a new one; it's only replaced at that point, not cleared up-front.
+function SpyPlaneCircleTerritoryClicked()
+    UI.InterceptNextTerritoryClick(SpyPlaneCircleTerritoryHandleClick);
+    SpyPlaneCircleInstructionLabel.SetText("");
+    SpyPlaneCirclePlayCardBtn.SetInteractable(false);
+    SpyPlaneCircleRadiusInput.SetInteractable(false);
+    SpyPlaneCircleRefreshBtn.SetInteractable(false);
+
+    if (SpyPlaneCircleTerritoryID ~= nil) then
+        --a selection already exists, so leave the button clickable - pressing it again cancels the pending pick
+        --and keeps that existing selection, rather than leaving the player stuck waiting for a map click
+        SpyPlaneCircleTerritoryBtn.SetText("Keep Selection").SetOnClick(SpyPlaneCircleKeepSelectionClicked);
+    else
+        SpyPlaneCircleTerritoryBtn.SetInteractable(false);
+    end
+end
+
+---Cancels the pending territory pick (swallowing whatever territory gets clicked next) and keeps whatever
+---selection already existed before "Select Territory" was pressed.
+function SpyPlaneCircleKeepSelectionClicked()
+    UI.InterceptNextTerritoryClick(function() end);
+    SpyPlaneCircleTerritoryBtn.SetText("Select Territory").SetOnClick(SpyPlaneCircleTerritoryClicked);
+    SpyPlaneCirclePlayCardBtn.SetInteractable(SpyPlaneCircleTerritoryID ~= nil);
+    SpyPlaneCircleRadiusInput.SetInteractable(true);
+    SpyPlaneCircleRefreshBtn.SetInteractable(true);
+end
+
+function SpyPlaneCircleTerritoryHandleClick(terrDetails)
+    if UI.IsDestroyed(SpyPlaneCircleTerritoryBtn) then
+        -- Dialog was destroyed, so we don't need to intercept the click anymore
+        return WL.CancelClickIntercept;
+    end
+    SpyPlaneCircleTerritoryBtn.SetText("Select Territory").SetOnClick(SpyPlaneCircleTerritoryClicked).SetInteractable(true);
+    SpyPlaneCircleRadiusInput.SetInteractable(true);
+    SpyPlaneCircleRefreshBtn.SetInteractable(true);
+
+    if (terrDetails == nil) then
+        --The click request was cancelled - keep whatever selection already existed (there's nothing to replace it with)
+        SpyPlaneCircleInstructionLabel.SetText("");
+        if (SpyPlaneCircleTerritoryID == nil) then
+            ClearSpyPlaneCircleSnapshot();
+        end
+    else
+        SpyPlaneCircleInstructionLabel.SetText("");
+        SpyPlaneCircleTerritoryID = terrDetails.ID;
+        SpyPlaneCircleTerritoryName = terrDetails.Name;
+        ShowSpyPlaneCircleSnapshot(terrDetails.ID, terrDetails.Name);
+    end
+
+    SpyPlaneCirclePlayCardBtn.SetInteractable(SpyPlaneCircleTerritoryID ~= nil);
+    UpdateSpyPlaneCircleHighlight();
+    UpdateSpyPlaneStepsPreviewAvailability();
+end
+
+---Refreshes the Circle highlight and invalidates any step preview in progress (it's now stale, since Refresh
+---implies the radius changed).
+function SpyPlaneCircleRefreshClicked()
+    UpdateSpyPlaneStepsPreviewAvailability();
+    UpdateSpyPlaneCircleHighlight();
+end
+
+---Toggles between Clockwise and Anticlockwise - the button's own text always names the direction it's currently
+---set to.
+function SpyPlaneCircleDirectionClicked()
+    if (SpyPlaneCircleDirection == 1) then
+        SpyPlaneCircleDirection = -1;
+        SpyPlaneCircleDirectionBtn.SetText("Anticlockwise");
+    else
+        SpyPlaneCircleDirection = 1;
+        SpyPlaneCircleDirectionBtn.SetText("Clockwise");
+    end
+
+    --flipping direction invalidates any step preview in progress (it's now stale)
+    UpdateSpyPlaneStepsPreviewAvailability();
+end
+
+---The largest radius the loop can be: Maximum Flight Distance is treated as the loop's total circumference, so
+---this is the radius at which the loop's circumference exactly equals it.
+---@return number
+function GetSpyPlaneMaxCircleRadius()
+    local maxFlightDistance = Mod.Settings.SpyPlaneMaxFlightDistance or 300;
+    return maxFlightDistance / (2 * math.pi);
+end
+
+---Builds the loop FlightPath for Circle mode - always starts at the top of the loop (angle -pi/2, since map Y
+---increases downward), in whichever direction the player picked.
+---@param centerTerritoryID TerritoryID
+---@param radius number
+---@param direction number # +1 (Clockwise) or -1 (Anticlockwise)
+---@return FlightPath
+function BuildSpyPlaneCirclePath(centerTerritoryID, radius, direction)
+    local centerTd = Game.Map.Territories[centerTerritoryID];
+    return Flight.NewLoopPath(centerTd.MiddlePointX, centerTd.MiddlePointY, radius, -math.pi / 2, direction);
+end
+
+---Highlights the territories within Inclusion Generosity of the full loop (at the player's chosen radius and
+---direction) around the selected center territory. Clears highlighting if no center territory is picked yet.
+function UpdateSpyPlaneCircleHighlight()
+    if (SpyPlaneCircleTerritoryID == nil) then
+        Game.HighlightTerritories({});
+        return;
+    end
+
+    local inclusionGenerosity = Mod.Settings.SpyPlaneInclusionGenerosity or 50;
+    local path = BuildSpyPlaneCirclePath(SpyPlaneCircleTerritoryID, SpyPlaneCircleRadiusInput.GetValue(), SpyPlaneCircleDirection);
+    local coveredTerritories = Flight.GetTerritoriesAlongPath(Game, path, inclusionGenerosity);
+    Game.HighlightTerritories(coveredTerritories);
 end

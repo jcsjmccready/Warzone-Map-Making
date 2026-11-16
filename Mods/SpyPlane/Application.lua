@@ -77,6 +77,51 @@ local function AdvanceSpyPlaneFlightStep(game, flight, inclusionGenerosity, addN
 	addNewOrder(event);
 end
 
+---Computes the per-step distance for a Steps flight, matching whichever step mode (Distance-based or
+---Segment-based) is configured.
+---@param path FlightPath
+---@return number
+local function ComputeSpyPlaneStepDistance(path)
+	if (Mod.Settings.SpyPlaneStepModeSegment) then
+		local flightSteps = Mod.Settings.SpyPlaneFlightSteps or 5;
+		return path.TotalLength / flightSteps;
+	end
+
+	local maxDistancePerStep = Mod.Settings.SpyPlaneMaxDistancePerStep or 200;
+	--always at least 2 steps, so the flight's start and end territories are never both revealed in a single step
+	return Flight.ComputeStepDistance(path.TotalLength, maxDistancePerStep);
+end
+
+---Kicks off a Steps flight along path: grants vision of the first step immediately (same as Instant does for the
+---whole flight), then (if more than one step is needed) queues the rest to be advanced automatically on the
+---player's following turns via SpyPlaneApplication.AdvanceActiveSpyPlaneFlights.
+---@param game GameServerHook
+---@param path FlightPath
+---@param playerID PlayerID
+---@param endTerritoryID TerritoryID # Annotated as "Spy Plane End" each step - the flight's destination for a Line, or the loop's center for a Circle
+---@param inclusionGenerosity number
+---@param addNewOrder fun(order: GameOrder)
+local function StartSpyPlaneStepsFlight(game, path, playerID, endTerritoryID, inclusionGenerosity, addNewOrder)
+	local stepDistance = ComputeSpyPlaneStepDistance(path);
+
+	---@type SpyPlaneActiveFlight
+	local flight = {
+		Progress = Flight.NewProgress(path, stepDistance),
+		PlayerID = playerID,
+		EndTerritoryID = endTerritoryID,
+	};
+
+	AdvanceSpyPlaneFlightStep(game, flight, inclusionGenerosity, addNewOrder, true);
+
+	if (flight.Progress.DistanceCovered < flight.Progress.Path.TotalLength) then
+		local priv = Mod.PrivateGameData --[[@as SpyPlanePrivateGameData]];
+		local activeFlights = priv.ActiveSpyPlaneFlights or {};
+		table.insert(activeFlights, flight);
+		priv.ActiveSpyPlaneFlights = activeFlights;
+		Mod.PrivateGameData = priv;
+	end
+end
+
 ---Flies a Spy Plane along the line between startTerritoryID and endTerritoryID - depending on the configured
 ---flight style, either grants the player vision of the whole flight line for this turn (Instant), or kicks off a
 ---Steps flight (step size from either Distance-based or Segment-based mode) by granting vision of its first step
@@ -118,33 +163,54 @@ function SpyPlaneApplication.FlySpyPlane(game, addNewOrder, playerID, startTerri
 		local coveredTerritories = Flight.GetTerritoriesAlongPath(game, path, inclusionGenerosity);
 		event.FogModsOpt = { GrantSpyPlaneVisionForTurn(coveredTerritories, playerID) };
 	elseif (isSteps) then
-		local stepDistance;
-		if (Mod.Settings.SpyPlaneStepModeSegment) then
-			local flightSteps = Mod.Settings.SpyPlaneFlightSteps or 5;
-			stepDistance = path.TotalLength / flightSteps;
-		else
-			local maxDistancePerStep = Mod.Settings.SpyPlaneMaxDistancePerStep or 200;
-			--always at least 2 steps, so the flight's start and end territories are never both revealed in a single step
-			stepDistance = Flight.ComputeStepDistance(path.TotalLength, maxDistancePerStep);
-		end
-
-		---@type SpyPlaneActiveFlight
-		local flight = {
-			Progress = Flight.NewProgress(path, stepDistance),
-			PlayerID = playerID,
-			EndTerritoryID = endTerritoryID,
-		};
-
 		--grant this turn's step immediately, same as Instant does for the whole flight, then queue whatever's left
-		AdvanceSpyPlaneFlightStep(game, flight, inclusionGenerosity, addNewOrder, true);
+		StartSpyPlaneStepsFlight(game, path, playerID, endTerritoryID, inclusionGenerosity, addNewOrder);
+	end
 
-		if (flight.Progress.DistanceCovered < flight.Progress.Path.TotalLength) then
-			local priv = Mod.PrivateGameData --[[@as SpyPlanePrivateGameData]];
-			local activeFlights = priv.ActiveSpyPlaneFlights or {};
-			table.insert(activeFlights, flight);
-			priv.ActiveSpyPlaneFlights = activeFlights;
-			Mod.PrivateGameData = priv;
-		end
+	addNewOrder(event);
+end
+
+---Flies a Spy Plane in a full loop of the given radius around centerTerritoryID, starting at the top of the loop -
+---depending on the configured flight style, either grants the player vision of the whole loop for this turn
+---(Instant), or kicks off a Steps flight the same way SpyPlaneApplication.FlySpyPlane does. radius is clamped to
+---[1, Maximum Flight Distance / (2*pi)] - the player picks it client-side, but the server re-clamps rather than
+---trusting the card's modData as-is, since Maximum Flight Distance is treated as the loop's largest allowed
+---circumference.
+---@param game GameServerHook
+---@param addNewOrder fun(order: GameOrder)
+---@param playerID PlayerID
+---@param centerTerritoryID TerritoryID
+---@param radius number
+---@param direction number # +1 (Clockwise) or -1 (Anticlockwise)
+---@param message string # Shown in the order list for the resulting event
+function SpyPlaneApplication.FlySpyPlaneCircle(game, addNewOrder, playerID, centerTerritoryID, radius, direction, message)
+	local maxFlightDistance = Mod.Settings.SpyPlaneMaxFlightDistance or 300;
+	local inclusionGenerosity = Mod.Settings.SpyPlaneInclusionGenerosity or 50;
+	local maxRadius = maxFlightDistance / (2 * math.pi);
+	radius = math.max(1, math.min(radius, maxRadius));
+
+	local centerTd = game.Map.Territories[centerTerritoryID];
+	local event = WL.GameOrderEvent.Create(playerID, message, {}, {});
+	event.JumpToActionSpotOpt = WL.RectangleVM.Create(centerTd.MiddlePointX - radius, centerTd.MiddlePointY - radius, centerTd.MiddlePointX + radius, centerTd.MiddlePointY + radius);
+
+	--in Steps, the first step's own event (via AdvanceSpyPlaneFlightStep) already labels the plane's starting
+	--position via its isFirstStep annotation, so a separate "Spy Plane Circle" annotation here would be redundant
+	local isSteps = Mod.Settings.SpyPlaneFlightStyleSteps;
+	if (not isSteps) then
+		event.TerritoryAnnotationsOpt = {
+			[centerTerritoryID] = WL.TerritoryAnnotation.Create("Spy Plane Circle", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Charcoal)),
+		};
+	end
+
+	--always starts at the top of the loop (angle -pi/2, since map Y increases downward)
+	local path = Flight.NewLoopPath(centerTd.MiddlePointX, centerTd.MiddlePointY, radius, -math.pi / 2, direction);
+
+	if (Mod.Settings.SpyPlaneFlightStyleInstant) then
+		local coveredTerritories = Flight.GetTerritoriesAlongPath(game, path, inclusionGenerosity);
+		event.FogModsOpt = { GrantSpyPlaneVisionForTurn(coveredTerritories, playerID) };
+	elseif (isSteps) then
+		--the loop has no separate "end" territory to label each step - re-label the center it's circling instead
+		StartSpyPlaneStepsFlight(game, path, playerID, centerTerritoryID, inclusionGenerosity, addNewOrder);
 	end
 
 	addNewOrder(event);
