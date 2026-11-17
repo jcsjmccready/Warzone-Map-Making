@@ -26,9 +26,10 @@ function Client_SaveConfigureUI(alert, addCard)
 
     Mod.Settings.SpyPlaneEnableLineFlight = spyPlaneEnableLineFlight.GetIsChecked();
     Mod.Settings.SpyPlaneEnableCircleFlight = spyPlaneEnableCircleFlight.GetIsChecked();
+    Mod.Settings.SpyPlaneEnablePathFlight = spyPlaneEnablePathFlight.GetIsChecked();
 
-    if (not Mod.Settings.SpyPlaneEnableLineFlight and not Mod.Settings.SpyPlaneEnableCircleFlight) then
-        alert("You must enable at least one flight type (Line or Circle) for the Spy Plane card");
+    if (not Mod.Settings.SpyPlaneEnableLineFlight and not Mod.Settings.SpyPlaneEnableCircleFlight and not Mod.Settings.SpyPlaneEnablePathFlight) then
+        alert("You must enable at least one flight type (Line, Circle, or Path) for the Spy Plane card");
         return;
     end
 

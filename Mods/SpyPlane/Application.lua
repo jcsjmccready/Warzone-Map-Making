@@ -216,6 +216,55 @@ function SpyPlaneApplication.FlySpyPlaneCircle(game, addNewOrder, playerID, cent
 	addNewOrder(event);
 end
 
+---Flies a Spy Plane along the multi-waypoint route through territoryIDs (in order) - depending on the configured
+---flight style, either grants the player vision of the whole route for this turn (Instant), or kicks off a Steps
+---flight the same way SpyPlaneApplication.FlySpyPlane does.
+---@param game GameServerHook
+---@param addNewOrder fun(order: GameOrder)
+---@param playerID PlayerID
+---@param territoryIDs TerritoryID[] # At least 2 territories, in travel order
+---@param message string # Shown in the order list for the resulting event
+function SpyPlaneApplication.FlySpyPlanePath(game, addNewOrder, playerID, territoryIDs, message)
+	local maxFlightDistance = Mod.Settings.SpyPlaneMaxFlightDistance or 300;
+	local inclusionGenerosity = Mod.Settings.SpyPlaneInclusionGenerosity or 50;
+
+	local waypoints = {};
+	for _, territoryID in ipairs(territoryIDs) do
+		local td = game.Map.Territories[territoryID];
+		table.insert(waypoints, { X = td.MiddlePointX, Y = td.MiddlePointY });
+	end
+
+	local startTerritoryID = territoryIDs[1];
+	local endTerritoryID = territoryIDs[#territoryIDs];
+	local startTd = game.Map.Territories[startTerritoryID];
+	local endTd = game.Map.Territories[endTerritoryID];
+	local event = WL.GameOrderEvent.Create(playerID, message, {}, {});
+	event.JumpToActionSpotOpt = WL.RectangleVM.Create(startTd.MiddlePointX, startTd.MiddlePointY, endTd.MiddlePointX, endTd.MiddlePointY);
+
+	--in Steps (Distance-based or Segment-based), the first step's own event (via AdvanceSpyPlaneFlightStep)
+	--already labels the plane's starting position via its isFirstStep annotation, so a separate
+	--"Spy Plane Start" annotation here would be redundant
+	local isSteps = Mod.Settings.SpyPlaneFlightStyleSteps;
+	local annotations = {
+		[endTerritoryID] = WL.TerritoryAnnotation.Create("Spy Plane End", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Charcoal)),
+	};
+	if (not isSteps) then
+		annotations[startTerritoryID] = WL.TerritoryAnnotation.Create("Spy Plane Start", 8, GetColourIntegerFromHex(BUTTON_COLOURS.Charcoal));
+	end
+	event.TerritoryAnnotationsOpt = annotations;
+
+	local path = Flight.Clamp(Flight.NewPolylinePath(waypoints), maxFlightDistance);
+
+	if (Mod.Settings.SpyPlaneFlightStyleInstant) then
+		local coveredTerritories = Flight.GetTerritoriesAlongPath(game, path, inclusionGenerosity);
+		event.FogModsOpt = { GrantSpyPlaneVisionForTurn(coveredTerritories, playerID) };
+	elseif (isSteps) then
+		StartSpyPlaneStepsFlight(game, path, playerID, endTerritoryID, inclusionGenerosity, addNewOrder);
+	end
+
+	addNewOrder(event);
+end
+
 ---Advances every Distance-based Steps Spy Plane flight still in progress by one more step, granting vision of the
 ---next strip of territories for this turn. Flights that reach their end are dropped from the active list.
 ---@param game GameServerHook

@@ -44,4 +44,14 @@ function Server_AdvanceTurn_Order(game, order, result, skipThisOrder, addNewOrde
 		local direction = tonumber(ids[3]) or 1;
 		SpyPlaneApplication.FlySpyPlaneCircle(game, addNewOrder, order.PlayerID, centerTerritoryID, radius, direction, order.Description);
 	end
+
+	if (order.proxyType == 'GameOrderPlayCardCustom' and startsWith(order.ModData, "FlySpyPlanePath_")) then
+		---@cast order GameOrderPlayCardCustom
+		local idStrings = split(string.sub(order.ModData, string.len("FlySpyPlanePath_") + 1), "_");
+		local territoryIDs = {};
+		for _, idString in ipairs(idStrings) do
+			table.insert(territoryIDs, tonumber(idString) or 0);
+		end
+		SpyPlaneApplication.FlySpyPlanePath(game, addNewOrder, order.PlayerID, territoryIDs, order.Description);
+	end
 end

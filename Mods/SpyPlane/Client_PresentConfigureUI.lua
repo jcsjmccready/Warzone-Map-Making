@@ -54,6 +54,10 @@ function Create_SpyPlaneCard_SubOptions_UI(rootParent)
         .SetText('Enable Circle flight')
         .SetIsChecked(Mod.Settings.SpyPlaneEnableCircleFlight or false);
 
+    spyPlaneEnablePathFlight = UI.CreateCheckBox(spyPlaneCardVHeading)
+        .SetText('Enable Path flight')
+        .SetIsChecked(Mod.Settings.SpyPlaneEnablePathFlight or false);
+
     local horz = UI.CreateHorizontalLayoutGroup(spyPlaneCardVHeading);
     UI.CreateLabel(horz).SetText('Inclusion generosity').SetPreferredWidth(290);
     spyPlaneInclusionGenerosity = UI.CreateNumberInputField(horz)
