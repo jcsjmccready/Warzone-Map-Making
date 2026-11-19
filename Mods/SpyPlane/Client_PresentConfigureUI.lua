@@ -51,7 +51,12 @@ function Create_SpyPlaneCard_SubOptions_UI(rootParent)
 
     UI.CreateLabel(spyPlaneCardVHeading).SetText('Mod Behaviour:').SetColor(SUBHEADING_COLOUR);
 
-    spyPlaneEnableLineFlight = UI.CreateCheckBox(spyPlaneCardVHeading)
+    local lineFlightHorz = UI.CreateHorizontalLayoutGroup(spyPlaneCardVHeading);
+    UI.CreateImage(lineFlightHorz)
+        .SetSprite('Line.png')
+        .SetPreferredWidth(30)
+        .SetPreferredHeight(30);
+    spyPlaneEnableLineFlight = UI.CreateCheckBox(lineFlightHorz)
         .SetText('Enable Line flight')
         .SetIsChecked(Mod.Settings.SpyPlaneEnableLineFlight ~= false);
 
@@ -59,7 +64,12 @@ function Create_SpyPlaneCard_SubOptions_UI(rootParent)
         .SetText('Flies directly between two territories (A-B)')
         .SetColor(BUTTON_COLOURS.DarkGray);
 
-    spyPlaneEnableCircleFlight = UI.CreateCheckBox(spyPlaneCardVHeading)
+    local circleFlightHorz = UI.CreateHorizontalLayoutGroup(spyPlaneCardVHeading);
+    UI.CreateImage(circleFlightHorz)
+        .SetSprite('Circle.png')
+        .SetPreferredWidth(30)
+        .SetPreferredHeight(30);
+    spyPlaneEnableCircleFlight = UI.CreateCheckBox(circleFlightHorz)
         .SetText('Enable Circle flight')
         .SetIsChecked(Mod.Settings.SpyPlaneEnableCircleFlight or false);
 
