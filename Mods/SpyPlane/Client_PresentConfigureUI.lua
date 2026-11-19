@@ -13,7 +13,12 @@ end
 
 function Create_SpyPlaneCard_SubOptions_UI(rootParent)
     spyPlaneCardVHeading = UI.CreateVerticalLayoutGroup(rootParent);
-    UI.CreateLabel(spyPlaneCardVHeading).SetText("Card Settings:").SetColor(SUBHEADING_COLOUR);
+
+    UI.CreateLabel(spyPlaneCardVHeading)
+        .SetText('Spy Plane sends a plane out that reveals (grants vision of) every territory it flies over for one turn. How it flies - Line, Circle, and/or Path - depends on which flight types are enabled below.')
+        .SetColor(BUTTON_COLOURS.DarkGray);
+
+    UI.CreateLabel(spyPlaneCardVHeading).SetText("Card Pieces:").SetColor(SUBHEADING_COLOUR);
 
     local horz = UI.CreateHorizontalLayoutGroup(spyPlaneCardVHeading);
     UI.CreateLabel(horz).SetText('Number of pieces to divide the card into').SetPreferredWidth(290);
