@@ -50,13 +50,25 @@ function Create_SpyPlaneCard_SubOptions_UI(rootParent)
         .SetText('Enable Line flight')
         .SetIsChecked(Mod.Settings.SpyPlaneEnableLineFlight ~= false);
 
+    UI.CreateLabel(spyPlaneCardVHeading)
+        .SetText('Flies directly between two territories (A-B)')
+        .SetColor(BUTTON_COLOURS.DarkGray);
+
     spyPlaneEnableCircleFlight = UI.CreateCheckBox(spyPlaneCardVHeading)
         .SetText('Enable Circle flight')
         .SetIsChecked(Mod.Settings.SpyPlaneEnableCircleFlight or false);
 
+    UI.CreateLabel(spyPlaneCardVHeading)
+        .SetText('Flies in a circle around a selected territory, starting from the top')
+        .SetColor(BUTTON_COLOURS.DarkGray);
+
     spyPlaneEnablePathFlight = UI.CreateCheckBox(spyPlaneCardVHeading)
         .SetText('Enable Path flight')
         .SetIsChecked(Mod.Settings.SpyPlaneEnablePathFlight or false);
+ 
+    UI.CreateLabel(spyPlaneCardVHeading)
+        .SetText('Flies directly between multiple territories (A-B-C...)')
+        .SetColor(BUTTON_COLOURS.DarkGray);
 
     local horz = UI.CreateHorizontalLayoutGroup(spyPlaneCardVHeading);
     UI.CreateLabel(horz).SetText('Inclusion generosity').SetPreferredWidth(290);
@@ -64,7 +76,7 @@ function Create_SpyPlaneCard_SubOptions_UI(rootParent)
         .SetSliderMinValue(25)
         .SetSliderMaxValue(300)
         .SetValue(Mod.Settings.SpyPlaneInclusionGenerosity or 50);
-    UI.CreateLabel(spyPlaneCardVHeading).SetText('Territories are included based on the distance from their centerpoint to the latest step of the plane as it moves. Experiment with how this number feels for your chosen map.').SetColor(BUTTON_COLOURS.DarkGray);
+    UI.CreateLabel(spyPlaneCardVHeading).SetText('Territories are included based on the distance from their centerpoint to the path of the plane. Experiment with how this number feels for your chosen map.').SetColor(BUTTON_COLOURS.DarkGray);
 
     local horz = UI.CreateHorizontalLayoutGroup(spyPlaneCardVHeading);
     UI.CreateLabel(horz).SetText('Maximum flight distance').SetPreferredWidth(290);
@@ -74,17 +86,20 @@ function Create_SpyPlaneCard_SubOptions_UI(rootParent)
         .SetValue(Mod.Settings.SpyPlaneMaxFlightDistance or 300);
 
     local flightStyleHeading = UI.CreateVerticalLayoutGroup(spyPlaneCardVHeading);
-    UI.CreateLabel(flightStyleHeading).SetText('Flight style:');
+    UI.CreateLabel(flightStyleHeading)
+    .SetText('Flight style:')
+    .SetColor(SUBHEADING_COLOUR);
+    
     local flightStyleGroup = UI.CreateRadioButtonGroup(flightStyleHeading);
 
     spyPlaneFlightStyleInstant = UI.CreateRadioButton(flightStyleHeading)
     .SetGroup(flightStyleGroup)
-    .SetText('Instant - all territories from A-B are shown')
+    .SetText('Instant - all territories are shown on the turn it is played')
     .SetIsChecked(Mod.Settings.SpyPlaneFlightStyleInstant or true);
 
     spyPlaneFlightStyleSteps = UI.CreateRadioButton(flightStyleHeading)
     .SetGroup(flightStyleGroup)
-    .SetText('Steps - territories are shown as the plane moves')
+    .SetText('Steps - reveals across multiple turns (dependent on distance)')
     .SetIsChecked(Mod.Settings.SpyPlaneFlightStyleSteps or false);
 
     local flightStyleSubOptionsHeading = UI.CreateVerticalLayoutGroup(spyPlaneCardVHeading);
@@ -124,12 +139,12 @@ function Create_SpyPlaneFlightSteps_SubOptions_UI(rootParent)
 
     spyPlaneStepModeDistance = UI.CreateRadioButton(stepModeHeading)
     .SetGroup(stepModeGroup)
-    .SetText('Distance-based')
+    .SetText('Fixed max distance per step')
     .SetIsChecked(Mod.Settings.SpyPlaneStepModeSegment ~= true);
 
     spyPlaneStepModeSegment = UI.CreateRadioButton(stepModeHeading)
     .SetGroup(stepModeGroup)
-    .SetText('Segment-based')
+    .SetText('Fixed number of flight steps')
     .SetIsChecked(Mod.Settings.SpyPlaneStepModeSegment or false);
 
     local stepModeSubOptionsHeading = UI.CreateVerticalLayoutGroup(spyPlaneFlightStepsVHeading);
@@ -179,6 +194,13 @@ function Create_SpyPlaneStepModeDistance_SubOptions_UI(rootParent)
     spyPlaneMaxDistancePerStepVHeading = UI.CreateVerticalLayoutGroup(rootParent);
 
     local horz = UI.CreateHorizontalLayoutGroup(spyPlaneMaxDistancePerStepVHeading);
+    UI.CreateLabel(horz).SetText('Minimum distance per step').SetPreferredWidth(290);
+    spyPlaneMinDistancePerStep = UI.CreateNumberInputField(horz)
+        .SetSliderMinValue(0)
+        .SetSliderMaxValue(1000)
+        .SetValue(Mod.Settings.SpyPlaneMinDistancePerStep or 0);
+
+    local horz = UI.CreateHorizontalLayoutGroup(spyPlaneMaxDistancePerStepVHeading);
     UI.CreateLabel(horz).SetText('Maximum distance per step').SetPreferredWidth(290);
     spyPlaneMaxDistancePerStep = UI.CreateNumberInputField(horz)
         .SetSliderMinValue(50)
@@ -212,7 +234,7 @@ function Create_SpyPlaneStepModeSegment_SubOptions_UI(rootParent)
     spyPlaneFlightSegmentsVHeading = UI.CreateVerticalLayoutGroup(rootParent);
 
     local horz = UI.CreateHorizontalLayoutGroup(spyPlaneFlightSegmentsVHeading);
-    UI.CreateLabel(horz).SetText('Flight segments').SetPreferredWidth(290);
+    UI.CreateLabel(horz).SetText('Number of flight steps').SetPreferredWidth(290);
     spyPlaneFlightSteps = UI.CreateNumberInputField(horz)
         .SetSliderMinValue(2)
         .SetSliderMaxValue(20)

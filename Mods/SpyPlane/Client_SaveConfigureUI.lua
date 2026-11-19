@@ -47,15 +47,26 @@ function Client_SaveConfigureUI(alert, addCard)
         return;
     end
 
+    Mod.Settings.SpyPlaneMinDistancePerStep = 0;
+
     if (Mod.Settings.SpyPlaneFlightStyleSteps) then
         Mod.Settings.SpyPlaneStepModeDistance = spyPlaneStepModeDistance.GetIsChecked();
         Mod.Settings.SpyPlaneStepModeSegment = spyPlaneStepModeSegment.GetIsChecked();
 
         if (Mod.Settings.SpyPlaneStepModeDistance) then
             Mod.Settings.SpyPlaneMaxDistancePerStep = spyPlaneMaxDistancePerStep.GetValue();
+            Mod.Settings.SpyPlaneMinDistancePerStep = spyPlaneMinDistancePerStep.GetValue();
 
             if (Mod.Settings.SpyPlaneMaxDistancePerStep < 25) then
                 alert("Spy Plane maximum distance per step cannot be less than 25");
+                return;
+            end
+            if (Mod.Settings.SpyPlaneMinDistancePerStep < 0) then
+                alert("Spy Plane minimum distance per step cannot be less than 0");
+                return;
+            end
+            if (Mod.Settings.SpyPlaneMinDistancePerStep > Mod.Settings.SpyPlaneMaxDistancePerStep) then
+                alert("Spy Plane minimum distance per step cannot be greater than the maximum distance per step");
                 return;
             end
         elseif (Mod.Settings.SpyPlaneStepModeSegment) then

@@ -285,6 +285,11 @@ function SpyPlaneSendLineModeClicked(playCard)
         return;
     end
 
+    if (IsSpyPlaneFlightUnderMinDistancePerStep(SpyPlaneStartTerritoryID, SpyPlaneEndTerritoryID)) then
+        SpyPlaneEndTerritoryInstructionLabel.SetText("That flight is too short - the end territory must be at least " .. (Mod.Settings.SpyPlaneMinDistancePerStep or 0) .. " away from " .. SpyPlaneStartTerritoryName).SetColor(ERROR_COLOUR);
+        return;
+    end
+
     local jumpToSpot = WL.RectangleVM.Create(startTd.MiddlePointX, startTd.MiddlePointY, endTd.MiddlePointX, endTd.MiddlePointY);
     local modData = "FlySpyPlane_" .. SpyPlaneStartTerritoryID .. "_" .. SpyPlaneEndTerritoryID;
     local message = "Flies a Spy Plane from " .. SpyPlaneStartTerritoryName .. " to " .. SpyPlaneEndTerritoryName;
@@ -383,6 +388,12 @@ function SpyPlaneStartTerritoryHandleClick(terrDetails)
         SpyPlaneStartTerritoryName = terrDetails.Name;
         ShowSpyPlaneStartSnapshot(terrDetails.ID, terrDetails.Name);
         pickedNewSource = true;
+
+        --a new source invalidates whatever target was paired with the old one - drop it so the highlight falls
+        --back to the full valid-range circle around the new source, instead of a stale corridor to the old target
+        SpyPlaneEndTerritoryID = nil;
+        SpyPlaneEndTerritoryName = nil;
+        ClearSpyPlaneEndSnapshot();
     end
 
     SpyPlanePlayCardBtn.SetInteractable(IsSpyPlaneSelectionValid());
@@ -418,6 +429,10 @@ function SpyPlaneEndTerritoryClicked()
         SpyPlaneEndTerritoryBtn.SetInteractable(false);
         SpyPlaneEndTerritoryNameLabel.SetText("Selecting...");
     end
+
+    --show every valid candidate for the new pick immediately, even though the old target (if any) is still held
+    --onto underneath in case the player cancels via "Keep Selection"
+    UpdateSpyPlaneTargetRangeHighlight();
 end
 
 ---Cancels the pending target pick (swallowing whatever territory gets clicked next) and keeps whatever target
@@ -427,6 +442,7 @@ function SpyPlaneKeepEndSelectionClicked()
     SpyPlaneEndTerritoryBtn.SetText("Select Target").SetOnClick(SpyPlaneEndTerritoryClicked);
     SpyPlaneStartTerritoryBtn.SetInteractable(true);
     SpyPlanePlayCardBtn.SetInteractable(IsSpyPlaneSelectionValid());
+    UpdateSpyPlaneHighlight();
     UpdateSpyPlaneStepsPreviewAvailability();
 end
 
@@ -482,6 +498,8 @@ function UpdateSpyPlaneFlightDistanceLabel()
     local percentOverMaxFlightDistance = GetSpyPlanePercentOverMaxFlightDistance(SpyPlaneStartTerritoryID, SpyPlaneEndTerritoryID);
     if (percentOverMaxFlightDistance ~= nil) then
         SpyPlaneEndTerritoryInstructionLabel.SetText(percentOverMaxFlightDistance .. "% > max distance").SetColor(ERROR_COLOUR);
+    elseif (IsSpyPlaneFlightUnderMinDistancePerStep(SpyPlaneStartTerritoryID, SpyPlaneEndTerritoryID)) then
+        SpyPlaneEndTerritoryInstructionLabel.SetText("< min distance per step").SetColor(ERROR_COLOUR);
     else
         SpyPlaneEndTerritoryInstructionLabel.SetText("");
     end
@@ -538,38 +556,80 @@ function GetSpyPlanePercentOverMaxFlightDistance(startTerritoryID, endTerritoryI
     return math.max(1, math.floor(((flightDistance / maxFlightDistance) - 1) * 100 + 0.5));
 end
 
----Whether a source and target are both selected and the flight between them is within the maximum flight distance.
+---Whether the flight from startTerritoryID to endTerritoryID is shorter than
+---Mod.Settings.SpyPlaneMinDistancePerStep. Only meaningful when Distance-based Steps is configured - Client_
+---SaveConfigureUI.lua defaults the setting to 0 otherwise, so this never triggers in Instant/Segment-based mode.
+---@param startTerritoryID TerritoryID
+---@param endTerritoryID TerritoryID
+function IsSpyPlaneFlightUnderMinDistancePerStep(startTerritoryID, endTerritoryID)
+    local startTd = Game.Map.Territories[startTerritoryID];
+    local endTd = Game.Map.Territories[endTerritoryID];
+    local flightDistance = math.sqrt((endTd.MiddlePointX - startTd.MiddlePointX) ^ 2 + (endTd.MiddlePointY - startTd.MiddlePointY) ^ 2);
+    return flightDistance < (Mod.Settings.SpyPlaneMinDistancePerStep or 0);
+end
+
+---Filters out any territory in territoryIDs whose centerpoint is closer than minDistance to point.
+---@param territoryIDs TerritoryID[]
+---@param point FlightPoint
+---@param minDistance number
+---@return TerritoryID[]
+function FilterSpyPlaneTerritoriesWithinMinDistance(territoryIDs, point, minDistance)
+    if (minDistance <= 0) then return territoryIDs; end
+
+    local filtered = {};
+    for _, territoryID in ipairs(territoryIDs) do
+        local td = Game.Map.Territories[territoryID];
+        local distance = math.sqrt((td.MiddlePointX - point.X) ^ 2 + (td.MiddlePointY - point.Y) ^ 2);
+        if (distance >= minDistance) then
+            table.insert(filtered, territoryID);
+        end
+    end
+    return filtered;
+end
+
+---Whether a source and target are both selected and the flight between them is within the maximum flight
+---distance and at least the minimum distance per step.
 function IsSpyPlaneSelectionValid()
     return SpyPlaneStartTerritoryID ~= nil
         and SpyPlaneEndTerritoryID ~= nil
-        and GetSpyPlanePercentOverMaxFlightDistance(SpyPlaneStartTerritoryID, SpyPlaneEndTerritoryID) == nil;
+        and GetSpyPlanePercentOverMaxFlightDistance(SpyPlaneStartTerritoryID, SpyPlaneEndTerritoryID) == nil
+        and not IsSpyPlaneFlightUnderMinDistancePerStep(SpyPlaneStartTerritoryID, SpyPlaneEndTerritoryID);
 end
 
 ---Highlights the territories within the Spy Plane's reach: once both a start and end territory have been picked,
 ---the territories that fall within its line of flight (its Inclusion Generosity used as the "thickness" of the
 ---line, and its Maximum Flight Distance capping how far along the line is covered); once only a start territory
----has been picked, every territory within Maximum Flight Distance of it (the valid range for an end territory).
----Clears highlighting if neither is picked yet.
+---has been picked, every territory between the Minimum Distance Per Step and Maximum Flight Distance of it (the
+---valid range for an end territory). Clears highlighting if neither is picked yet.
 function UpdateSpyPlaneHighlight()
-    local maxFlightDistance = Mod.Settings.SpyPlaneMaxFlightDistance or 300;
-
     if (SpyPlaneStartTerritoryID == nil) then
         Game.HighlightTerritories({});
         return;
     end
 
     if (SpyPlaneEndTerritoryID == nil) then
-        local startTd = Game.Map.Territories[SpyPlaneStartTerritoryID];
-        local startPoint = { X = startTd.MiddlePointX, Y = startTd.MiddlePointY };
-        local territoriesWithinRange = Flight.GetTerritoriesNearPoints(Game, { startPoint, startPoint }, maxFlightDistance);
-        Game.HighlightTerritories(territoriesWithinRange);
+        UpdateSpyPlaneTargetRangeHighlight();
         return;
     end
 
+    local maxFlightDistance = Mod.Settings.SpyPlaneMaxFlightDistance or 300;
     local inclusionGenerosity = Mod.Settings.SpyPlaneInclusionGenerosity or 50;
     local path = BuildSpyPlanePath(SpyPlaneStartTerritoryID, SpyPlaneEndTerritoryID, maxFlightDistance);
     local coveredTerritories = Flight.GetTerritoriesAlongPath(Game, path, inclusionGenerosity);
     Game.HighlightTerritories(coveredTerritories);
+end
+
+---Highlights every valid candidate for the end territory (within Minimum Distance Per Step and Maximum Flight
+---Distance of the current source), regardless of whatever end territory is currently stored - used both when no
+---end territory has been picked yet, and while "Select Target"/"Keep Selection" is awaiting a new pick (so the
+---player can see their options immediately, even though the old target is still held onto in case they cancel).
+function UpdateSpyPlaneTargetRangeHighlight()
+    local maxFlightDistance = Mod.Settings.SpyPlaneMaxFlightDistance or 300;
+    local startTd = Game.Map.Territories[SpyPlaneStartTerritoryID];
+    local startPoint = { X = startTd.MiddlePointX, Y = startTd.MiddlePointY };
+    local territoriesWithinRange = Flight.GetTerritoriesNearPoints(Game, { startPoint, startPoint }, maxFlightDistance);
+    territoriesWithinRange = FilterSpyPlaneTerritoriesWithinMinDistance(territoriesWithinRange, startPoint, Mod.Settings.SpyPlaneMinDistancePerStep or 0);
+    Game.HighlightTerritories(territoriesWithinRange);
 end
 
 ---Highlights whichever mode (Line, Circle or Path) is currently active, delegating to that mode's own highlight
@@ -1109,6 +1169,18 @@ function SpyPlanePathAddTerritoryHandleClick(terrDetails)
         return;
     end
 
+    if (#SpyPlanePathWaypoints > 0) then
+        local lastTd = Game.Map.Territories[SpyPlanePathWaypoints[#SpyPlanePathWaypoints].ID];
+        local newTd = Game.Map.Territories[terrDetails.ID];
+        local distance = math.sqrt((newTd.MiddlePointX - lastTd.MiddlePointX) ^ 2 + (newTd.MiddlePointY - lastTd.MiddlePointY) ^ 2);
+        local minDistancePerStep = Mod.Settings.SpyPlaneMinDistancePerStep or 0;
+        if (distance < minDistancePerStep) then
+            SpyPlanePathInstructionLabel.SetText("That territory is too close - it must be at least " .. minDistancePerStep .. " away from " .. SpyPlanePathWaypoints[#SpyPlanePathWaypoints].Name).SetColor(ERROR_COLOUR);
+            UI.InterceptNextTerritoryClick(SpyPlanePathAddTerritoryHandleClick);
+            return;
+        end
+    end
+
     table.insert(SpyPlanePathWaypoints, { ID = terrDetails.ID, Name = terrDetails.Name });
     UpdateSpyPlanePathDisplay();
     UpdateSpyPlanePathNextTerritoryRangeHighlight();
@@ -1241,5 +1313,7 @@ function UpdateSpyPlanePathNextTerritoryRangeHighlight()
     local remainingDistance = math.max(0, maxFlightDistance - GetSpyPlanePathTotalDistance());
     local lastTd = Game.Map.Territories[SpyPlanePathWaypoints[#SpyPlanePathWaypoints].ID];
     local point = { X = lastTd.MiddlePointX, Y = lastTd.MiddlePointY };
-    Game.HighlightTerritories(Flight.GetTerritoriesNearPoints(Game, { point, point }, remainingDistance));
+    local territoriesWithinRange = Flight.GetTerritoriesNearPoints(Game, { point, point }, remainingDistance);
+    territoriesWithinRange = FilterSpyPlaneTerritoriesWithinMinDistance(territoriesWithinRange, point, Mod.Settings.SpyPlaneMinDistancePerStep or 0);
+    Game.HighlightTerritories(territoriesWithinRange);
 end
