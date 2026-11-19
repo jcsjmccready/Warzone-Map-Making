@@ -123,8 +123,7 @@ function Present_SpyPlanePlayCardUI(game, playCard, closeCardsDialog)
 
             if (stepsEnabled) then
                 SpyPlaneStepsModeBtn = UI.CreateButton(modeColumn)
-                    .SetIcon("Steps.png")
-                    .SetText("")
+                    .SetText("?")
                     .SetOnClick(SpyPlaneStepsModeClicked)
                     .SetPreferredWidth(40)
                     .SetPreferredHeight(40)
