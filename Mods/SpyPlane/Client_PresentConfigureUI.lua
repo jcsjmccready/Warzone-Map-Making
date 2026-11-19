@@ -67,14 +67,13 @@ function Create_SpyPlaneCard_SubOptions_UI(rootParent)
         .SetText('Flies in a circle around a selected territory, starting from the top')
         .SetColor(BUTTON_COLOURS.DarkGray);
 
-    spyPlaneEnablePathFlight = UI.CreateCheckBox(spyPlaneCardVHeading)
-        .SetText('Enable Path flight')
-        .SetIsChecked(Mod.Settings.SpyPlaneEnablePathFlight or false);
+    -- spyPlaneEnablePathFlight = UI.CreateCheckBox(spyPlaneCardVHeading)
+    --     .SetText('Enable Path flight')
+    --     .SetIsChecked(Mod.Settings.SpyPlaneEnablePathFlight or false);
  
-    UI.CreateLabel(spyPlaneCardVHeading)
-        .SetText('Flies directly between multiple territories (A-B-C...)')
-        .SetColor(BUTTON_COLOURS.DarkGray);
-
+    -- UI.CreateLabel(spyPlaneCardVHeading)
+    --     .SetText('Flies directly between multiple territories (A-B-C...)')
+    --     .SetColor(BUTTON_COLOURS.DarkGray);
     local horz = UI.CreateHorizontalLayoutGroup(spyPlaneCardVHeading);
     UI.CreateLabel(horz).SetText('Inclusion generosity').SetPreferredWidth(290);
     spyPlaneInclusionGenerosity = UI.CreateNumberInputField(horz)

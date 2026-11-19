@@ -26,7 +26,9 @@ function Client_SaveConfigureUI(alert, addCard)
 
     Mod.Settings.SpyPlaneEnableLineFlight = spyPlaneEnableLineFlight.GetIsChecked();
     Mod.Settings.SpyPlaneEnableCircleFlight = spyPlaneEnableCircleFlight.GetIsChecked();
-    Mod.Settings.SpyPlaneEnablePathFlight = spyPlaneEnablePathFlight.GetIsChecked();
+
+    --forced off - Path flight's checkbox is hidden in Client_PresentConfigureUI.lua until it's ready
+    Mod.Settings.SpyPlaneEnablePathFlight = false;
 
     if (not Mod.Settings.SpyPlaneEnableLineFlight and not Mod.Settings.SpyPlaneEnableCircleFlight and not Mod.Settings.SpyPlaneEnablePathFlight) then
         alert("You must enable at least one flight type (Line, Circle, or Path) for the Spy Plane card");
