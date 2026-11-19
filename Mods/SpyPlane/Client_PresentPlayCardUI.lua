@@ -295,7 +295,7 @@ function SpyPlaneSendLineModeClicked(playCard)
     local modData = "FlySpyPlane_" .. SpyPlaneStartTerritoryID .. "_" .. SpyPlaneEndTerritoryID;
     local message = "Flies a Spy Plane from " .. SpyPlaneStartTerritoryName .. " to " .. SpyPlaneEndTerritoryName;
 
-    if (playCard(message, modData, WL.TurnPhase.Deploys, {}, jumpToSpot)) then
+    if (playCard(message, modData, WL.TurnPhase.SpyingCards, {}, jumpToSpot)) then
         Close();
     end
 end
@@ -904,7 +904,7 @@ function SpyPlaneSendCircleModeClicked(playCard)
     local modData = "FlySpyPlaneCircle_" .. SpyPlaneCircleTerritoryID .. "_" .. radius .. "_" .. SpyPlaneCircleDirection;
     local message = "Flies a Spy Plane in a circle around " .. SpyPlaneCircleTerritoryName;
 
-    if (playCard(message, modData, WL.TurnPhase.Deploys, {}, jumpToSpot)) then
+    if (playCard(message, modData, WL.TurnPhase.SpyingCards, {}, jumpToSpot)) then
         Close();
     end
 end
@@ -1119,7 +1119,7 @@ function SpyPlaneSendPathModeClicked(playCard)
     local modData = "FlySpyPlanePath_" .. table.concat(ids, "_");
     local message = "Flies a Spy Plane along a path through " .. #SpyPlanePathWaypoints .. " territories";
 
-    if (playCard(message, modData, WL.TurnPhase.Deploys, {}, jumpToSpot)) then
+    if (playCard(message, modData, WL.TurnPhase.SpyingCards, {}, jumpToSpot)) then
         Close();
     end
 end

@@ -57,6 +57,7 @@ local function AdvanceSpyPlaneFlightStep(game, flight, inclusionGenerosity, addN
 	local nearestTerritoryID = Flight.FindNearestTerritory(game, lastPoint.X, lastPoint.Y);
 
 	local event = WL.GameOrderEvent.Create(flight.PlayerID, "Spy Plane continues its flight", {}, {});
+	event.Icon = "Plane";
 	event.FogModsOpt = { fogMod };
 	event.JumpToActionSpotOpt = WL.RectangleVM.Create(firstPoint.X, firstPoint.Y, lastPoint.X, lastPoint.Y);
 
