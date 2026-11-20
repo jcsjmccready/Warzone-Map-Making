@@ -3,6 +3,7 @@ require("Visuals.Util");
 require("Visuals.Math.Matrix4D");
 require("Visuals.Math.Vector4D");
 require("Visuals.ColorArray")
+require("Visuals.Vertex");
 require("Visuals.VertexArray");
 require("Visuals.Triangles");
 require("Visuals.Animation.Animation");

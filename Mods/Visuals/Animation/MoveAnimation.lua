@@ -17,7 +17,7 @@ setmetatable(MoveAnimation, {
 ---@return MoveAnimation
 ---@private
 function MoveAnimation:New(x, y, z)
-    Animation.Create(self, Matrix4D(1, 0, 0, x, 0, 1, 0, y or 0, 0, 0, 1, z or 0));
+    Animation.New(self, Matrix4D(1, 0, 0, x, 0, 1, 0, y or 0, 0, 0, 1, z or 0));
     return self;
 end
 

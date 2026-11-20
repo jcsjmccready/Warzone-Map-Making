@@ -17,7 +17,7 @@ setmetatable(ScaleAnimation, {
 ---@return ScaleAnimation
 ---@private
 function ScaleAnimation:New(x, y, z)
-    Animation.Create(self, Matrix4D(x, 0, 0, 0, 0, y or 1, 0, 0, 0, 0, z or 1));
+    Animation.New(self, Matrix4D(x, 0, 0, 0, 0, y or 1, 0, 0, 0, 0, z or 1));
     return self;
 end
 
